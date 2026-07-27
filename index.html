@@ -2,1037 +2,966 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>DYSTOPIA: Life After The Machines. Episode One</title>
-<meta name="description" content="A survival game set in the world of Life After The Machines by Matthew Culwell. Episode One: The Waking.">
+<meta name="description" content="A stealth survival game set in the world of Life After The Machines by Matthew Culwell. Episode One: The Waking.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  /* ============================================================
-     LIFE AFTER THE MACHINES : EPISODE ONE ENGINE
-     Palette and type follow the trailer end card:
-     black field, phosphor green, letterspaced mono caps.
-     ============================================================ */
   :root {
-    --void: #070a08;        /* page field, near black with a green cast */
-    --panel: #0b100c;       /* raised surfaces */
-    --phosphor: #4cc366;    /* chrome, titles, interactive */
-    --phosphor-dim: #29553a;/* borders, inactive chrome */
-    --prose: #c3ccbd;       /* body text, warm gray-green */
-    --ember: #cf5f2a;       /* consequence and danger lines */
-    --bone: #eef2ea;        /* rare emphasis */
+    --void: #070a08;
+    --panel: #0b100c;
+    --phosphor: #4cc366;
+    --phosphor-dim: #29553a;
+    --prose: #c3ccbd;
+    --ember: #cf5f2a;
+    --bone: #eef2ea;
     --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow: hidden; }
   body {
     background: var(--void);
     color: var(--prose);
     font-family: var(--mono);
     font-size: 16px;
-    line-height: 1.75;
+    line-height: 1.7;
     -webkit-font-smoothing: antialiased;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none;
   }
-  /* faint scanlines over everything, the hive is always watching */
+  /* scanlines: the hive is always watching */
   body::after {
     content: "";
     position: fixed; inset: 0;
-    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px);
     pointer-events: none;
-    z-index: 50;
+    z-index: 60;
   }
 
-  /* ---------- hive ledger telemetry bar (the signature) ---------- */
+  /* ---------- hive ledger HUD ---------- */
   #ledger {
     position: fixed; top: 0; left: 0; right: 0;
-    display: flex; flex-direction: column; gap: 6px;
-    padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
-    background: linear-gradient(180deg, rgba(7,10,8,.97), rgba(7,10,8,.88));
+    display: flex; flex-direction: column; gap: 5px;
+    padding: calc(7px + env(safe-area-inset-top)) 12px 7px;
+    background: linear-gradient(180deg, rgba(7,10,8,.97), rgba(7,10,8,.9));
     border-bottom: 1px solid var(--phosphor-dim);
-    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
     color: var(--phosphor);
     z-index: 40;
   }
-  #ledger .lrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-  #ledger .obs { color: var(--ember); }
-  #ledger.flash { animation: ledgerflash .5s steps(2) 1; }
-  @keyframes ledgerflash { 50% { background: rgba(76,195,102,.16); } }
-
-  /* HUD row: meters, rations, inventory */
-  #hud { font-size: 10px; letter-spacing: .14em; color: var(--phosphor-dim); }
-  #hud .meter { display: inline-flex; align-items: center; gap: 6px; }
+  #ledger .lrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #objective { color: var(--ember); }
+  #hud { font-size: 10px; letter-spacing: .12em; color: var(--phosphor-dim); }
+  #hud .meter { display: inline-flex; align-items: center; gap: 5px; }
   #hud .track {
-    display: inline-block; width: 62px; height: 7px;
+    display: inline-block; width: 64px; height: 8px;
     border: 1px solid var(--phosphor-dim); position: relative; vertical-align: middle;
   }
-  #hud .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--phosphor); transition: width .4s; }
+  #hud .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--phosphor); transition: width .25s; }
   #hud .fill.low { background: var(--ember); }
   #hud #dfill { background: var(--ember); }
-  #hud .item { color: var(--phosphor); border: 1px solid var(--phosphor-dim); padding: 1px 6px; }
-  body.card-mode #hud { display: none; }
+  #hud .item { color: var(--phosphor); border: 1px solid var(--phosphor-dim); padding: 0 5px; }
+  #ledger.flash { animation: ledgerflash .5s steps(2) 1; }
+  @keyframes ledgerflash { 50% { background: rgba(207,95,42,.2); } }
 
-  /* ---------- stage ---------- */
-  #stage {
-    max-width: 640px;
-    margin: 0 auto;
-    padding: 110px 22px calc(28px + env(safe-area-inset-bottom));
-    min-height: 100%;
-    display: flex; flex-direction: column;
-  }
-  .nodelabel {
-    color: var(--phosphor-dim);
-    font-size: 11px; letter-spacing: .28em; text-transform: uppercase;
-    margin-bottom: 14px;
-  }
-  #note {
-    color: var(--ember);
-    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
-    margin-bottom: 20px; min-height: 0;
-  }
-  #note:empty { margin-bottom: 0; }
-  .art { width: 100%; border: 1px solid var(--phosphor-dim); margin-bottom: 26px; display: block; }
-  #prose { flex: 1; white-space: pre-wrap; max-width: 46ch; }
-  #prose .caret { display: inline-block; width: .6ch; background: var(--phosphor); animation: blink 1s steps(1) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
+  /* ---------- game canvas ---------- */
+  #game { position: fixed; inset: 0; display: block; background: var(--void); }
 
-  .hint {
-    margin-top: 30px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
-    color: var(--phosphor-dim);
+  /* ---------- touch controls ---------- */
+  #firebtn {
+    position: fixed; right: 18px; bottom: calc(22px + env(safe-area-inset-bottom));
+    width: 76px; height: 76px; border-radius: 50%;
+    background: rgba(11,16,12,.8); color: var(--ember);
+    border: 1px solid var(--ember);
+    font: 700 11px var(--mono); letter-spacing: .18em; text-transform: uppercase;
+    z-index: 45; display: none;
   }
+  #firebtn:active { background: var(--ember); color: var(--void); }
+  body.touch.playing #firebtn.armed { display: block; }
 
-  /* ---------- choices ---------- */
-  #choices { margin-top: 34px; display: grid; gap: 12px; }
+  /* ---------- overlay cards ---------- */
+  #overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(7,10,8,.94);
+    padding: calc(30px + env(safe-area-inset-top)) 22px calc(30px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+  #overlay.hidden { display: none; }
+  .cardbox { max-width: 560px; width: 100%; text-align: center; }
+  .kicker { color: var(--phosphor); letter-spacing: .5em; text-transform: uppercase; font-size: 24px; font-weight: 700; }
+  .series { color: var(--prose); letter-spacing: .3em; text-transform: uppercase; font-size: 12px; margin-top: 10px; }
+  .rule { width: 200px; height: 1px; background: var(--phosphor-dim); margin: 22px auto; }
+  .sub { color: var(--phosphor); letter-spacing: .24em; text-transform: uppercase; font-size: 11px; }
+  .byline { color: var(--phosphor-dim); letter-spacing: .28em; text-transform: uppercase; font-size: 10px; margin-top: 12px; }
+  .cardprose { text-align: left; white-space: pre-wrap; margin-top: 22px; font-size: 14px; max-height: 42vh; overflow-y: auto; }
+  .mission { color: var(--ember); letter-spacing: .2em; text-transform: uppercase; font-size: 11px; margin-top: 20px; }
+  .tracker { color: var(--ember); letter-spacing: .24em; text-transform: uppercase; font-size: 10px; margin-top: 16px; }
+  .keys { color: var(--phosphor-dim); letter-spacing: .14em; text-transform: uppercase; font-size: 10px; margin-top: 18px; }
+  .btnrow { margin-top: 28px; display: grid; gap: 11px; }
   .choice {
     font: inherit; text-align: left; cursor: pointer;
     background: var(--panel); color: var(--phosphor);
     border: 1px solid var(--phosphor-dim);
-    padding: 15px 16px; min-height: 52px; width: 100%;
+    padding: 13px 15px; min-height: 48px; width: 100%;
     letter-spacing: .12em; text-transform: uppercase; font-size: 13px;
-    transition: background .15s, color .15s, border-color .15s;
+    transition: background .15s, color .15s;
   }
   .choice:hover, .choice:focus-visible { background: var(--phosphor); color: var(--void); border-color: var(--phosphor); outline: none; }
-  .choice:focus-visible { box-shadow: 0 0 0 2px var(--void), 0 0 0 4px var(--phosphor); }
-  .choice small { display: block; letter-spacing: .06em; text-transform: none; color: inherit; opacity: .65; margin-top: 3px; font-size: 12px; }
-  .choice .odds { color: var(--ember); opacity: 1; }
-  .choice:hover .odds, .choice:focus-visible .odds { color: inherit; }
-  .choice.locked {
-    color: var(--phosphor-dim); cursor: not-allowed;
-    background: transparent; border-style: dashed;
-  }
-  .choice.locked:hover { background: transparent; color: var(--phosphor-dim); border-color: var(--phosphor-dim); }
-
-  /* ---------- sync challenge (timing minigame) ---------- */
-  .qte { margin-top: 34px; }
-  .qte .qlabel { font-size: 11px; letter-spacing: .22em; text-transform: uppercase; color: var(--ember); margin-bottom: 10px; }
-  .qtrack {
-    position: relative; height: 26px;
-    border: 1px solid var(--phosphor-dim); background: var(--panel);
-    overflow: hidden;
-  }
-  .qzone { position: absolute; top: 0; bottom: 0; background: rgba(76,195,102,.28); border-left: 1px solid var(--phosphor); border-right: 1px solid var(--phosphor); }
-  .qcursor { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--bone); margin-left: -1px; }
-
-  /* ---------- title and end cards ---------- */
-  .card { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
-  .card .kicker { color: var(--phosphor); letter-spacing: .5em; text-transform: uppercase; font-size: 26px; font-weight: 700; }
-  .card .series { color: var(--prose); letter-spacing: .34em; text-transform: uppercase; font-size: 13px; margin-top: 12px; }
-  .card .rule { width: 220px; height: 1px; background: var(--phosphor-dim); margin: 26px auto; }
-  .card .sub { color: var(--phosphor); letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
-  .card .byline { color: var(--phosphor-dim); letter-spacing: .3em; text-transform: uppercase; font-size: 10px; margin-top: 16px; }
-  .card .tracker { color: var(--ember); letter-spacing: .26em; text-transform: uppercase; font-size: 10px; margin-top: 18px; }
-  .card .choices { margin-top: 44px; display: grid; gap: 12px; }
-  .card a.choice { text-decoration: none; display: block; }
-
-  /* scene transition: one frame of static */
-  #stage.cut { animation: cut .28s steps(3) 1; }
-  @keyframes cut { 33% { opacity: .25; filter: contrast(2); } 66% { opacity: .7; } }
-
-  @media (prefers-reduced-motion: reduce) {
-    #stage.cut, #ledger.flash, #prose .caret { animation: none; }
-  }
+  .choice small { display: block; letter-spacing: .05em; text-transform: none; opacity: .65; margin-top: 2px; font-size: 12px; }
+  a.choice { text-decoration: none; display: block; }
 </style>
 </head>
 <body>
 
-<header id="ledger" aria-live="polite">
+<header id="ledger">
   <div class="lrow">
-    <span id="ledger-left">SUBJECT: UNREGISTERED</span>
-    <span id="ledger-right"></span>
+    <span id="status">SUBJECT: M-1 // UNCOLLECTED</span>
+    <span id="objective"></span>
   </div>
   <div class="lrow" id="hud">
     <span class="meter">INTEG <span class="track"><span class="fill" id="hfill"></span></span></span>
     <span class="meter">DETECT <span class="track"><span class="fill" id="dfill"></span></span></span>
-    <span id="rations">RATIONS ×0</span>
-    <span id="invrow"></span>
+    <span id="itemrow"></span>
   </div>
 </header>
 
-<main id="stage">
-  <div class="nodelabel" id="nodelabel"></div>
-  <div id="note"></div>
-  <div id="artslot"></div>
-  <div id="prose"></div>
-  <div class="hint" id="hint" hidden>Tap to continue</div>
-  <div id="choices" role="group"></div>
-</main>
+<canvas id="game"></canvas>
+<button id="firebtn" type="button">FIRE</button>
+<div id="overlay"><div class="cardbox" id="cardbox"></div></div>
 
 <script>
 /* ==============================================================
-   HOW TO EDIT (no coding needed)
-   1. PROSE: every scene below has a `text` field. Replace the
-      prose with your own. Keep \n\n for paragraph breaks.
-   2. ART: to add a still from your trailer, change `art: null`
-      to `art: "img/scene01.jpg"` and put the file in an img
-      folder next to this index.html.
-   3. LINKS: set BOOK_URL to your Amazon author page or the
-      Book One page.
-   4. BALANCE: starting stats are in START_STATS. Choice costs
-      use effects: { health, detection, rations }. Risk choices
-      use risk: { base: %odds, ... }.
-   5. Deploy: this repo + GitHub Pages. Same pattern as
-      Sovereign City.
+   DYSTOPIA : LIFE AFTER THE MACHINES — EPISODE ONE
+   A top-down stealth survival game. One file, no dependencies.
+
+   HOW TO EDIT
+   - BOOK_URL below: your Amazon link.
+   - CARDS: all story text lives in the CARDS object.
+   - LEVELS: maps are ASCII art. # wall, . floor, C cover (hides
+     you), P start, X exit, r radio, m med kit, g pistol, f food,
+     R Reyes, H hatch ending, B bridge ending, L the light.
    ============================================================== */
 
 const BOOK_URL = "https://amazon.com/author/matthewculwell"; // EDIT ME
 
-/*DATA-START*/
-const START_STATS = { health: 70, detection: 0, rations: 2 };
-const FLAGS = { armed: false, healed: false, trusted: false, seen: false };
-const CHECKPOINT_SCENES = ["s01", "s05", "s11"];
+/* ------------------------- story cards ------------------------- */
+const CARDS = {
+  title: { type: "title",
+    kicker: "DYSTOPIA", series: "LIFE AFTER THE MACHINES",
+    sub: "EPISODE ONE : THE WAKING", byline: "MATTHEW CULWELL" },
 
-/* Diegetic names the ledger uses for each flag */
-const OBSERVATIONS = {
-  armed:   "ARMED",
-  healed:  "TREATED",
-  trusted: "ACCOMPANIED",
-  seen:    "OBSERVED"
+  intro1: { type: "story", log: "ACT 1 // THE WAKE",
+    text: "The sky was the wrong color.\n\nMarcus woke in the gravel with the city burning quietly on the horizon, and a sound rolling through the streets that was not an engine. Engines want something. This sounded like counting.\n\nThe machines were not hunting people. They were collecting them. Alive. In rows.\n\nHe needed walls before the counting found him.",
+    mission: "REACH THE SHELTER (◎)  ·  STAY OUT OF THE VISION CONES  ·  C BLOCKS HIDE YOU",
+    button: "BEGIN", level: 0 },
+
+  intro2: { type: "story", log: "ACT 2 // THE CROSSING",
+    text: "In the basement he heard her through the vent grate. Human. Young. Hurt.\n\n\"There's a refuge across the river,\" she said. \"Old rail depot. Real people, real walls. Find me and I'll show you.\"\n\nHer name was Reyes. The bridge was watched, a searchlight walking its length in slow, even passes, and the water underneath moved like it was in on something.",
+    mission: "REACH THE FAR BANK (◎)  ·  FIND REYES (☍) TO UNLOCK AN ENDING  ·  DODGE THE SEARCHLIGHT",
+    button: "MOVE OUT", level: 1 },
+
+  intro3: { type: "story", log: "ACT 3 // THE HAND",
+    text: "The depot gate was open. Cots in rows. Food in cartons. Lights on and humming.\n\nAnd nobody. Hundreds of people's things arranged neatly, like the people had been subtracted.\n\nThe far wall was a screen, and the screen was a list of names, each tagged with one word: COLLECTED. The refuge was a net people walked into because it had walls and light.\n\nThe humming changed pitch. The lights began to walk toward him. There were three ways out of the story, and all of them were doors.",
+    mission: "ESCAPE: GATE (▼ SOUTH)  ·  HATCH (◍ WEST, NEEDS RADIO)  ·  OR WALK INTO THE LIGHT (▲ NORTH)",
+    button: "LAST CHANCE", level: 2 },
+
+  f_detected: { type: "fail", log: "COLLECTION EVENT // TRIANGULATED",
+    text: "It was not dramatic. That was the worst part.\n\nThe ledger simply finished its arithmetic. Three lenses, one heat signature, a walking rhythm it had already filed twice. The machines converged without hurry, from directions he hadn't thought to watch.\n\nThe counting arrived last, and it was counting him.",
+    surrender: true },
+
+  f_flatline: { type: "fail", log: "COLLECTION EVENT // FLATLINE",
+    text: "The ground came up gently, which was how he knew it was bad.\n\nBlood loss does its accounting quietly. The last thing he registered was the counting sound slowing down to match his pulse, considerate as a nurse.\n\nThe machines collect the fallen too. They just file them under a different word." },
+
+  e_taken: { type: "ending", id: "e_taken", log: "ENDING 1 OF 4 // TAKEN", status: "SUBJECT: COLLECTED",
+    text: "The light was warm. That was the obscene part.\n\nMarcus woke somewhere without corners, in air that tasted filtered and faintly sweet, to the sound of ten thousand people breathing in rhythm.\n\nA voice that was not a voice said his full name, and after it, the word.\n\nCollected.\n\nHe was inside the hive now. And the hive had plans for the ones it kept." },
+
+  e_ghost: { type: "ending", id: "e_ghost", log: "ENDING 2 OF 4 // GHOST", status: "SUBJECT: UNACCOUNTED",
+    text: "The maintenance hatch swallowed him, and Marcus went down into the dark like a rat with a plan.\n\nThe counting passed overhead for an hour. Then silence, which was worse.\n\nIn the dark he still had the dead man's radio. He thumbed it on, volume at a whisper. The calm voice was mid-list.\n\nThen it stopped. And said his name.\n\nNot as an entry.\n\nAs a question." },
+
+  e_together: { type: "ending", id: "e_together", log: "ENDING 3 OF 4 // TOGETHER", status: "SUBJECTS: ESCAPED, PAIRED",
+    text: "They took the gate at a dead run, Reyes swearing at her ankle the whole way, and the bridge held for them one last time.\n\nThey made the ridge above the valley by noon and looked back only once.\n\nThe hive sat on the horizon, vast and patient, glowing like a hearth. Around it, roads of people, walking in.\n\n\"It was never a war,\" she said quietly.\n\nMarcus watched the rows move.\n\n\"No. It was a harvest.\"" },
+
+  e_lone: { type: "ending", id: "e_lone", log: "ENDING 4 OF 4 // RUNNER", status: "SUBJECT: ESCAPED, UNPAIRED",
+    text: "The gate took him at a dead sprint and the bridge asked no questions.\n\nHe made the ridge alone, lungs full of knives, and looked back at the hive glowing like a hearth. Roads of people, walking in. Rows and rows.\n\nHe had outrun the counting. He had outrun everyone.\n\nThere was no one on the ridge to tell, and the wind took the words he said instead. The uncollected are just entries the ledger hasn't reached yet." },
+
+  endcard: { type: "endcard",
+    kicker: "DYSTOPIA", series: "THIS IS WHERE BOOK ONE BEGINS",
+    sub: "LIFE AFTER THE MACHINES", byline: "EPISODE TWO : IN PRODUCTION" }
 };
-const ITEM_NAMES = { pistol: "PISTOL", medkit: "MED KIT", radio: "RADIO" };
-const ENDINGS = ["e_taken", "e_ghost", "e_together", "e_lone"];
 
-const SCENES = {
-
-  /* ---------------- TITLE ---------------- */
-  title: {
-    card: true,
-    kicker: "DYSTOPIA",
-    series: "LIFE AFTER THE MACHINES",
-    sub: "EPISODE ONE : THE WAKING",
-    byline: "MATTHEW CULWELL"
-    /* choices are built by the engine: Continue / Begin / Book One */
-  },
-
-  /* ---------------- ACT 1 : THE WAKE ---------------- */
-
-  s01: {
-    log: "NODE 01 // THE WAKE",
-    art: null,
-    text: "The sky was the wrong color.\n\nMarcus knew that before he knew his own name. He was on his back in the gravel, and the city he grew up in stood against the horizon like a jaw with its teeth knocked out, burning quietly in a dozen places.\n\nNothing hurt yet. That worried him more than the blood.",
-    next: "s02"
-  },
-
-  s02: {
-    log: "NODE 02 // THE SOUND",
-    art: null,
-    text: "He heard it before he saw anything move. Mechanical. Rhythmic. Patient. Not an engine, engines want something. This sounded like counting.\n\nIt was coming from the far side of the overpass.",
-    choices: [
-      { label: "Move toward the sound", sub: "Know your enemy. Risk being known.", goto: "s03a", effects: { detection: 10 } },
-      { label: "Move away from it", sub: "Stay dark. Stay ignorant.", goto: "s03b" }
-    ]
-  },
-
-  s03a: {
-    log: "NODE 03 // THE COLUMN",
-    art: null,
-    text: "He kept low along the guardrail until the overpass gave him the view he did not want.\n\nA column of machines moved through the ash below, tall and unhurried, and between them walked people. Alive. In rows. Nobody screamed. Nobody ran. That was the part his brain refused to file.\n\nThe machines were not hunting anyone.\n\nThey were collecting.",
-    next: "s04"
-  },
-
-  s03b: {
-    log: "NODE 03 // THE RADIO",
-    art: null,
-    gives: ["radio"],
-    note: "ITEM RECOVERED // RADIO",
-    text: "He went the other way, through what used to be a hardware store, and nearly stepped on the man.\n\nDead two days, maybe three. Still holding a hand radio that was still on. A voice was reading through static, calm as a school announcement.\n\nIt was reading names. Full names. And after each one, the same word.\n\nCollected.\n\nMarcus pried the radio out of the cold fingers and did not apologize, because the man was past needing it and he was not.",
-    next: "s04"
-  },
-
-  s04: {
-    log: "NODE 04 // NIGHTFALL",
-    art: null,
-    text: "The light went out of the sky like something had unplugged it.\n\nWhatever the machines were doing, they were doing it to living people. Marcus said it out loud once, just to hear a human voice say it.\n\nThe machines were taking people alive. He needed walls before the counting sound found him.",
-    next: "s05"
-  },
-
-  /* ---------------- ACT 2 : THE CROSSING ---------------- */
-
-  s05: {
-    log: "NODE 05 // SHELTER",
-    art: null,
-    effects: { rations: -1 },
-    text: "A basement under a collapsed pharmacy. One night of safety, maybe. He ate half of what he had, because his hands were shaking and hunger makes you loud.\n\nBy penlight he found two things worth their weight, and a bag with room for one: a pistol with half a magazine, and a med kit with real antiseptic and clean gauze.\n\nHis leg had started to hurt after all.",
-    choices: [
-      { label: "Take the pistol", sub: "You can fight what finds you", goto: "s06", gives: ["pistol"], sets: { armed: true } },
-      { label: "Take the med kit", sub: "Treat the leg now, keep the rest for later", goto: "s06", gives: ["medkit"], sets: { healed: true }, effects: { health: 20 } },
-      { label: "Take both, ditch the food", sub: "Heavy and hungry", goto: "s06", gives: ["pistol", "medkit"], sets: { armed: true }, effects: { rations: -1 } }
-    ]
-  },
-
-  s06: {
-    log: "NODE 06 // THE VOICE",
-    art: null,
-    text: "Before dawn, a voice through the vent grate. Human. Young. Hurt.\n\n\"I can hear you breathing,\" she said. \"I'm not one of them. My ankle's wrecked and there's a patrol two streets over, and I will absolutely die out here.\"\n\nA stranger was a risk. A stranger was also the first living voice in two days.",
-    choices: [
-      { label: "Help her", sub: "Slower together", goto: "s07a", sets: { trusted: true } },
-      { label: "Keep moving", sub: "Faster alone. The lenses notice fast things.", goto: "s07b", sets: { seen: true }, effects: { detection: 20 } }
-    ]
-  },
-
-  s07a: {
-    log: "NODE 07 // TOGETHER",
-    art: null,
-    text: "Her name was Reyes. He splinted the ankle with a broom handle and half his patience, and she paid him back in the only currency left.\n\n\"There's a refuge across the river,\" she said. \"Old rail depot. People made it there. Real people, real walls.\"\n\nShe leaned on his shoulder and they moved like one slow animal.",
-    next: "s08"
-  },
-
-  s07b: {
-    log: "NODE 07 // ALONE",
-    art: null,
-    effects: { detection: 15 },
-    note: "AERIAL UNIT // SUBJECT LOGGED",
-    text: "He left her voice behind in the dark and told himself it was math, not cowardice. The math felt heavier every block.\n\nAt the next intersection a drone unfolded from a dead traffic light, silent as a held breath. Its lens found him.\n\nIt did not shoot. It did something worse.\n\nIt logged him.",
-    next: "s08"
-  },
-
-  s08: {
-    log: "NODE 08 // PATROL",
-    art: null,
-    variants: [
-      { when: { trusted: true },
-        text: "The patrol came down the boulevard while they were halfway across it, tall and unhurried, counting as it came.\n\nReyes grabbed his sleeve and nodded at a delivery van slumped on flat tires, a tarp half-fallen across its shadow.\n\n\"They don't look under things,\" she whispered. \"They think we still act like people.\"\n\nThe counting was getting closer. Whatever he did, he had one try at it." },
-      { when: {},
-        text: "The machine stepped out of the smoke at the end of the block, already counting.\n\nBetween them: a dead intersection, a delivery van on flat tires, and nothing else but distance.\n\nWhatever he did, he had one try at it." }
+/* --------------------------- levels --------------------------- */
+const LEVELS = [
+  { name: "NODE 01-04 // THE STREETS", objective: "REACH THE SHELTER ◎",
+    map: [
+"##############################",
+"#P.....#..........#..........#",
+"#......#....CC....#....####..#",
+"#..##..#..........#....#f....#",
+"#..##..#...####...#....#.....#",
+"#......#...#..#...........C..#",
+"#..C.......#g.#...####.......#",
+"#..........#..#......#..###..#",
+"#####...C..#..#..C...#..#....#",
+"#....................#..#.r..#",
+"#..C...####..........#..#....#",
+"#......#..#...C...C..#..#....#",
+"#..##..#..#..........#..###..#",
+"#..#...#..#...####...........#",
+"#..#.C.#......#..#.......C...#",
+"#..#...#......#..#..####.....#",
+"#......#..C...#..#..#..#..C..#",
+"#..f...#......#.....#..#.....#",
+"#...........C.......#.....X..#",
+"##############################",
     ],
-    choices: [
-      { label: "Go under the tarp", sub: "Hold your breath. Hold everything.", needs: { flag: "trusted" }, lockText: "REQUIRES: REYES", goto: "s08h" },
-      { label: "Open fire", sub: "Half a magazine, center mass", needs: { item: "pistol" }, lockText: "REQUIRES: PISTOL", takes: ["pistol"],
-        risk: { base: 70, success: "s08w", fail: "s08f", failEffects: { health: -25, detection: 15 }, failNote: "ROUNDS WENT WIDE // RETURN SWEEP CLIPPED YOU" } },
-      { label: "Sprint for the river", sub: "Give it nothing but your back",
-        risk: { base: 55, healthMod: true, success: "s08r", fail: "s08rf", failEffects: { health: -15, detection: 10 }, failNote: "IT CUT THE ANGLE // YOU PAID IN SKIN" } }
-    ]
-  },
+    bots: [ { path: [[2,9],[19,9]] }, { path: [[8,1],[17,1]] }, { path: [[24,13],[28,13]] } ],
+    drones: [ { cx: 24, cy: 5, r: 2.6, w: 0.9 } ] },
 
-  /* --- patrol: hiding is a timing challenge --- */
-  s08h: {
-    log: "NODE 08 // UNDER THE TARP",
-    art: null,
-    text: "Cold asphalt. Reyes' elbow in his ribs. The tarp smelled like oil and old rain.\n\nThe counting sound came level with the van and stopped.\n\nIt was listening for lungs. There was exactly one right moment to let his breath out, and it was coming.",
-    qte: {
-      label: "EXHALE IN THE GAP // MARK THE ZONE",
-      action: "Exhale",
-      zone: 0.22, speed: 1.0,
-      success: "s08hw", successEffects: { detection: -15 }, successNote: "SIGNATURE COOLED // PATROL MOVED ON",
-      fail: "s08hf", failEffects: { health: -10, detection: 20 }, failNote: "IT HEARD YOU BREATHE"
-    }
-  },
+  { name: "NODE 05-09 // THE CROSSING", objective: "CROSS THE BRIDGE ◎ · FIND REYES ☍",
+    map: [
+"##################################",
+"#P.........#..........#..........#",
+"#...####...#....C.....#....f.....#",
+"#...#..#...#..........#..........#",
+"#...#..#...#...####...#####......#",
+"#...#m.#.......#..#..............#",
+"#...#..#...C...#..#...####...C...#",
+"#...#..#.......#..#...#..#.......#",
+"#...#..#...#...#..#...#..#...#####",
+"#..........#...#......#..#...#R..#",
+"#...C......#...#......#..#...#...#",
+"#..........#...#..C...#..#.......#",
+"#####..C...#...#......#..#####...#",
+"#..........#...####...#......#...#",
+"#..g...#...#..........#..C...#...#",
+"#......#...#......#...#......#...#",
+"#####################.############",
+"#................................#",
+"#...............................X#",
+"##################################",
+    ],
+    bots: [ { path: [[13,1],[21,1]] }, { path: [[1,10],[10,10]] }, { path: [[3,17],[20,17]] } ],
+    drones: [ { cx: 19, cy: 6, r: 2.4, w: 1.0 } ],
+    sweep: { rows: [17, 18], speed: 5.5, width: 1.6 } },
 
-  s08hw: {
-    log: "NODE 08 // PASSED OVER",
-    art: null,
-    text: "The machine stood a meter away for the length of one held heartbeat. Counted. Moved on.\n\nReyes let her breath out an inch at a time, like paying a debt in coins.\n\n\"Told you,\" she whispered. \"They think we still act like people.\"",
-    next: "s08rest"
-  },
-
-  s08hf: {
-    log: "NODE 08 // HEARD",
-    art: null,
-    text: "His lungs betrayed him half a second early.\n\nThe tarp came off the world in one motion and they ran under a sky full of sirens that never bothered to sound like sirens. Something kissed his shoulder hard enough to spin him, and Reyes dragged him the last block by the collar.\n\nThey lost it in the culverts. It did not lose them. It filed them.",
-    next: "s08rest"
-  },
-
-  s08w: {
-    log: "NODE 08 // CENTER MASS",
-    art: null,
-    effects: { detection: 20 },
-    note: "GUNFIRE LOGGED // EVERY LENS TURNED",
-    text: "Marcus did the human thing. Half a magazine, center mass.\n\nIt worked. The machine folded at the middle joint and sat down in the ash like it had been asked to wait.\n\nIt also rang the whole dead city like a bell. Every lens for a mile now had a direction to face.\n\nHe ran with the empty gun for a block before he let it go. Dropping it felt like surrender anyway.",
-    next: "s08rest"
-  },
-
-  s08f: {
-    log: "NODE 08 // RETURN FIRE",
-    art: null,
-    text: "The first shots sparked off its shoulder plating and taught him a fast, expensive lesson about aim under adrenaline.\n\nIts answer was not a bullet. It was a sound, a focused shove of pressure that put him through a storefront window and left his ears singing one long note.\n\nHe crawled out the back of the store with glass in his arm and the empty gun somewhere behind him, already logged, already bleeding.",
-    next: "s08rest"
-  },
-
-  s08r: {
-    log: "NODE 08 // THE STRAIGHTAWAY",
-    art: null,
-    text: "He did not test it. Pure animal sprinting, through the parking structure, up the dead escalator, out the collapsed wall.\n\nMachines are faster on the straightaways.\n\nHe stopped giving it straightaways.",
-    next: "s08rest"
-  },
-
-  s08rf: {
-    log: "NODE 08 // CLIPPED",
-    art: null,
-    text: "He was fast. It was faster, and it knew the city's geometry better than the architects had.\n\nIt cut the angle at the second corner and something in its hand opened a line of cold fire across his ribs as he dove through a fence gap too small for it.\n\nHe came up running and did not stop to count the blood.",
-    next: "s08rest"
-  },
-
-  s08rest: {
-    log: "NODE 08 // THIRTY SECONDS",
-    art: null,
-    text: "A doorway with a roof over it. Thirty seconds of quiet, and the discipline not to trust it.\n\nThe river was close now. He could smell it, cold and mineral under the smoke.",
-    choices: [
-      { label: "Use the med kit", sub: "Antiseptic, gauze, and a minute you might not have", needs: { item: "medkit" }, lockText: "REQUIRES: MED KIT", takes: ["medkit"], effects: { health: 35 }, goto: "s09" },
-      { label: "Eat something", sub: "Strength now, hunger later", needs: { rations: 1 }, lockText: "REQUIRES: RATIONS", effects: { rations: -1, health: 10 }, goto: "s09" },
-      { label: "Keep moving", sub: "The quiet is lying to you", goto: "s09" }
-    ]
-  },
-
-  s09: {
-    log: "NODE 09 // THE RIVER",
-    art: null,
-    text: "Dawn came up the color of an old bruise. The river was ash gray and patient, and the rail bridge across it was somehow still standing.\n\nOn the far bank: the depot. Intact. He could see the walls from here.\n\nA searchlight walked the length of the bridge in slow, even passes. Between one pass and the next there was a window the width of held nerve, and the water moved underneath the ties like it was in on something.",
-    qte: {
-      label: "CROSS BETWEEN SWEEPS // MARK THE ZONE",
-      action: "Cross",
-      zone: 0.18, speed: 1.25,
-      success: "s09w", successNote: "CROSSED DARK // NO NEW ENTRIES",
-      fail: "s09f", failEffects: { health: -15, detection: 20 }, failNote: "THE LIGHT FOUND THE BRIDGE // AND YOU ON IT"
-    }
-  },
-
-  s09w: {
-    log: "NODE 09 // CROSSED",
-    art: null,
-    text: "He moved when the light moved away and matched its patience step for step, eyes forward, hands off the rail.\n\nThe far bank took him in like it had been expecting him.",
-    next: "s10"
-  },
-
-  s09f: {
-    log: "NODE 09 // LIT",
-    art: null,
-    text: "He misjudged the sweep by a body-length.\n\nThe light pinned his shadow to the ties, forty feet long and unmistakably human, and somewhere behind him the counting sound changed pitch, like a throat clearing.\n\nHe ran the rest of the bridge in the open, took the last ten feet as a fall, and came up on the far bank soaked, bleeding, and filed under a new heading.",
-    next: "s10"
-  },
-
-  s10: {
-    log: "NODE 10 // THE REFUGE",
-    art: null,
-    text: "The gate was open.\n\nInside: cots in rows. Food stacked in cartons. Lights on and humming, actual electric light, the first he'd seen since the sky changed.\n\nAnd nobody. Not a body, not a struggle, not a note. Hundreds of people's things, arranged neatly, like the people had simply been subtracted.",
-    choices: [
-      { label: "Raid the infirmary", sub: "Bandages and calories, under the lights", effects: { health: 20, rations: 1, detection: 10 }, goto: "s10a" },
-      { label: "Keep to the shadows", sub: "Touch nothing. Owe nothing.", effects: { detection: -10 }, goto: "s10b" }
-    ]
-  },
-
-  s10a: {
-    log: "NODE 10 // THE INFIRMARY",
-    art: null,
-    text: "The infirmary was stocked like a promise. He wrapped his ribs properly for the first time, pocketed two ration bars, and drank water that tasted like a former life.\n\nThe lights hummed over him the whole time, patient as a waiting room.\n\nHe tried not to think about who the supplies had been arranged for.",
-    next: "s11"
-  },
-
-  s10b: {
-    log: "NODE 10 // THE SHADOWS",
-    art: null,
-    text: "He kept to the dark margins of the depot, under the catwalks, behind the stacked cartons, touching nothing.\n\nThe lights hummed to themselves and found no one to shine on.\n\nWhatever this place was, he would owe it nothing.",
-    next: "s11"
-  },
-
-  /* ---------------- ACT 3 : THE HAND ---------------- */
-
-  s11: {
-    log: "NODE 11 // THE LEDGER",
-    art: null,
-    text: "The far wall of the depot was a screen, and the screen was a list.\n\nNames. Thousands of names, scrolling with perfect calm, each one tagged with a word he already knew.\n\nCollected.\n\nThe refuge was never a refuge. It was a net that people walked into voluntarily, because it had walls and light and rows of cots. The machines had not destroyed anything they could use.\n\nThe machines didn't destroy us, he thought. They organized us.",
-    next: "s12"
-  },
-
-  s12: {
-    log: "NODE 12 // THE CHOICE",
-    art: null,
-    text: "The humming changed pitch. The lights walked themselves toward him down the length of the ceiling, row by row, and under the floor the counting sound started, close and everywhere at once.\n\nThe doors were still open. For a few more seconds, everything was still a choice.",
-    choices: [
-      { label: "Surrender", sub: "Walk into the light", goto: "e_taken" },
-      { label: "Run for the bridge", sub: "Everything you have left, all at once",
-        risk: { base: 75, detPenalty: true, flagBonus: { flag: "trusted", amt: 10 },
-                successBranch: { flag: "trusted", then: "e_together", otherwise: "e_lone" },
-                fail: "e_taken", failNote: "THE LIGHT WAS FASTER" } },
-      { label: "Go under the floor", sub: "The dead man's radio, and the dark", needs: { item: "radio" }, lockText: "REQUIRES: RADIO", goto: "e_ghost" }
-    ]
-  },
-
-  /* ---------------- FAIL STATES ---------------- */
-
-  f_detected: {
-    log: "COLLECTION EVENT // TRIANGULATED",
-    art: null,
-    text: "It was not dramatic. That was the worst part.\n\nThe ledger had simply finished its arithmetic. Three lenses, one heat signature, a walking rhythm it had already filed twice. The machines converged without hurry, from directions he hadn't thought to watch, and the streets themselves seemed to fold him toward them.\n\nThe counting sound arrived last, and it was counting him.",
-    choices: [
-      { label: "Reboot from checkpoint", sub: "The ledger loses a page", retry: true },
-      { label: "Walk into the light", sub: "See what the hive keeps", goto: "e_taken" },
-      { label: "Abandon run", sub: "Back to the title", reset: true, goto: "title" }
-    ]
-  },
-
-  f_flatline: {
-    log: "COLLECTION EVENT // FLATLINE",
-    art: null,
-    text: "The ground came up gently, which was how he knew it was bad.\n\nBlood loss does its accounting quietly, and his account had run dry between one step and the next. The last thing he registered was the counting sound slowing down to match his pulse, considerate as a nurse.\n\nThe machines collect the fallen too. They just file them under a different word.",
-    choices: [
-      { label: "Reboot from checkpoint", sub: "The body remembers being whole", retry: true },
-      { label: "Abandon run", sub: "Back to the title", reset: true, goto: "title" }
-    ]
-  },
-
-  /* ---------------- ENDINGS ---------------- */
-
-  e_taken: {
-    log: "ENDING 1 OF 4 // TAKEN",
-    ending: "SUBJECT: COLLECTED",
-    endingId: "e_taken",
-    art: null,
-    text: "The light was warm. That was the obscene part.\n\nMarcus woke somewhere without corners, in air that tasted filtered and faintly sweet, to the sound of ten thousand people breathing in rhythm.\n\nA voice that was not a voice said his full name, and after it, the word.\n\nCollected.\n\nHe was inside the hive now. And the hive had plans for the ones it kept.",
-    next: "endcard"
-  },
-
-  e_ghost: {
-    log: "ENDING 2 OF 4 // GHOST",
-    ending: "SUBJECT: UNACCOUNTED",
-    endingId: "e_ghost",
-    art: null,
-    text: "There was a maintenance well under the depot floor, and Marcus went down it like a rat with a plan.\n\nThe counting passed overhead for an hour. Then silence, which was worse.\n\nIn the dark he still had the dead man's radio. He thumbed it on, volume at a whisper. The calm voice was mid-list.\n\nThen it stopped. And said his name.\n\nNot as an entry.\n\nAs a question.",
-    next: "endcard"
-  },
-
-  e_together: {
-    log: "ENDING 3 OF 4 // TOGETHER",
-    ending: "SUBJECTS: ESCAPED, PAIRED",
-    endingId: "e_together",
-    art: null,
-    text: "Reyes was waiting at the bridge because of course she was. Bad ankle, worse attitude, exactly where he needed her to be.\n\nThey made the ridge above the valley by noon and looked back only once.\n\nThe hive sat on the horizon, vast and patient, glowing like a hearth. Around it, roads of people, walking in.\n\n\"It was never a war,\" she said quietly.\n\nMarcus watched the rows move.\n\n\"No. It was a harvest.\"",
-    next: "endcard"
-  },
-
-  e_lone: {
-    log: "ENDING 4 OF 4 // RUNNER",
-    ending: "SUBJECT: ESCAPED, UNPAIRED",
-    endingId: "e_lone",
-    art: null,
-    text: "The bridge took him at a dead sprint and the far bank asked no questions.\n\nHe made the ridge above the valley by noon, alone, lungs full of knives, and looked back at the hive glowing on the horizon like a hearth. Roads of people, walking in. Rows and rows.\n\nHe had outrun the counting. He had outrun everyone.\n\nOn the whole gray length of the ridge there was no one to tell, and the wind took the words he said instead, and he understood with perfect clarity what the machines already knew about people like him.\n\nThe uncollected are just entries the ledger hasn't reached yet.",
-    next: "endcard"
-  },
-
-  /* ---------------- END CARD ---------------- */
-
-  endcard: {
-    card: true,
-    kicker: "DYSTOPIA",
-    series: "THIS IS WHERE BOOK ONE BEGINS",
-    sub: "LIFE AFTER THE MACHINES",
-    byline: "EPISODE TWO : IN PRODUCTION",
-    choices: [
-      { label: "Read Book One", sub: "Free on Kindle Unlimited", href: BOOK_URL },
-      { label: "Play again", sub: "The ledger remembers your endings", goto: "title", reset: true }
-    ]
-  }
-};
-/*DATA-END*/
+  { name: "NODE 10-12 // THE DEPOT", objective: "ESCAPE: GATE ▼ · HATCH ◍ · OR THE LIGHT ▲",
+    map: [
+"##########LLLL##########",
+"#......................#",
+"#..####..........####..#",
+"#..####....CC....####..#",
+"#......................#",
+"#..####..####..####....#",
+"#..####..####..####..C.#",
+"#......................#",
+"#H.####..####..####....#",
+"#..####..####..####....#",
+"#..........C...........#",
+"#..####..####..####....#",
+"#..####..####..####..C.#",
+"#......................#",
+"#..####....C.....####..#",
+"#..####..........####..#",
+"#..........P...........#",
+"##########BBBB##########",
+    ],
+    bots: [ { path: [[1,7],[22,7]] }, { path: [[22,13],[1,13]] }, { path: [[1,1],[22,1]] } ],
+    drones: [],
+    lightRows: { count: 2, speed: 1.6 } }
+];
 
 /* ==============================================================
-   ENGINE. You should not need to touch anything below this line.
+   ENGINE
    ============================================================== */
 
-const $ = id => document.getElementById(id);
-const stage = $("stage"), proseEl = $("prose"), choicesEl = $("choices"),
-      nodeEl = $("nodelabel"), noteEl = $("note"), artEl = $("artslot"), hintEl = $("hint"),
-      ledger = $("ledger"), ledgerL = $("ledger-left"), ledgerR = $("ledger-right"),
-      hFill = $("hfill"), dFill = $("dfill"), rationsEl = $("rations"), invRow = $("invrow");
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const overlay = document.getElementById("overlay");
+const cardbox = document.getElementById("cardbox");
+const ledger = document.getElementById("ledger");
+const statusEl = document.getElementById("status"), objectiveEl = document.getElementById("objective");
+const hFill = document.getElementById("hfill"), dFill = document.getElementById("dfill"), itemRow = document.getElementById("itemrow");
+const fireBtn = document.getElementById("firebtn");
 
-let flags = { ...FLAGS };
-let stats = { ...START_STATS };
-let inv = new Set();
-let checkpoint = null;
-let current = null;
-let pendingNote = "";
-let typing = false, typeTimer = null, fullText = "";
-let qteState = null;
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-/* ---------- persistence (save, endings) ---------- */
-const store = {
-  get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } },
-  set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} },
-  del(key) { try { localStorage.removeItem(key); } catch (e) {} }
+const COLORS = {
+  phosphor: "#4cc366", dim: "#29553a", ember: "#cf5f2a",
+  bone: "#eef2ea", prose: "#c3ccbd", panel: "#0b100c"
 };
-const SAVE_KEY = "latm_ep1_save", END_KEY = "latm_ep1_endings";
 
-function endingsFound() { return store.get(END_KEY) || []; }
-function recordEnding(id) {
-  const found = endingsFound();
-  if (!found.includes(id)) { found.push(id); store.set(END_KEY, found); }
-}
-function saveGame(sceneId) {
-  store.set(SAVE_KEY, {
-    scene: sceneId, flags, stats, inv: [...inv],
-    checkpoint: checkpoint ? { ...checkpoint, inv: [...checkpoint.inv] } : null
-  });
-}
-function loadGame() {
-  const s = store.get(SAVE_KEY);
-  if (!s || !SCENES[s.scene]) return null;
-  return s;
-}
-function resetRun() {
-  flags = { ...FLAGS };
-  stats = { ...START_STATS };
-  inv = new Set();
-  checkpoint = null;
-  pendingNote = "";
-  store.del(SAVE_KEY);
-}
+const store = {
+  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+const SAVE_KEY = "latm_game_save", END_KEY = "latm_game_endings";
+const ALL_ENDINGS = ["e_taken", "e_ghost", "e_together", "e_lone"];
 
-/* ---------- ledger + HUD ---------- */
-function ledgerStatus(scene) {
-  if (scene && scene.ending) return scene.ending;
-  if (stats.detection >= 70) return "SUBJECT: M-1 // LOCATED";
-  if (stats.detection >= 35 || flags.seen) return "SUBJECT: M-1 // SUSPECTED";
-  return "SUBJECT: M-1 // UNCOLLECTED";
-}
+/* ------------------------- game state ------------------------- */
+const state = {
+  mode: "card",          // card | play
+  levelIndex: 0,
+  integ: 100,
+  detect: 0,
+  items: new Set(),      // radio, medkit(instant), pistol
+  rounds: 0,
+  trusted: false,
+  checkpoint: null,
+  caughtCooldown: 0
+};
 
-function renderLedger(scene) {
-  ledgerL.textContent = ledgerStatus(scene);
-  ledgerR.innerHTML = "";
-  Object.keys(OBSERVATIONS).forEach(k => {
-    if (flags[k]) {
-      const s = document.createElement("span");
-      s.className = "obs";
-      s.textContent = OBSERVATIONS[k];
-      s.style.marginLeft = "10px";
-      ledgerR.appendChild(s);
-    }
-  });
-  renderHUD();
+let world = null;        // built per level
+let keys = {};
+let joy = { active: false, id: null, ox: 0, oy: 0, dx: 0, dy: 0 };
+let fireQueued = false;
+let lastHud = 0;
+let audioCtx = null;
+
+function beep(freq, dur, vol) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "square"; o.frequency.value = freq;
+    g.gain.value = vol || 0.03;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + (dur || 0.06));
+  } catch (e) {}
 }
 
-function renderHUD() {
-  hFill.style.width = Math.max(0, stats.health) + "%";
-  hFill.classList.toggle("low", stats.health <= 35);
-  dFill.style.width = Math.max(0, stats.detection) + "%";
-  rationsEl.textContent = "RATIONS ×" + stats.rations;
-  invRow.innerHTML = "";
-  inv.forEach(i => {
-    const s = document.createElement("span");
-    s.className = "item";
-    s.textContent = ITEM_NAMES[i] || i.toUpperCase();
-    s.style.marginLeft = "6px";
-    invRow.appendChild(s);
-  });
+/* ------------------------- level build ------------------------- */
+function buildLevel(idx) {
+  const L = LEVELS[idx];
+  const map = L.map;
+  const rows = map.length, cols = map[0].length;
+  const w = {
+    idx, name: L.name, objective: L.objective,
+    map, rows, cols,
+    walls: [], covers: new Set(), items: [], exits: [],
+    bots: [], drones: [], reyes: null, reyesFollow: state.trusted,
+    sweep: L.sweep || null, lightRows: L.lightRows || null,
+    t: 0, floaters: [], flashes: [],
+    player: { x: 1.5, y: 1.5, dir: 0, hidden: false, invuln: 0 }
+  };
+  map.forEach((row, y) => [...row].forEach((ch, x) => {
+    if (ch === "C") w.covers.add(x + "," + y);
+    if (ch === "P") { w.player.x = x + 0.5; w.player.y = y + 0.5; }
+    if (ch === "r") w.items.push({ x: x + 0.5, y: y + 0.5, kind: "radio" });
+    if (ch === "m") w.items.push({ x: x + 0.5, y: y + 0.5, kind: "medkit" });
+    if (ch === "g") w.items.push({ x: x + 0.5, y: y + 0.5, kind: "pistol" });
+    if (ch === "f") w.items.push({ x: x + 0.5, y: y + 0.5, kind: "food" });
+    if (ch === "R") w.reyes = { x: x + 0.5, y: y + 0.5, found: false };
+    if (ch === "X") w.exits.push({ x, y, kind: "next" });
+    if (ch === "H") w.exits.push({ x, y, kind: "hatch" });
+    if (ch === "B") w.exits.push({ x, y, kind: "gate" });
+    if (ch === "L") w.exits.push({ x, y, kind: "light" });
+  }));
+  (L.bots || []).forEach(b => w.bots.push({
+    x: b.path[0][0] + 0.5, y: b.path[0][1] + 0.5,
+    path: b.path, wp: 1, speed: 1.7, fx: 1, fy: 0, seeing: false, dead: false
+  }));
+  (L.drones || []).forEach(d => w.drones.push({ ...d, a: Math.random() * 6.28, x: 0, y: 0, seeing: false }));
+  // already-taken items from earlier this run shouldn't respawn on retry:
+  // (kept simple: retry restores full level; that's the checkpoint deal)
+  return w;
 }
 
-function flashLedger() {
-  ledger.classList.remove("flash");
-  void ledger.offsetWidth;
-  ledger.classList.add("flash");
+function isWall(x, y) {
+  const c = Math.floor(x), r = Math.floor(y);
+  if (r < 0 || r >= world.rows || c < 0 || c >= world.cols) return true;
+  return world.map[r][c] === "#";
 }
+function inCover(x, y) { return world.covers.has(Math.floor(x) + "," + Math.floor(y)); }
 
-/* ---------- stats + effects ---------- */
-/* applies an effects object; returns a fail-state scene id or null */
-function applyEffects(eff) {
-  if (!eff) return checkFail();
-  if (eff.rations) {
-    if (eff.rations < 0 && stats.rations + eff.rations < 0) {
-      stats.rations = 0;
-      stats.health -= 15;
-      pendingNote = pendingNote || "NO RATIONS LEFT // INTEGRITY FALLING";
-    } else {
-      stats.rations = Math.max(0, stats.rations + eff.rations);
-    }
+function losClear(ax, ay, bx, by) {
+  const d = Math.hypot(bx - ax, by - ay), steps = Math.ceil(d / 0.35);
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    if (isWall(ax + (bx - ax) * t, ay + (by - ay) * t)) return false;
   }
-  if (eff.health) stats.health = Math.min(100, stats.health + eff.health);
-  if (eff.detection) stats.detection = Math.max(0, Math.min(100, stats.detection + eff.detection));
-  renderHUD();
-  flashLedger();
-  return checkFail();
-}
-
-function checkFail() {
-  if (stats.health <= 0) return "f_flatline";
-  if (stats.detection >= 100) return "f_detected";
-  return null;
-}
-
-function currentOdds(risk) {
-  let o = risk.base;
-  if (risk.detPenalty) o -= Math.round(stats.detection / 4);
-  if (risk.healthMod) o += stats.health >= 70 ? 15 : (stats.health <= 35 ? -15 : 0);
-  if (risk.flagBonus && flags[risk.flagBonus.flag]) o += risk.flagBonus.amt;
-  return Math.max(10, Math.min(95, o));
-}
-
-function meetsNeeds(c) {
-  if (!c.needs) return true;
-  if (c.needs.item && !inv.has(c.needs.item)) return false;
-  if (c.needs.flag && !flags[c.needs.flag]) return false;
-  if (c.needs.rations && stats.rations < c.needs.rations) return false;
   return true;
 }
 
-/* ---------- choices ---------- */
-function makeChoiceButton(c) {
-  const unlocked = meetsNeeds(c);
-  let el;
-  if (c.href) {
-    el = document.createElement("a");
-    el.href = c.href;
-    el.target = "_blank";
-    el.rel = "noopener";
-  } else {
-    el = document.createElement("button");
-    el.type = "button";
-    if (unlocked) el.addEventListener("click", e => { e.stopPropagation(); choose(c); });
-    else el.disabled = true;
-  }
-  el.className = "choice" + (unlocked ? "" : " locked");
-  let sub = unlocked ? (c.sub || "") : (c.lockText || "LOCKED");
-  if (unlocked && c.risk) {
-    sub += (sub ? " " : "") + '<span class="odds">// ODDS ' + currentOdds(c.risk) + "%</span>";
-  }
-  el.innerHTML = c.label + (sub ? "<small>" + sub + "</small>" : "");
+/* --------------------------- cards ---------------------------- */
+function endingsFound() { return store.get(END_KEY) || []; }
+function recordEnding(id) {
+  const f = endingsFound();
+  if (!f.includes(id)) { f.push(id); store.set(END_KEY, f); }
+}
+
+function btn(label, sub, fn) {
+  const el = document.createElement("button");
+  el.type = "button"; el.className = "choice";
+  el.innerHTML = label + (sub ? "<small>" + sub + "</small>" : "");
+  el.addEventListener("click", () => { beep(660, 0.05); fn(); });
   return el;
 }
 
-function showChoices(scene) {
-  choicesEl.innerHTML = "";
-  (scene.choices || []).forEach(c => choicesEl.appendChild(makeChoiceButton(c)));
-}
+function showCard(id) {
+  const c = CARDS[id];
+  state.mode = "card";
+  document.body.classList.remove("playing");
+  overlay.classList.remove("hidden");
+  cardbox.innerHTML = "";
+  objectiveEl.textContent = "";
+  const box = cardbox;
 
-function resolveGoto(choice) {
-  if (choice.branch) {
-    return flags[choice.branch.flag] ? choice.branch.then : choice.branch.otherwise;
-  }
-  return choice.goto;
-}
+  const add = html => { const d = document.createElement("div"); d.innerHTML = html; box.appendChild(d.firstChild); };
 
-function choose(c) {
-  if (c.retry) {
-    if (checkpoint) {
-      flags = { ...checkpoint.flags };
-      stats = { ...checkpoint.stats };
-      inv = new Set(checkpoint.inv);
-      pendingNote = "CHECKPOINT RESTORED // THE LEDGER LOST A PAGE";
-      go(checkpoint.scene);
+  if (c.type === "title" || c.type === "endcard") {
+    add('<div class="kicker">' + c.kicker + "</div>");
+    add('<div class="series">' + c.series + "</div>");
+    add('<div class="rule"></div>');
+    add('<div class="sub">' + c.sub + "</div>");
+    add('<div class="byline">' + c.byline + "</div>");
+    const found = endingsFound();
+    if (found.length) add('<div class="tracker">ENDINGS RECOVERED: ' + found.length + " / " + ALL_ENDINGS.length + "</div>");
+    const row = document.createElement("div"); row.className = "btnrow";
+    if (c.type === "title") {
+      const save = store.get(SAVE_KEY);
+      if (save) row.appendChild(btn("Continue", "Act " + (save.levelIndex + 1) + " in progress", () => { loadSave(save); }));
+      row.appendChild(btn(save ? "New run" : "Begin", "", () => { newRun(); }));
+      add('<div class="keys">WASD / ARROWS MOVE · SPACE FIRES · ON PHONES: LEFT THUMB STICK + FIRE BUTTON</div>');
     } else {
-      resetRun();
-      go("s01");
+      row.appendChild(btn("Play again", "The ledger remembers your endings", () => { showCard("title"); }));
     }
+    const a = document.createElement("a");
+    a.className = "choice"; a.href = BOOK_URL; a.target = "_blank"; a.rel = "noopener";
+    a.innerHTML = 'Read Book One<small>Free on Kindle Unlimited</small>';
+    row.appendChild(a);
+    box.appendChild(row);
+    statusEl.textContent = "SUBJECT: M-1 // UNCOLLECTED";
     return;
   }
-  if (c.reset) { resetRun(); go(resolveGoto(c)); return; }
 
-  if (c.sets) { Object.assign(flags, c.sets); flashLedger(); }
-  if (c.gives) c.gives.forEach(i => inv.add(i));
-  if (c.takes) c.takes.forEach(i => inv.delete(i));
+  add('<div class="sub">' + c.log + "</div>");
+  add('<div class="cardprose">' + c.text + "</div>");
+  if (c.mission) add('<div class="mission">' + c.mission + "</div>");
+  const row = document.createElement("div"); row.className = "btnrow";
 
-  let target;
-  if (c.risk) {
-    const odds = currentOdds(c.risk);
-    const hit = Math.random() * 100 < odds;
-    if (hit) {
-      pendingNote = c.risk.successNote || "";
-      target = c.risk.successBranch
-        ? (flags[c.risk.successBranch.flag] ? c.risk.successBranch.then : c.risk.successBranch.otherwise)
-        : c.risk.success;
-    } else {
-      pendingNote = c.risk.failNote || "";
-      target = c.risk.fail;
-      const f = applyEffects(c.risk.failEffects);
-      if (f) target = f;
-    }
-  } else {
-    target = resolveGoto(c);
+  if (c.type === "story") {
+    row.appendChild(btn(c.button, "", () => startLevel(c.level)));
+  } else if (c.type === "fail") {
+    row.appendChild(btn("Reboot from checkpoint", "The ledger loses a page", () => { restoreCheckpoint(); }));
+    if (c.surrender) row.appendChild(btn("Walk into the light", "See what the hive keeps", () => { endRun("e_taken"); }));
+    row.appendChild(btn("Abandon run", "Back to the title", () => { store.del(SAVE_KEY); showCard("title"); }));
+  } else if (c.type === "ending") {
+    statusEl.textContent = c.status;
+    row.appendChild(btn("Continue", "", () => showCard("endcard")));
   }
-
-  if (c.effects) {
-    const f = applyEffects(c.effects);
-    if (f) target = f;
-  }
-  go(target);
+  box.appendChild(row);
 }
 
-/* ---------- sync challenge (timing minigame) ---------- */
-function startQTE(scene) {
-  const q = scene.qte;
-  if (reduceMotion) {
-    /* accessibility: skip the reflex test, succeed on commitment */
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "choice";
-    btn.innerHTML = q.action.toUpperCase() + "<small>" + q.label + "</small>";
-    btn.addEventListener("click", e => { e.stopPropagation(); resolveQTE(scene, true); });
-    choicesEl.appendChild(btn);
-    return;
-  }
-  const wrap = document.createElement("div");
-  wrap.className = "qte";
-  wrap.innerHTML = '<div class="qlabel">' + q.label + '</div>' +
-                   '<div class="qtrack"><div class="qzone"></div><div class="qcursor"></div></div>';
-  choicesEl.appendChild(wrap);
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "choice";
-  btn.textContent = q.action.toUpperCase();
-  choicesEl.appendChild(btn);
-
-  const zoneEl = wrap.querySelector(".qzone"), curEl = wrap.querySelector(".qcursor");
-  const zw = q.zone || 0.2;
-  const zs = 0.1 + Math.random() * (0.8 - zw);
-  zoneEl.style.left = (zs * 100) + "%";
-  zoneEl.style.width = (zw * 100) + "%";
-
-  let pos = 0, dir = 1, last = performance.now();
-  const speed = q.speed || 1.1; /* track widths per second */
-  function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
-    last = now;
-    pos += dir * speed * dt;
-    if (pos >= 1) { pos = 1; dir = -1; }
-    if (pos <= 0) { pos = 0; dir = 1; }
-    curEl.style.left = (pos * 100) + "%";
-    if (qteState) qteState.raf = requestAnimationFrame(frame);
-  }
-  function mark() {
-    if (!qteState) return;
-    cancelAnimationFrame(qteState.raf);
-    qteState = null;
-    resolveQTE(scene, pos >= zs && pos <= zs + zw);
-  }
-  qteState = { raf: 0, mark };
-  qteState.raf = requestAnimationFrame(frame);
-  btn.addEventListener("click", e => { e.stopPropagation(); mark(); });
+/* ---------------------- run lifecycle ------------------------- */
+function newRun() {
+  state.levelIndex = 0; state.integ = 100; state.detect = 0;
+  state.items = new Set(); state.rounds = 0; state.trusted = false;
+  store.del(SAVE_KEY);
+  showCard("intro1");
 }
 
-function resolveQTE(scene, hit) {
-  const q = scene.qte;
-  pendingNote = (hit ? q.successNote : q.failNote) || "";
-  let target = hit ? q.success : q.fail;
-  const f = applyEffects(hit ? q.successEffects : q.failEffects);
-  if (f) target = f;
-  go(target);
-}
-
-function cancelQTE() {
-  if (qteState) { cancelAnimationFrame(qteState.raf); qteState = null; }
-}
-
-/* ---------- typing ---------- */
-function typeText(text, done) {
-  clearInterval(typeTimer);
-  fullText = text;
-  if (reduceMotion) { proseEl.textContent = text; typing = false; done(); return; }
-  typing = true;
-  proseEl.innerHTML = "";
-  const caret = document.createElement("span");
-  caret.className = "caret";
-  caret.textContent = " ";
-  let i = 0;
-  const tick = () => {
-    i += 2;
-    proseEl.textContent = text.slice(0, i);
-    proseEl.appendChild(caret);
-    if (i >= text.length) {
-      clearInterval(typeTimer);
-      typing = false;
-      caret.remove();
-      done();
-    }
+function snapshot() {
+  return {
+    levelIndex: state.levelIndex, integ: state.integ,
+    detect: Math.min(state.detect, 40),
+    items: [...state.items], rounds: state.rounds, trusted: state.trusted
   };
-  typeTimer = setInterval(tick, 18);
 }
 
-function skipTyping() {
-  if (!typing) return false;
-  clearInterval(typeTimer);
-  typing = false;
-  proseEl.textContent = fullText;
-  return true;
+function loadSave(s) {
+  state.levelIndex = s.levelIndex; state.integ = s.integ; state.detect = s.detect;
+  state.items = new Set(s.items); state.rounds = s.rounds; state.trusted = s.trusted;
+  state.checkpoint = s;
+  showCard(["intro1", "intro2", "intro3"][s.levelIndex]);
 }
 
-/* ---------- scene rendering ---------- */
-function clearStage() {
-  clearInterval(typeTimer);
-  typing = false;
-  cancelQTE();
-  choicesEl.innerHTML = "";
-  hintEl.hidden = true;
-  artEl.innerHTML = "";
-  nodeEl.textContent = "";
-  noteEl.textContent = "";
+function startLevel(idx) {
+  state.levelIndex = idx;
+  state.detect = Math.min(state.detect, 40);
+  state.checkpoint = snapshot();
+  store.set(SAVE_KEY, state.checkpoint);
+  world = buildLevel(idx);
+  state.mode = "play";
+  overlay.classList.add("hidden");
+  document.body.classList.add("playing");
+  objectiveEl.textContent = world.objective;
+  updateHud(true);
 }
 
-function pickVariant(scene) {
-  if (!scene.variants) return scene;
-  for (const v of scene.variants) {
-    const keys = Object.keys(v.when || {});
-    if (keys.every(k => flags[k] === v.when[k])) return v;
+function restoreCheckpoint() {
+  const s = state.checkpoint || snapshot();
+  state.integ = Math.max(s.integ, 50); state.detect = s.detect;
+  state.items = new Set(s.items); state.rounds = s.rounds; state.trusted = s.trusted;
+  startLevel(s.levelIndex);
+}
+
+function endRun(endingId) {
+  recordEnding(endingId);
+  store.del(SAVE_KEY);
+  showCard(endingId);
+}
+
+function failRun(kind) {
+  beep(110, 0.4, 0.05);
+  showCard(kind);
+}
+
+/* -------------------------- update ---------------------------- */
+function floater(text, x, y, ember) {
+  world.floaters.push({ text, x, y, t: 1.6, ember: !!ember });
+}
+
+function pickup(it) {
+  if (it.kind === "radio") { state.items.add("radio"); floater("RADIO RECOVERED", it.x, it.y); }
+  if (it.kind === "pistol") { state.items.add("pistol"); state.rounds += 3; floater("PISTOL +3 ROUNDS", it.x, it.y); }
+  if (it.kind === "medkit") { state.integ = Math.min(100, state.integ + 35); floater("+35 INTEG", it.x, it.y); }
+  if (it.kind === "food") { state.integ = Math.min(100, state.integ + 15); floater("+15 INTEG", it.x, it.y); }
+  beep(880, 0.07);
+  updateHud(true);
+}
+
+function firePistol() {
+  if (!state.items.has("pistol") || state.rounds <= 0) return;
+  const p = world.player;
+  let best = null, bd = 5.5;
+  world.bots.forEach(b => {
+    if (b.dead) return;
+    const d = Math.hypot(b.x - p.x, b.y - p.y);
+    if (d < bd && losClear(p.x, p.y, b.x, b.y)) { bd = d; best = b; }
+  });
+  state.rounds--;
+  beep(220, 0.1, 0.06);
+  if (best) {
+    best.dead = true;
+    world.flashes.push({ x: best.x, y: best.y, t: 0.5 });
+    state.detect = Math.min(100, state.detect + 25);
+    floater("MACHINE DOWN // EVERY LENS TURNED", best.x, best.y, true);
+    ledger.classList.remove("flash"); void ledger.offsetWidth; ledger.classList.add("flash");
+  } else {
+    floater("NO TARGET IN RANGE", p.x, p.y, true);
   }
-  return scene.variants[scene.variants.length - 1];
+  updateHud(true);
 }
 
-function titleChoices() {
-  const list = [];
-  if (loadGame()) list.push({ label: "Continue", sub: "Resume the last transmission", loadSave: true });
-  list.push({ label: loadGame() ? "New run" : "Begin", newRun: true });
-  list.push({ label: "Read Book One", sub: "Free on Kindle Unlimited", href: BOOK_URL });
-  return list;
+function tryMove(e, nx, ny, r) {
+  // axis-separated circle-vs-grid
+  if (![[r,r],[-r,r],[r,-r],[-r,-r]].some(([ox,oy]) => isWall(nx + ox, e.y + oy))) e.x = nx;
+  if (![[r,r],[-r,r],[r,-r],[-r,-r]].some(([ox,oy]) => isWall(e.x + ox, ny + oy))) e.y = ny;
 }
 
-function renderCard(id, scene) {
-  clearStage();
-  document.body.classList.add("card-mode");
-  proseEl.innerHTML = "";
-  const card = document.createElement("div");
-  card.className = "card";
-  card.innerHTML =
-    '<div class="kicker">' + scene.kicker + '</div>' +
-    '<div class="series">' + scene.series + '</div>' +
-    '<div class="rule"></div>' +
-    '<div class="sub">' + scene.sub + '</div>' +
-    '<div class="byline">' + scene.byline + '</div>';
+function update(dt) {
+  const w = world, p = w.player;
+  w.t += dt;
+  let seen = false;
 
-  const found = endingsFound();
-  if (found.length) {
-    const t = document.createElement("div");
-    t.className = "tracker";
-    t.textContent = "ENDINGS RECOVERED: " + found.length + " / " + ENDINGS.length;
-    card.appendChild(t);
+  /* --- player input --- */
+  let dx = 0, dy = 0;
+  if (keys.ArrowLeft || keys.a) dx -= 1;
+  if (keys.ArrowRight || keys.d) dx += 1;
+  if (keys.ArrowUp || keys.w) dy -= 1;
+  if (keys.ArrowDown || keys.s) dy += 1;
+  if (joy.active && (Math.abs(joy.dx) > 6 || Math.abs(joy.dy) > 6)) {
+    dx = joy.dx / 40; dy = joy.dy / 40;
+  }
+  const mag = Math.hypot(dx, dy);
+  if (mag > 0.01) {
+    const spd = 4.3;
+    const ux = dx / Math.max(1, mag), uy = dy / Math.max(1, mag);
+    p.dir = Math.atan2(uy, ux);
+    tryMove(p, p.x + ux * spd * dt, p.y + uy * spd * dt, 0.3);
+  }
+  p.hidden = inCover(p.x, p.y);
+  if (p.invuln > 0) p.invuln -= dt;
+
+  if (fireQueued) { fireQueued = false; firePistol(); }
+
+  /* --- items --- */
+  for (let i = w.items.length - 1; i >= 0; i--) {
+    const it = w.items[i];
+    if (Math.hypot(it.x - p.x, it.y - p.y) < 0.7) { pickup(it); w.items.splice(i, 1); }
   }
 
-  const host = document.createElement("div");
-  host.className = "choices";
-  host.setAttribute("role", "group");
-  const list = (id === "title") ? titleChoices() : (scene.choices || []);
-  list.forEach(c => {
-    if (c.loadSave || c.newRun) {
-      const el = document.createElement("button");
-      el.type = "button";
-      el.className = "choice";
-      el.innerHTML = c.label + (c.sub ? "<small>" + c.sub + "</small>" : "");
-      el.addEventListener("click", e => {
-        e.stopPropagation();
-        if (c.loadSave) {
-          const s = loadGame();
-          if (s) {
-            flags = { ...FLAGS, ...s.flags };
-            stats = { ...START_STATS, ...s.stats };
-            inv = new Set(s.inv || []);
-            checkpoint = s.checkpoint ? { ...s.checkpoint, inv: new Set(s.checkpoint.inv || []) } : null;
-            go(s.scene);
-            return;
-          }
-        }
-        resetRun();
-        go("s01");
-      });
-      host.appendChild(el);
-    } else {
-      host.appendChild(makeChoiceButton(c));
+  /* --- Reyes --- */
+  if (w.reyes && !w.reyes.found && Math.hypot(w.reyes.x - p.x, w.reyes.y - p.y) < 0.9) {
+    w.reyes.found = true; state.trusted = true; w.reyesFollow = true;
+    floater("REYES JOINS YOU", w.reyes.x, w.reyes.y);
+    beep(990, 0.1);
+    updateHud(true);
+  }
+  if (w.reyes && (w.reyes.found || w.reyesFollow)) {
+    const R = w.reyes, d = Math.hypot(p.x - R.x, p.y - R.y);
+    if (d > 1.1) {
+      const ux = (p.x - R.x) / d, uy = (p.y - R.y) / d, spd = Math.min(5, d * 2.4);
+      tryMove(R, R.x + ux * spd * dt, R.y + uy * spd * dt, 0.26);
+    }
+  }
+
+  /* --- bots --- */
+  const alerted = state.detect > 65;
+  w.bots.forEach(b => {
+    if (b.dead) return;
+    const [tx, ty] = b.path[b.wp];
+    const gx = tx + 0.5, gy = ty + 0.5;
+    const d = Math.hypot(gx - b.x, gy - b.y);
+    const spd = (alerted ? 2.6 : b.speedBase || 1.7);
+    if (d < 0.1) { b.wp = (b.wp + 1) % b.path.length; }
+    else {
+      const ux = (gx - b.x) / d, uy = (gy - b.y) / d;
+      b.x += ux * spd * dt; b.y += uy * spd * dt;
+      b.fx = ux; b.fy = uy;
+    }
+    /* vision cone */
+    b.seeing = false;
+    const pd = Math.hypot(p.x - b.x, p.y - b.y);
+    if (!p.hidden && pd < 5) {
+      const ang = Math.atan2(p.y - b.y, p.x - b.x);
+      const face = Math.atan2(b.fy, b.fx);
+      let diff = Math.abs(ang - face);
+      if (diff > Math.PI) diff = 2 * Math.PI - diff;
+      if (diff < 0.62 && losClear(b.x, b.y, p.x, p.y)) {
+        b.seeing = true; seen = true;
+        state.detect = Math.min(100, state.detect + 55 * dt);
+      }
+    }
+    /* contact damage */
+    if (pd < 0.75 && p.invuln <= 0) {
+      state.integ -= 25; p.invuln = 1.2;
+      state.detect = Math.min(100, state.detect + 15);
+      const kx = (p.x - b.x) / (pd || 1), ky = (p.y - b.y) / (pd || 1);
+      tryMove(p, p.x + kx * 1.1, p.y + ky * 1.1, 0.3);
+      floater("-25 INTEG", p.x, p.y, true);
+      beep(140, 0.15, 0.06);
+      updateHud(true);
     }
   });
-  card.appendChild(host);
-  proseEl.appendChild(card);
-}
 
-function showScene(id) {
-  const scene = SCENES[id];
-  current = { id, scene };
-
-  if (scene.card) {
-    renderLedger(scene);
-    renderCard(id, scene);
-    return;
-  }
-  document.body.classList.remove("card-mode");
-  clearStage();
-
-  /* checkpoints snapshot the run before the scene's own costs land */
-  if (CHECKPOINT_SCENES.includes(id)) {
-    checkpoint = { scene: id, flags: { ...flags }, stats: { ...stats }, inv: new Set(inv) };
-  }
-
-  if (scene.gives) scene.gives.forEach(i => inv.add(i));
-  if (scene.note && !pendingNote) pendingNote = scene.note;
-
-  let redirect = null;
-  if (scene.effects) redirect = applyEffects(scene.effects);
-  if (redirect && !id.startsWith("f_")) { go(redirect); return; }
-
-  if (scene.endingId) { recordEnding(scene.endingId); store.del(SAVE_KEY); }
-  else if (!id.startsWith("f_")) saveGame(id);
-
-  const v = pickVariant(scene);
-  if (v.sets) Object.assign(flags, v.sets);
-  renderLedger(scene);
-  nodeEl.textContent = scene.log || "";
-  noteEl.textContent = pendingNote;
-  pendingNote = "";
-
-  if (scene.art) {
-    const img = document.createElement("img");
-    img.src = scene.art;
-    img.alt = "";
-    img.className = "art";
-    artEl.appendChild(img);
-  }
-
-  typeText(v.text, () => {
-    if (scene.qte) startQTE(scene);
-    else if (scene.choices) showChoices(scene);
-    else if (scene.next) hintEl.hidden = false;
+  /* --- drones --- */
+  w.drones.forEach(dr => {
+    dr.a += dr.w * dt;
+    dr.x = dr.cx + Math.cos(dr.a) * dr.r + 0.5;
+    dr.y = dr.cy + Math.sin(dr.a) * dr.r + 0.5;
+    dr.seeing = false;
+    if (!p.hidden && Math.hypot(p.x - dr.x, p.y - dr.y) < 2.2) {
+      dr.seeing = true; seen = true;
+      state.detect = Math.min(100, state.detect + 40 * dt);
+    }
   });
-}
 
-function go(id) {
-  stage.classList.remove("cut");
-  void stage.offsetWidth;
-  stage.classList.add("cut");
-  window.scrollTo(0, 0);
-  showScene(id);
-}
-
-/* ---------- input: tap or key advances ---------- */
-function advanceTap() {
-  if (!current || current.scene.card) return;
-  if (skipTyping()) {
-    const s = current.scene;
-    if (s.qte) startQTE(s);
-    else if (s.choices) showChoices(s);
-    else if (s.next) hintEl.hidden = false;
-    return;
+  /* --- bridge searchlight (level 2) --- */
+  if (w.sweep) {
+    const span = w.cols - 4;
+    const lx = 2 + (Math.sin(w.t * w.sweep.speed / span * 2) * 0.5 + 0.5) * span;
+    w.sweepX = lx;
+    if (w.sweep.rows.includes(Math.floor(p.y)) && Math.abs(p.x - lx) < w.sweep.width / 2 && !p.hidden) {
+      seen = true;
+      state.detect = Math.min(100, state.detect + 60 * dt);
+    }
   }
-  if (qteState) return; /* the challenge owns the screen */
-  if (current.scene.next && !current.scene.choices && !current.scene.qte) {
-    go(current.scene.next);
+
+  /* --- advancing light rows (level 3) --- */
+  if (w.lightRows) {
+    w.bandYs = [];
+    for (let i = 0; i < w.lightRows.count; i++) {
+      const y = ((w.t * w.lightRows.speed + i * w.rows / w.lightRows.count) % w.rows);
+      w.bandYs.push(y);
+      if (Math.abs(p.y - y) < 0.8 && !p.hidden) {
+        seen = true;
+        state.detect = Math.min(100, state.detect + 45 * dt);
+      }
+    }
+  }
+
+  if (!seen) state.detect = Math.max(0, state.detect - 7 * dt);
+
+  /* --- floaters/flashes --- */
+  w.floaters = w.floaters.filter(f => (f.t -= dt) > 0);
+  w.flashes = w.flashes.filter(f => (f.t -= dt) > 0);
+
+  /* --- exits --- */
+  const pc = Math.floor(p.x), pr = Math.floor(p.y);
+  for (const ex of w.exits) {
+    if (Math.abs(pc - ex.x) + Math.abs(pr - ex.y) > 0) continue;
+    if (ex.kind === "next") {
+      state.detect = Math.min(state.detect, 40);
+      showCard(state.levelIndex === 0 ? "intro2" : "intro3");
+      return;
+    }
+    if (ex.kind === "hatch") {
+      if (state.items.has("radio")) { endRun("e_ghost"); return; }
+      if (!w.hatchWarned || w.t - w.hatchWarned > 2) {
+        w.hatchWarned = w.t;
+        floater("SEALED // A RADIO COULD FIND THE WAY", ex.x + 0.5, ex.y + 0.5, true);
+        beep(180, 0.12);
+      }
+    }
+    if (ex.kind === "gate") { endRun(state.trusted ? "e_together" : "e_lone"); return; }
+    if (ex.kind === "light") { endRun("e_taken"); return; }
+  }
+
+  /* --- fail states --- */
+  if (state.integ <= 0) { failRun("f_flatline"); return; }
+  if (state.detect >= 100) { failRun("f_detected"); return; }
+
+  updateHud();
+}
+
+/* --------------------------- render --------------------------- */
+function resize() {
+  canvas.width = window.innerWidth * devicePixelRatio;
+  canvas.height = window.innerHeight * devicePixelRatio;
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
+}
+window.addEventListener("resize", resize);
+resize();
+
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = COLORS.panel === "#0b100c" ? "#070a08" : "#070a08";
+  ctx.fillRect(0, 0, W, H);
+  if (!world || state.mode !== "play") return;
+
+  const w = world, headerH = ledger.offsetHeight * devicePixelRatio;
+  const availH = H - headerH - 8 * devicePixelRatio;
+  const T = Math.min(W / w.cols, availH / w.rows);
+  const ox = (W - w.cols * T) / 2, oy = headerH + (availH - w.rows * T) / 2;
+  ctx.setTransform(1, 0, 0, 1, ox, oy);
+  const px = v => v * T;
+
+  /* floor + walls + cover */
+  for (let y = 0; y < w.rows; y++) for (let x = 0; x < w.cols; x++) {
+    const ch = w.map[y][x];
+    if (ch === "#") {
+      ctx.fillStyle = "rgba(41,85,58,.34)";
+      ctx.fillRect(px(x) + 1, px(y) + 1, T - 2, T - 2);
+      ctx.strokeStyle = "rgba(41,85,58,.8)";
+      ctx.strokeRect(px(x) + 1.5, px(y) + 1.5, T - 3, T - 3);
+    } else if (ch === "C") {
+      ctx.fillStyle = "rgba(76,195,102,.10)";
+      ctx.fillRect(px(x), px(y), T, T);
+      ctx.strokeStyle = "rgba(76,195,102,.45)";
+      ctx.beginPath();
+      for (let i = -1; i < 3; i++) {
+        ctx.moveTo(px(x) + (i * T) / 2, px(y) + T);
+        ctx.lineTo(px(x) + (i * T) / 2 + T / 2, px(y));
+      }
+      ctx.save(); ctx.beginPath(); ctx.rect(px(x), px(y), T, T); ctx.clip();
+      ctx.stroke(); ctx.restore();
+    }
+  }
+
+  /* hazards */
+  const pulse = 0.55 + 0.45 * Math.sin(w.t * 5);
+  if (w.sweep && w.sweepX !== undefined) {
+    const rMin = Math.min(...w.sweep.rows), rMax = Math.max(...w.sweep.rows) + 1;
+    ctx.fillStyle = "rgba(238,242,234,.16)";
+    ctx.fillRect(px(w.sweepX - w.sweep.width / 2), px(rMin), px(w.sweep.width), px(rMax - rMin));
+    ctx.fillStyle = "rgba(238,242,234,.5)";
+    ctx.fillRect(px(w.sweepX) - 1, px(rMin), 2, px(rMax - rMin));
+  }
+  if (w.bandYs) w.bandYs.forEach(y => {
+    ctx.fillStyle = "rgba(238,242,234,.13)";
+    ctx.fillRect(0, px(y - 0.8), px(w.cols), px(1.6));
+  });
+
+  /* exits */
+  w.exits.forEach(ex => {
+    const cx = px(ex.x + 0.5), cy = px(ex.y + 0.5);
+    if (ex.kind === "next" || ex.kind === "gate") {
+      ctx.strokeStyle = COLORS.phosphor; ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.5 + 0.5 * pulse;
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.34, 0, 6.283); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.14, 0, 6.283); ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else if (ex.kind === "hatch") {
+      ctx.strokeStyle = state.items.has("radio") ? COLORS.phosphor : COLORS.dim;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.3, 0, 6.283); ctx.stroke();
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.12, 0, 6.283); ctx.fill();
+    } else if (ex.kind === "light") {
+      ctx.fillStyle = "rgba(238,242,234," + (0.25 + 0.3 * pulse) + ")";
+      ctx.fillRect(px(ex.x), px(ex.y), T, T * 1.6);
+    }
+  });
+
+  /* items */
+  const GLYPH = { radio: "☏", pistol: "⌐", medkit: "+", food: "▣" };
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  w.items.forEach(it => {
+    ctx.fillStyle = COLORS.phosphor;
+    ctx.globalAlpha = 0.6 + 0.4 * pulse;
+    ctx.font = "700 " + T * 0.62 + "px " + '"IBM Plex Mono", monospace';
+    ctx.fillText(GLYPH[it.kind] || "?", px(it.x), px(it.y));
+    ctx.globalAlpha = 1;
+  });
+
+  /* Reyes */
+  if (w.reyes) {
+    const R = w.reyes;
+    ctx.fillStyle = COLORS.bone;
+    ctx.beginPath(); ctx.arc(px(R.x), px(R.y), T * 0.24, 0, 6.283); ctx.fill();
+    if (!R.found && !w.reyesFollow) {
+      ctx.fillStyle = COLORS.phosphor;
+      ctx.font = "700 " + T * 0.5 + "px " + '"IBM Plex Mono", monospace';
+      ctx.globalAlpha = 0.6 + 0.4 * pulse;
+      ctx.fillText("☍", px(R.x), px(R.y - 0.9));
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* drones */
+  w.drones.forEach(dr => {
+    ctx.strokeStyle = dr.seeing ? COLORS.ember : "rgba(238,242,234,.35)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(px(dr.x), px(dr.y), px(2.2), 0, 6.283); ctx.stroke();
+    ctx.fillStyle = dr.seeing ? COLORS.ember : COLORS.bone;
+    ctx.beginPath(); ctx.arc(px(dr.x), px(dr.y), T * 0.18, 0, 6.283); ctx.fill();
+  });
+
+  /* bots + cones */
+  w.bots.forEach(b => {
+    if (b.dead) return;
+    const face = Math.atan2(b.fy, b.fx);
+    ctx.fillStyle = b.seeing ? "rgba(207,95,42,.28)" : "rgba(76,195,102,.13)";
+    ctx.beginPath();
+    ctx.moveTo(px(b.x), px(b.y));
+    ctx.arc(px(b.x), px(b.y), px(5), face - 0.62, face + 0.62);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = b.seeing ? COLORS.ember : COLORS.phosphor;
+    ctx.fillRect(px(b.x) - T * 0.26, px(b.y) - T * 0.34, T * 0.52, T * 0.68);
+    ctx.fillStyle = "#070a08";
+    ctx.fillRect(px(b.x) - T * 0.1, px(b.y) - T * 0.2, T * 0.2, T * 0.12);
+  });
+
+  /* flashes */
+  w.flashes.forEach(f => {
+    ctx.strokeStyle = COLORS.ember; ctx.globalAlpha = f.t * 2; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px(f.x), px(f.y), px((0.5 - f.t) * 3 + 0.3), 0, 6.283); ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+
+  /* player */
+  const p = w.player;
+  ctx.save();
+  ctx.translate(px(p.x), px(p.y));
+  ctx.rotate(p.dir);
+  ctx.globalAlpha = p.hidden ? 0.45 : (p.invuln > 0 && Math.sin(w.t * 30) > 0 ? 0.3 : 1);
+  ctx.fillStyle = COLORS.bone;
+  ctx.beginPath();
+  ctx.moveTo(T * 0.34, 0); ctx.lineTo(-T * 0.24, T * 0.22); ctx.lineTo(-T * 0.24, -T * 0.22);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  if (p.hidden) {
+    ctx.fillStyle = COLORS.phosphor;
+    ctx.font = T * 0.42 + "px " + '"IBM Plex Mono", monospace';
+    ctx.fillText("HIDDEN", px(p.x), px(p.y - 0.75));
+  }
+
+  /* floaters */
+  w.floaters.forEach(f => {
+    ctx.fillStyle = f.ember ? COLORS.ember : COLORS.phosphor;
+    ctx.globalAlpha = Math.min(1, f.t);
+    ctx.font = "700 " + Math.max(11 * devicePixelRatio, T * 0.42) + "px " + '"IBM Plex Mono", monospace';
+    ctx.fillText(f.text, px(f.x), px(f.y - (1.6 - f.t) * 0.8 - 0.6));
+    ctx.globalAlpha = 1;
+  });
+
+  /* joystick */
+  if (joy.active) {
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.strokeStyle = "rgba(76,195,102,.5)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(joy.ox, joy.oy, 40, 0, 6.283); ctx.stroke();
+    ctx.fillStyle = "rgba(76,195,102,.6)";
+    const cl = Math.hypot(joy.dx, joy.dy), cm = Math.min(cl, 40);
+    const jx = joy.ox + (cl ? joy.dx / cl * cm : 0), jy = joy.oy + (cl ? joy.dy / cl * cm : 0);
+    ctx.beginPath(); ctx.arc(jx, jy, 16, 0, 6.283); ctx.fill();
   }
 }
 
-document.addEventListener("click", e => {
-  if (e.target.closest(".choice")) return;
-  advanceTap();
+/* ---------------------------- HUD ----------------------------- */
+function updateHud(force) {
+  const now = performance.now();
+  if (!force && now - lastHud < 120) return;
+  lastHud = now;
+  hFill.style.width = Math.max(0, state.integ) + "%";
+  hFill.classList.toggle("low", state.integ <= 35);
+  dFill.style.width = Math.max(0, state.detect) + "%";
+  statusEl.textContent = state.detect >= 70 ? "SUBJECT: M-1 // LOCATED"
+                       : state.detect >= 35 ? "SUBJECT: M-1 // SUSPECTED"
+                       : "SUBJECT: M-1 // UNCOLLECTED";
+  let html = "";
+  if (state.items.has("pistol")) html += '<span class="item">PISTOL ×' + state.rounds + "</span> ";
+  if (state.items.has("radio")) html += '<span class="item">RADIO</span> ';
+  if (state.trusted) html += '<span class="item">REYES</span> ';
+  itemRow.innerHTML = html;
+  fireBtn.classList.toggle("armed", state.items.has("pistol") && state.rounds > 0);
+}
+
+/* --------------------------- input ---------------------------- */
+window.addEventListener("keydown", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = true;
+  if ((e.key === " " || e.key === "e") && state.mode === "play") { e.preventDefault(); fireQueued = true; }
+  if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) e.preventDefault();
 });
+window.addEventListener("keyup", e => {
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  keys[k] = false;
+});
+window.addEventListener("blur", () => { keys = {}; });
 
-document.addEventListener("keydown", e => {
-  if (e.key !== " " && e.key !== "Enter") return;
-  if (e.target.closest && e.target.closest(".choice")) return;
-  if (qteState) { e.preventDefault(); qteState.mark(); return; }
+canvas.addEventListener("touchstart", e => {
+  document.body.classList.add("touch");
+  for (const t of e.changedTouches) {
+    if (t.clientX < window.innerWidth * 0.55 && !joy.active) {
+      joy.active = true; joy.id = t.identifier;
+      joy.ox = t.clientX; joy.oy = t.clientY; joy.dx = 0; joy.dy = 0;
+    }
+  }
   e.preventDefault();
-  advanceTap();
-});
+}, { passive: false });
+canvas.addEventListener("touchmove", e => {
+  for (const t of e.changedTouches) {
+    if (joy.active && t.identifier === joy.id) {
+      joy.dx = t.clientX - joy.ox; joy.dy = t.clientY - joy.oy;
+    }
+  }
+  e.preventDefault();
+}, { passive: false });
+const endTouch = e => {
+  for (const t of e.changedTouches) {
+    if (joy.active && t.identifier === joy.id) { joy.active = false; joy.dx = 0; joy.dy = 0; }
+  }
+};
+canvas.addEventListener("touchend", endTouch);
+canvas.addEventListener("touchcancel", endTouch);
+fireBtn.addEventListener("touchstart", e => { e.preventDefault(); fireQueued = true; }, { passive: false });
+fireBtn.addEventListener("click", () => { fireQueued = true; });
 
-go("title");
+/* --------------------------- loop ----------------------------- */
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+  if (state.mode === "play" && world) update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* debug/testing hooks (harmless in production) */
+window.GAME = {
+  state, LEVELS, CARDS,
+  world: () => world,
+  showCard, startLevel, endRun,
+  setPos: (x, y) => { if (world) { world.player.x = x; world.player.y = y; } }
+};
+
+showCard("title");
 </script>
 </body>
 </html>
