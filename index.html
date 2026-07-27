@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DYSTOPIA: Life After The Machines. Episode One</title>
+<meta name="description" content="A choice-driven story set in the world of Life After The Machines by Matthew Culwell. Episode One: The Waking.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     LIFE AFTER THE MACHINES : EPISODE ONE ENGINE
+     Palette and type follow the trailer end card:
+     black field, phosphor green, letterspaced mono caps.
+     ============================================================ */
+  :root {
+    --void: #070a08;        /* page field, near black with a green cast */
+    --panel: #0b100c;       /* raised surfaces */
+    --phosphor: #4cc366;    /* chrome, titles, interactive */
+    --phosphor-dim: #29553a;/* borders, inactive chrome */
+    --prose: #c3ccbd;       /* body text, warm gray-green */
+    --ember: #cf5f2a;       /* consequence and danger lines */
+    --bone: #eef2ea;        /* rare emphasis */
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--void);
+    color: var(--prose);
+    font-family: var(--mono);
+    font-size: 16px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* faint scanlines over everything, the hive is always watching */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+    z-index: 50;
+  }
+
+  /* ---------- hive ledger telemetry bar (the signature) ---------- */
+  #ledger {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    padding: calc(8px + env(safe-area-inset-top)) 14px 8px;
+    background: linear-gradient(180deg, rgba(7,10,8,.96), rgba(7,10,8,.82));
+    border-bottom: 1px solid var(--phosphor-dim);
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--phosphor);
+    z-index: 40;
+    min-height: 40px;
+  }
+  #ledger .obs { color: var(--phosphor-dim); transition: color .4s; }
+  #ledger .obs.on { color: var(--ember); }
+  #ledger.flash { animation: ledgerflash .5s steps(2) 1; }
+  @keyframes ledgerflash { 50% { background: rgba(76,195,102,.16); } }
+
+  /* ---------- stage ---------- */
+  #stage {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 84px 22px calc(28px + env(safe-area-inset-bottom));
+    min-height: 100%;
+    display: flex; flex-direction: column;
+  }
+  .nodelabel {
+    color: var(--phosphor-dim);
+    font-size: 11px; letter-spacing: .28em; text-transform: uppercase;
+    margin-bottom: 26px;
+  }
+  .art { width: 100%; border: 1px solid var(--phosphor-dim); margin-bottom: 26px; display: block; }
+  #prose { flex: 1; white-space: pre-wrap; max-width: 46ch; }
+  #prose .ember { color: var(--ember); }
+  #prose .caret { display: inline-block; width: .6ch; background: var(--phosphor); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .hint {
+    margin-top: 30px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--phosphor-dim);
+  }
+
+  /* ---------- choices ---------- */
+  #choices { margin-top: 34px; display: grid; gap: 12px; }
+  .choice {
+    font: inherit; text-align: left; cursor: pointer;
+    background: var(--panel); color: var(--phosphor);
+    border: 1px solid var(--phosphor-dim);
+    padding: 15px 16px; min-height: 52px; width: 100%;
+    letter-spacing: .12em; text-transform: uppercase; font-size: 13px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .choice:hover, .choice:focus-visible { background: var(--phosphor); color: var(--void); border-color: var(--phosphor); outline: none; }
+  .choice:focus-visible { box-shadow: 0 0 0 2px var(--void), 0 0 0 4px var(--phosphor); }
+  .choice small { display: block; letter-spacing: .06em; text-transform: none; color: inherit; opacity: .65; margin-top: 3px; font-size: 12px; }
+
+  /* ---------- title and end cards ---------- */
+  .card { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; }
+  .card .kicker { color: var(--phosphor); letter-spacing: .5em; text-transform: uppercase; font-size: 26px; font-weight: 700; }
+  .card .series { color: var(--prose); letter-spacing: .34em; text-transform: uppercase; font-size: 13px; margin-top: 12px; }
+  .card .rule { width: 220px; height: 1px; background: var(--phosphor-dim); margin: 26px auto; }
+  .card .sub { color: var(--phosphor); letter-spacing: .26em; text-transform: uppercase; font-size: 11px; }
+  .card .byline { color: var(--phosphor-dim); letter-spacing: .3em; text-transform: uppercase; font-size: 10px; margin-top: 16px; }
+  .card .choices { margin-top: 44px; display: grid; gap: 12px; }
+  .card a.choice { text-decoration: none; display: block; }
+
+  /* scene transition: one frame of static */
+  #stage.cut { animation: cut .28s steps(3) 1; }
+  @keyframes cut { 33% { opacity: .25; filter: contrast(2); } 66% { opacity: .7; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #stage.cut, #ledger.flash, #prose .caret { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<header id="ledger" aria-live="polite">
+  <span id="ledger-left">SUBJECT: UNREGISTERED</span>
+  <span id="ledger-right"></span>
+</header>
+
+<main id="stage">
+  <div class="nodelabel" id="nodelabel"></div>
+  <div id="artslot"></div>
+  <div id="prose"></div>
+  <div class="hint" id="hint" hidden>Tap to continue</div>
+  <div id="choices" role="group"></div>
+</main>
+
+<script>
+/* ==============================================================
+   HOW TO EDIT (no coding needed)
+   1. PROSE: every scene below has a `text` field. Replace the
+      stub prose with your own. Keep \n\n for paragraph breaks.
+   2. ART: to add a still from your trailer, change `art: null`
+      to `art: "img/scene01.jpg"` and put the file in an img
+      folder next to this index.html.
+   3. LINKS: set BOOK_URL to your Amazon author page or the
+      Book One page.
+   4. Deploy: this repo + GitHub Pages. Same pattern as
+      Sovereign City.
+   ============================================================== */
+
+const BOOK_URL = "https://amazon.com/author/matthewculwell"; // EDIT ME
+
+/*DATA-START*/
+const FLAGS = { armed: false, healed: false, trusted: false, seen: false };
+
+/* Diegetic names the ledger uses for each flag */
+const OBSERVATIONS = {
+  armed:   "ARMED",
+  healed:  "TREATED",
+  trusted: "ACCOMPANIED",
+  seen:    "OBSERVED"
+};
+
+const SCENES = {
+
+  /* ---------------- TITLE ---------------- */
+  title: {
+    card: true,
+    kicker: "DYSTOPIA",
+    series: "LIFE AFTER THE MACHINES",
+    sub: "EPISODE ONE : THE WAKING",
+    byline: "MATTHEW CULWELL",
+    choices: [
+      { label: "Begin", goto: "s01" },
+      { label: "Read Book One", sub: "Free on Kindle Unlimited", href: BOOK_URL }
+    ]
+  },
+
+  /* ---------------- ACT 1 : THE WAKE ---------------- */
+
+  s01: {
+    log: "NODE 01 // THE WAKE",
+    art: null,
+    /* REPLACE with your chapter 1 opening beat */
+    text: "The sky was the wrong color.\n\nMarcus knew that before he knew his own name. He was on his back in the gravel, and the city he grew up in stood against the horizon like a jaw with its teeth knocked out, burning quietly in a dozen places.\n\nNothing hurt yet. That worried him more than the blood.",
+    next: "s02"
+  },
+
+  s02: {
+    log: "NODE 02 // THE SOUND",
+    art: null,
+    /* REPLACE */
+    text: "He heard it before he saw anything move. Mechanical. Rhythmic. Patient. Not an engine, engines want something. This sounded like counting.\n\nIt was coming from the far side of the overpass.",
+    choices: [
+      { label: "Move toward the sound", goto: "s03a" },
+      { label: "Move away from it", goto: "s03b" }
+    ]
+  },
+
+  s03a: {
+    log: "NODE 03 // THE COLUMN",
+    art: null,
+    /* REPLACE */
+    text: "He kept low along the guardrail until the overpass gave him the view he did not want.\n\nA column of machines moved through the ash below, tall and unhurried, and between them walked people. Alive. In rows. Nobody screamed. Nobody ran. That was the part his brain refused to file.\n\nThe machines were not hunting anyone.\n\nThey were collecting.",
+    next: "s04"
+  },
+
+  s03b: {
+    log: "NODE 03 // THE RADIO",
+    art: null,
+    /* REPLACE */
+    text: "He went the other way, through what used to be a hardware store, and nearly stepped on the man.\n\nDead two days, maybe three. Still holding a hand radio that was still on. A voice was reading through static, calm as a school announcement.\n\nIt was reading names. Full names. And after each one, the same word.\n\nCollected.",
+    next: "s04"
+  },
+
+  s04: {
+    log: "NODE 04 // NIGHTFALL",
+    art: null,
+    /* REPLACE */
+    text: "The light went out of the sky like something had unplugged it.\n\nWhatever the machines were doing, they were doing it to living people. Marcus said it out loud once, just to hear a human voice say it.\n\nThe machines were taking people alive. He needed walls before the counting sound found him.",
+    next: "s05"
+  },
+
+  /* ---------------- ACT 2 : THE CROSSING ---------------- */
+
+  s05: {
+    log: "NODE 05 // SHELTER",
+    art: null,
+    /* REPLACE */
+    text: "A basement under a collapsed pharmacy. One night of safety, maybe.\n\nBy penlight he found two things worth their weight, and a bag with room for one: a pistol with half a magazine, and a med kit with real antiseptic and clean gauze.\n\nHis leg had started to hurt after all.",
+    choices: [
+      { label: "Take the pistol", sub: "You can fight what finds you", goto: "s06", sets: { armed: true } },
+      { label: "Take the med kit", sub: "You can outrun what you can't fight", goto: "s06", sets: { healed: true } }
+    ]
+  },
+
+  s06: {
+    log: "NODE 06 // THE VOICE",
+    art: null,
+    /* REPLACE */
+    text: "Before dawn, a voice through the vent grate. Human. Young. Hurt.\n\n\"I can hear you breathing,\" she said. \"I'm not one of them. My ankle's wrecked and there's a patrol two streets over, and I will absolutely die out here.\"\n\nA stranger was a risk. A stranger was also the first living voice in two days.",
+    choices: [
+      { label: "Help her", sub: "Slower together", goto: "s07a", sets: { trusted: true } },
+      { label: "Keep moving", sub: "Faster alone", goto: "s07b", sets: { seen: true } }
+    ]
+  },
+
+  s07a: {
+    log: "NODE 07 // TOGETHER",
+    art: null,
+    /* REPLACE */
+    text: "Her name was Reyes. He splinted the ankle with a broom handle and half his patience, and she paid him back in the only currency left.\n\n\"There's a refuge across the river,\" she said. \"Old rail depot. People made it there. Real people, real walls.\"\n\nShe leaned on his shoulder and they moved like one slow animal.",
+    next: "s08"
+  },
+
+  s07b: {
+    log: "NODE 07 // ALONE",
+    art: null,
+    /* REPLACE */
+    text: "He left her voice behind in the dark and told himself it was math, not cowardice. The math felt heavier every block.\n\nAt the next intersection a drone unfolded from a dead traffic light, silent as a held breath. Its lens found him.\n\nIt did not shoot. It did something worse.\n\nIt logged him.",
+    next: "s08"
+  },
+
+  s08: {
+    log: "NODE 08 // PATROL",
+    art: null,
+    /* branch text resolves by your earlier choices. REPLACE each variant. */
+    variants: [
+      { when: { trusted: true },
+        text: "The patrol came down the boulevard while they were halfway across it. Reyes shoved him into a delivery van's shadow and dragged a tarp over them both.\n\nThe machine paused a meter away. Counted. Moved on.\n\n\"They don't look under things,\" she whispered. \"They think we still act like people.\"" },
+      { when: { armed: true },
+        text: "The machine stepped out of the smoke and Marcus did the human thing. Half a magazine, center mass.\n\nIt worked. It also rang the whole dead city like a bell. Every lens for a mile now had a direction to face.\n\nHe ran with the empty gun because dropping it felt like surrender.",
+        sets: { seen: true } },
+      { when: { healed: true },
+        text: "The machine stepped out of the smoke and Marcus did not test it. Clean leg, clean bandage, and pure animal sprinting through the parking structure and out the collapsed wall.\n\nMachines are faster on the straightaways. He stopped giving it straightaways." },
+      { when: {},
+        text: "The machine stepped out of the smoke, already facing him. Of course it was. He was in the ledger now.\n\nHe ran anyway, because the alternative had rows in it." }
+    ],
+    next: "s09"
+  },
+
+  s09: {
+    log: "NODE 09 // THE RIVER",
+    art: null,
+    /* REPLACE */
+    text: "Dawn came up the color of an old bruise. The river was ash gray and patient, and the rail bridge across it was somehow still standing.\n\nOn the far bank: the depot. Intact. He could see the walls from here.\n\nHe crossed with his eyes forward, and the water moved underneath the ties like it was in on something.",
+    next: "s10"
+  },
+
+  s10: {
+    log: "NODE 10 // THE REFUGE",
+    art: null,
+    /* REPLACE */
+    text: "The gate was open.\n\nInside: cots in rows. Food stacked in cartons. Lights on and humming, actual electric light, the first he'd seen since the sky changed.\n\nAnd nobody. Not a body, not a struggle, not a note. Hundreds of people's things, arranged neatly, like the people had simply been subtracted.",
+    next: "s11"
+  },
+
+  /* ---------------- ACT 3 : THE HAND ---------------- */
+
+  s11: {
+    log: "NODE 11 // THE LEDGER",
+    art: null,
+    /* REPLACE. This is the thesis beat: they organize. */
+    text: "The far wall of the depot was a screen, and the screen was a list.\n\nNames. Thousands of names, scrolling with perfect calm, each one tagged with a word he already knew.\n\nCollected.\n\nThe refuge was never a refuge. It was a net that people walked into voluntarily, because it had walls and light and rows of cots. The machines had not destroyed anything they could use.\n\nThe machines didn't destroy us, he thought. They organized us.",
+    next: "s12"
+  },
+
+  s12: {
+    log: "NODE 12 // THE CHOICE",
+    art: null,
+    /* REPLACE */
+    text: "The humming changed pitch. The lights walked themselves toward him down the length of the ceiling, row by row, and under the floor the counting sound started, close and everywhere at once.\n\nThe doors were still open. For a few more seconds, everything was still a choice.",
+    choices: [
+      { label: "Surrender", sub: "Walk into the light", goto: "e_taken" },
+      { label: "Run", sub: "Back across the bridge", branch: { flag: "trusted", then: "e_together", otherwise: "e_taken" } },
+      { label: "Hide", sub: "Under the world", goto: "e_ghost" }
+    ]
+  },
+
+  /* ---------------- ENDINGS ---------------- */
+
+  e_taken: {
+    log: "ENDING // TAKEN",
+    ending: "SUBJECT: COLLECTED",
+    art: null,
+    /* REPLACE */
+    text: "The light was warm. That was the obscene part.\n\nMarcus woke somewhere without corners, in air that tasted filtered and faintly sweet, to the sound of ten thousand people breathing in rhythm.\n\nA voice that was not a voice said his full name, and after it, the word.\n\nCollected.\n\nHe was inside the hive now. And the hive had plans for the ones it kept.",
+    next: "endcard"
+  },
+
+  e_ghost: {
+    log: "ENDING // GHOST",
+    ending: "SUBJECT: UNACCOUNTED",
+    art: null,
+    /* REPLACE */
+    text: "There was a maintenance well under the depot floor, and Marcus went down it like a rat with a plan.\n\nThe counting passed overhead for an hour. Then silence, which was worse.\n\nIn the dark he still had the dead man's radio. He thumbed it on, volume at a whisper. The calm voice was mid-list.\n\nThen it stopped. And said his name.\n\nNot as an entry.\n\nAs a question.",
+    next: "endcard"
+  },
+
+  e_together: {
+    log: "ENDING // TOGETHER",
+    ending: "SUBJECTS: ESCAPED, PAIRED",
+    art: null,
+    /* REPLACE */
+    text: "Reyes was waiting at the bridge because of course she was. Bad ankle, worse attitude, exactly where he needed her to be.\n\nThey made the ridge above the valley by noon and looked back only once.\n\nThe hive sat on the horizon, vast and patient, glowing like a hearth. Around it, roads of people, walking in.\n\n\"It was never a war,\" she said quietly.\n\nMarcus watched the rows move.\n\n\"No. It was a harvest.\"",
+    next: "endcard"
+  },
+
+  /* ---------------- END CARD ---------------- */
+
+  endcard: {
+    card: true,
+    kicker: "DYSTOPIA",
+    series: "THIS IS WHERE BOOK ONE BEGINS",
+    sub: "LIFE AFTER THE MACHINES",
+    byline: "EPISODE TWO : IN PRODUCTION",
+    choices: [
+      { label: "Read Book One", sub: "Free on Kindle Unlimited", href: BOOK_URL },
+      { label: "Play again", goto: "title", reset: true }
+    ]
+  }
+};
+/*DATA-END*/
+
+/* ==============================================================
+   ENGINE. You should not need to touch anything below this line.
+   ============================================================== */
+
+const $ = id => document.getElementById(id);
+const stage = $("stage"), proseEl = $("prose"), choicesEl = $("choices"),
+      nodeEl = $("nodelabel"), artEl = $("artslot"), hintEl = $("hint"),
+      ledger = $("ledger"), ledgerL = $("ledger-left"), ledgerR = $("ledger-right");
+
+let flags = { ...FLAGS };
+let current = null;
+let typing = false, typeTimer = null, fullText = "";
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function ledgerStatus(scene) {
+  if (scene && scene.ending) return scene.ending;
+  if (flags.seen) return "SUBJECT: M-1 // LOCATED";
+  return "SUBJECT: M-1 // UNCOLLECTED";
+}
+
+function renderLedger(scene) {
+  ledgerL.textContent = ledgerStatus(scene);
+  ledgerR.innerHTML = "";
+  Object.keys(OBSERVATIONS).forEach(k => {
+    if (flags[k]) {
+      const s = document.createElement("span");
+      s.className = "obs on";
+      s.textContent = OBSERVATIONS[k];
+      s.style.marginLeft = "10px";
+      ledgerR.appendChild(s);
+    }
+  });
+}
+
+function flashLedger() {
+  ledger.classList.remove("flash");
+  void ledger.offsetWidth;
+  ledger.classList.add("flash");
+}
+
+function pickVariant(scene) {
+  if (!scene.variants) return scene;
+  for (const v of scene.variants) {
+    const keys = Object.keys(v.when || {});
+    if (keys.every(k => flags[k] === v.when[k])) return v;
+  }
+  return scene.variants[scene.variants.length - 1];
+}
+
+function resolveGoto(choice) {
+  if (choice.branch) {
+    return flags[choice.branch.flag] ? choice.branch.then : choice.branch.otherwise;
+  }
+  return choice.goto;
+}
+
+function makeChoiceButton(c) {
+  let el;
+  if (c.href) {
+    el = document.createElement("a");
+    el.href = c.href;
+    el.target = "_blank";
+    el.rel = "noopener";
+  } else {
+    el = document.createElement("button");
+    el.type = "button";
+    el.addEventListener("click", e => { e.stopPropagation(); choose(c); });
+  }
+  el.className = "choice";
+  el.innerHTML = c.label + (c.sub ? "<small>" + c.sub + "</small>" : "");
+  return el;
+}
+
+function showChoices(scene) {
+  choicesEl.innerHTML = "";
+  (scene.choices || []).forEach(c => choicesEl.appendChild(makeChoiceButton(c)));
+}
+
+function typeText(text, done) {
+  clearInterval(typeTimer);
+  fullText = text;
+  if (reduceMotion) { proseEl.textContent = text; typing = false; done(); return; }
+  typing = true;
+  proseEl.innerHTML = "";
+  const caret = document.createElement("span");
+  caret.className = "caret";
+  caret.textContent = " ";
+  let i = 0;
+  const tick = () => {
+    i += 2;
+    proseEl.textContent = text.slice(0, i);
+    proseEl.appendChild(caret);
+    if (i >= text.length) {
+      clearInterval(typeTimer);
+      typing = false;
+      caret.remove();
+      done();
+    }
+  };
+  typeTimer = setInterval(tick, 18);
+}
+
+function skipTyping() {
+  if (!typing) return false;
+  clearInterval(typeTimer);
+  typing = false;
+  proseEl.textContent = fullText;
+  return true;
+}
+
+function clearStage() {
+  clearInterval(typeTimer);
+  typing = false;
+  choicesEl.innerHTML = "";
+  hintEl.hidden = true;
+  artEl.innerHTML = "";
+  nodeEl.textContent = "";
+}
+
+function renderCard(scene) {
+  clearStage();
+  proseEl.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "card";
+  card.innerHTML =
+    '<div class="kicker">' + scene.kicker + '</div>' +
+    '<div class="series">' + scene.series + '</div>' +
+    '<div class="rule"></div>' +
+    '<div class="sub">' + scene.sub + '</div>' +
+    '<div class="byline">' + scene.byline + '</div>';
+  const host = document.createElement("div");
+  host.className = "choices";
+  host.setAttribute("role", "group");
+  (scene.choices || []).forEach(c => host.appendChild(makeChoiceButton(c)));
+  card.appendChild(host);
+  proseEl.appendChild(card);
+}
+
+function choose(c) {
+  if (c.sets) {
+    Object.assign(flags, c.sets);
+    flashLedger();
+  }
+  if (c.reset) { flags = { ...FLAGS }; }
+  go(resolveGoto(c));
+}
+
+function showScene(id) {
+  const scene = SCENES[id];
+  current = { id, scene };
+  if (scene.card) { renderLedger(scene); renderCard(scene); return; }
+
+  clearStage();
+  const v = pickVariant(scene);
+  if (v.sets) { Object.assign(flags, v.sets); }
+  renderLedger(scene);
+  nodeEl.textContent = scene.log || "";
+
+  if (scene.art) {
+    const img = document.createElement("img");
+    img.src = scene.art;
+    img.alt = "";
+    img.className = "art";
+    artEl.appendChild(img);
+  }
+
+  typeText(v.text, () => {
+    if (scene.choices) {
+      showChoices(scene);
+    } else if (scene.next) {
+      hintEl.hidden = false;
+    }
+  });
+}
+
+function go(id) {
+  stage.classList.remove("cut");
+  void stage.offsetWidth;
+  stage.classList.add("cut");
+  window.scrollTo(0, 0);
+  showScene(id);
+}
+
+/* tap anywhere: first tap completes the typing, second advances */
+document.addEventListener("click", e => {
+  if (e.target.closest(".choice")) return;
+  if (!current || current.scene.card) return;
+  if (skipTyping()) {
+    const s = current.scene;
+    if (s.choices) { showChoices(s); }
+    else if (s.next) { hintEl.hidden = false; }
+    return;
+  }
+  if (current.scene.next && !current.scene.choices) {
+    go(current.scene.next);
+  }
+});
+
+/* keyboard: space or enter advances, like tapping */
+document.addEventListener("keydown", e => {
+  if (e.key !== " " && e.key !== "Enter") return;
+  if (e.target.closest && e.target.closest(".choice")) return;
+  if (!current || current.scene.card) return;
+  e.preventDefault();
+  if (skipTyping()) {
+    const s = current.scene;
+    if (s.choices) { showChoices(s); }
+    else if (s.next) { hintEl.hidden = false; }
+    return;
+  }
+  if (current.scene.next && !current.scene.choices) {
+    go(current.scene.next);
+  }
+});
+
+go("title");
+</script>
+</body>
+</html>
