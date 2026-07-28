@@ -47,10 +47,29 @@ is cramped low tunnels; The Convoy and The Long Road play **outdoors
 under the blood sky** — an open staging yard with long sightlines, and
 a stretched highway climb. Each has its own palette, enemy mix, radio
 script, mid-chapter choice, and a final choice with **two endings** — 8 Chapter Two endings
-plus Episode One's 4 = **12 endings** tracked across runs. Endings you
-reach unlock their path on the title screen ("CHAPTER TWO PATHS
-UNLOCKED: n / 4"), so replaying Episode One differently is how you see
-the whole tree.
+plus Episode One's 4 = 12 endings. Endings you reach unlock their path
+on the title screen, so replaying Episode One differently is how you
+see the whole tree.
+
+## Chapter Three — The Counting House (stealth)
+
+Finishing **any** Chapter Two path unlocks the converging finale — and
+it plays by completely different rules. **No rifle. Noise is a
+confession.** The Counting House is where every copy of the ledger is
+made permanent, and you go in unarmed:
+
+- Watchers sweep **visible vision cones** across the floor — green
+  while scanning, red the instant they see you. Sentries rotate like
+  lighthouses; crawlers and wardens pace patrol lanes.
+- Being seen fills the red **DETECTION** meter (it replaces VITALS).
+  Break line of sight behind the shelf stacks and it drains. Hit 100%
+  and you are collected — rewind to the last checkpoint.
+- Slip through the records hall, the reading room, and the stack vault
+  to the master archive, erase every name ever taken, then walk out
+  unseen. A mid-chapter choice (erase your own name from the visitor
+  ledger, or leave it) and a final choice — burn the Counting House or
+  leave it hollow — give the finale **2 endings**, for **14 endings**
+  total across the tree.
 
 Graphics: bloom, filmic tone mapping, vignette + film grain post-fx
 (with an FPS watchdog that sheds effects on weak devices), GLB machine

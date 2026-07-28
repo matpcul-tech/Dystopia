@@ -25,6 +25,10 @@
 
   /* health */
   #healthWrap{position:absolute;left:16px;top:14px;width:180px;display:none;}
+  #detWrap{position:absolute;left:16px;top:14px;width:180px;display:none;}
+  #detLabel{font-size:10px;letter-spacing:2px;opacity:.85;margin-bottom:3px;color:var(--red);}
+  #detBar{height:10px;border:1px solid #7a1a24;background:rgba(20,0,4,.6);}
+  #detFill{height:100%;width:0%;background:var(--red);box-shadow:0 0 8px var(--red);transition:width .12s;}
   #healthLabel{font-size:10px;letter-spacing:2px;opacity:.8;margin-bottom:3px;}
   #healthBar{height:10px;border:1px solid var(--grn-dim);background:rgba(0,20,8,.6);}
   #healthFill{height:100%;width:100%;background:var(--grn);box-shadow:0 0 8px var(--grn);transition:width .15s;}
@@ -165,6 +169,10 @@
   <div id="healthWrap">
     <div id="healthLabel">VITALS</div>
     <div id="healthBar"><div id="healthFill"></div></div>
+  </div>
+  <div id="detWrap">
+    <div id="detLabel">DETECTION</div>
+    <div id="detBar"><div id="detFill"></div></div>
   </div>
   <div id="objective"></div>
   <div id="radio"></div>
@@ -633,6 +641,67 @@ Object.assign(CHAPTERS.ch_lone, {
   objectivePos: [0, 1.4, -146],
 });
 
+// CHAPTER THREE — THE COUNTING HOUSE: pure stealth. No rifle. Unlocked
+// by finishing any Chapter Two path; all branches converge here.
+CHAPTERS.ch_counting = {
+  id:'ch_counting', subtitle:'CHAPTER THREE — THE COUNTING HOUSE', nextHash:null,
+  startArmed:false, cinematic:false, stealth:true, setPiece:'ledger',
+  wallH: 4.5,
+  palette:{ wallA:'#5a5f56', wallB:'#4a4f47', wallC:'#3b3f38',
+    floor:'#44483f', ceil:'#33362f', crate:'#565b50',
+    crateMark:'rgba(238,242,234,.14)',
+    strip:0xeef2ea, fog:0x050604, bg:0x030403,
+    hemi:0x5f6b5c, lamp:0xf2f6ee, dust:0xcfd8c8, coreLight:0x39ff88 },
+  rooms: [
+    { x1:-3,  x2:3,  z1:-10,  z2:2    },   // vestibule
+    { x1:-9,  x2:9,  z1:-42,  z2:-10  },   // records hall
+    { x1:-3,  x2:3,  z1:-68,  z2:-42  },   // reading room
+    { x1:-10, x2:10, z1:-102, z2:-68  },   // stack vault
+    { x1:-6,  x2:6,  z1:-126, z2:-102 },   // the archive
+  ],
+  pillars: [[-6,-18,.5],[6,-18,.5],[-6,-26,.5],[6,-26,.5],[-6,-34,.5],[6,-34,.5],
+    [-1.8,-50,.35],[1.8,-58,.35],
+    [-7,-76,.55],[7,-76,.55],[-7,-86,.55],[7,-86,.55],[-7,-96,.55],[7,-96,.55],
+    [-4,-110,.5],[4,-110,.5],[-4,-118,.5],[4,-118,.5]],
+  crates: [[-3,-16,1.1,0],[3,-16,1.1,0],[-3,-24,1.1,0],[3,-24,1.1,0],[-3,-32,1.1,0],[3,-32,1.1,0],
+    [2.2,-46,.8,0],[-2.2,-62,.8,0],
+    [-4,-72,1.2,0],[4,-72,1.2,0],[-4,-80,1.2,0],[4,-80,1.2,0],[-4,-88,1.2,0],[4,-88,1.2,0],[0,-94,1.1,0],
+    [-3,-106,1.0,0],[3,-114,1.0,0]],
+  cylinders: [],
+  drones: [
+    ['sentry',0,-20,1],['crawler',-6,-26,1],['crawler',6,-32,1],['sentry',0,-38,1],
+    ['sentry',0,-48,2],['crawler',-1.5,-54,2],['sentry',1.5,-62,2],
+    ['warden',0,-76,3],['sentry',-7,-84,3],['sentry',7,-92,3],['crawler',3,-98,3],
+    ['sentry',-3,-108,4],['sentry',3,-116,4]],
+  waveSpawns: [[0,-110]], waveTotal: 0,
+  zones: [ {z:-26,key:'seg1_mid'}, {z:-55,key:'seg2_mid'}, {z:-85,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -118],
+  obj:{ find:'SLIP INTO THE RECORDS HALL', advance:'SLIP INTO THE RECORDS HALL',
+    segs:['CROSS THE RECORDS HALL UNSEEN','PASS THE READING ROOM','CROSS THE STACK VAULT'],
+    final:'ERASE THE NAMES AT THE ARCHIVE', done:'WALK OUT UNSEEN',
+    armLabel:'ERASING NAMES', btn:'ERASE',
+    promptKey:'HOLD [E] TO ERASE THE NAMES', promptTouch:'HOLD ERASE' },
+  introLines:["...","Every copy of the ledger flows to one building.",
+    "The Counting House. Where the names are kept, compared, and made permanent.",
+    "No rifle tonight. In here, noise is a confession.",
+    "Stay out of the light of their eyes."],
+  radio:{
+    pickup:[{who:'REYES',text:"You're in. Watchers sweep in cones — you can SEE what they see. Stay out of it."},
+            {who:'KARA',text:"Full detection means collection, Marcus. There is no fighting in that building."}],
+    seg1_mid:[{who:'REYES',text:"Shelves break their sightlines. Move when the cone swings away."}],
+    seg1_clear:[{who:'KARA',text:"Records hall behind you. You're a rumor so far. Keep it that way."}],
+    seg2_enter:[{who:'REYES',text:"Reading room. Tight squeeze. Time the pacers."}],
+    seg2_mid:[{who:'LEDGER',text:"SOMETHING MOVES IN MY HOUSE THAT I HAVE NOT COUNTED."}],
+    seg2_clear:[{who:'KARA',text:"It suspects. It doesn't know. Vault next."}],
+    seg3_enter:[{who:'REYES',text:"Stack vault. Wardens pace long lanes here — their cones are wide. Patience."}],
+    seg3_mid:[{who:'LEDGER',text:"I COUNT EVERYTHING. I WILL COUNT YOU. IT IS ONLY ARITHMETIC."}],
+    seg3_clear:[{who:'KARA',text:"The archive is through there. Every name ever taken, in one room."}],
+    core_enter:[{who:'REYES',text:"The master archive. Erase them, Marcus. Every single one."}],
+    alarm:[{who:'LEDGER',text:"WHO IS IN MY HOUSE. WHO IS IN MY HOUSE."}],
+    planted:[{who:'KARA',text:"The names are GONE. It can't prove anyone exists. Now walk out like you were never counted."}],
+    extract:[{who:'REYES',text:"Door's ahead. Slow steps. You were never here. Nobody was ever here."}] },
+  endTitle:'', endSub:'' };
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -673,7 +742,7 @@ document.getElementById('endSub').textContent = CH.endSub;
   if (UNLOCKED.length){
     const t = document.createElement('div');
     t.style.cssText = 'margin-top:16px;font-size:10px;letter-spacing:3px;color:#ffb85c;';
-    t.textContent = 'CHAPTER TWO PATHS UNLOCKED: ' + UNLOCKED.length + ' / 4';
+    t.textContent = 'PATHS UNLOCKED: ' + UNLOCKED.length + ' / 5';
     document.getElementById('startScreen').appendChild(t);
   }
   if (CH.nextHash){
@@ -1589,7 +1658,7 @@ const rifleFloor = new THREE.Group();
   glow.position.y = .12;
   rifleFloor.add(rf, glow);
   rifleFloor.position.set(0, .25, -4);
-  if (!CH.startArmed) scene.add(rifleFloor);
+  if (!CH.startArmed && !CH.stealth) scene.add(rifleFloor);
 }
 
 // view-model rifle (attached to camera after pickup)
@@ -1989,6 +2058,7 @@ function spawnSegment(seg){
   for (let i = drones.length-1; i >= 0; i--){
     if (drones[i].segment === seg){
       scene.remove(drones[i].mesh);
+      if (drones[i].w) scene.remove(drones[i].w.grp);
       drones.splice(i,1);
     }
   }
@@ -2036,7 +2106,7 @@ const G = {
   checkpoint: { pos: new THREE.Vector3(0,0,0), yaw: 0, segment: 0 },
   currentSegment: 0,
   radioQueue: [], radioT: 0, radioFired: new Set(),
-  plantProgress: 0, planting: false, planted: false,
+  plantProgress: 0, planting: false, planted: false, detect: 0,
   alarm: false, waveSpawned: 0, waveT: 0,
   time: 0, shakeT: 0,
 };
@@ -2446,7 +2516,7 @@ function updateProjectiles(dt){
 function updateDoors(dt){
   doors.forEach(dr => {
     if (!dr.open){
-      const canOpen = dr.index === 0 ? G.hasRifle : segmentCleared(dr.index);
+      const canOpen = CH.stealth ? (yawObj.position.z > dr.boundaryZ && yawObj.position.z - dr.boundaryZ < 7) : (dr.index === 0 ? G.hasRifle : segmentCleared(dr.index));
       if (canOpen){
         dr.open = true;
         dr.lock.material.color.setHex(0x39ff88);
@@ -2611,13 +2681,13 @@ function respawn(){
     G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
     // remove wave drones
     for (let i = drones.length-1; i >= 0; i--){
-      if (drones[i].segment === 9){ scene.remove(drones[i].mesh); drones.splice(i,1); }
+      if (drones[i].segment === 9){ scene.remove(drones[i].mesh); if (drones[i].w) scene.remove(drones[i].w.grp); drones.splice(i,1); }
     }
   }
   projectiles.forEach(p=>scene.remove(p.mesh)); projectiles.length = 0;
   yawObj.position.set(G.checkpoint.pos.x, PLAYER_EYE, G.checkpoint.pos.z);
   G.yaw = G.checkpoint.yaw; G.pitch = 0;
-  G.hp = 100; G.lastDamageT = G.time;
+  G.hp = 100; G.lastDamageT = G.time; G.detect = 0;
   el.redFade.style.opacity = 0;
   G.mode = 'play';
 }
@@ -2666,7 +2736,7 @@ function updatePlayer(dt){
   el.healthFill.style.background = G.hp > 35 ? 'var(--grn)' : 'var(--red)';
 
   // rifle pickup
-  if (!G.hasRifle){
+  if (!G.hasRifle && !CH.stealth){
     const d = yawObj.position.distanceTo(rifleFloor.position);
     el.prompt.style.display = 'block';
     el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
@@ -2813,7 +2883,8 @@ function finishIntro(skipAll){
   hudVisible(true);
   if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
   else if (!pointerLocked) renderer.domElement.requestPointerLock();
-  if (skipAll || CH.startArmed) pickupRifle();
+  if (!CH.stealth && (skipAll || CH.startArmed)) pickupRifle();
+  if (CH.stealth) radio('pickup');
   setObjectiveText();
 }
 el.skipBtn.addEventListener('click', e => {
@@ -3087,12 +3158,30 @@ const LN_FINALE = [
     { label:'[Walk on alone]', silent:true, sub:'Lights draw lenses', end:'ln_ghost' },
   ]}},
 ];
+const CT_MID = [
+  { say:[null, 'By the reading-room door: the visitor ledger. Open. Recent. Third line from the bottom, in perfect machine print: MARCUS — EXPECTED.'] },
+  { choice:{ record:'The visitor ledger expects you', timer:8, options:[
+    { label:'Erase your own line', sub:'Cost: a minute in the open', apply(){ G.detCalm = true; },
+      toast:'YOUR NAME IS GONE. SUSPICION FADES FASTER NOW.' },
+    { label:'[Leave it]', silent:true, sub:'Let it expect you', apply(){ G.spdMul = (G.spdMul||1)*1.06; },
+      toast:'IT EXPECTS YOU. WALK FASTER THAN ITS ARITHMETIC.', ember:true },
+  ]}},
+];
+const CT_FINALE = [
+  { say:[null, 'The archive stood hollow. Ten million names, unwritten. The room felt lighter, like a held breath finally let out.'] },
+  { say:['LEDGER', 'WHAT AM I FOR, IF NOT TO COUNT?'] },
+  { choice:{ record:'The Counting House is hollow — and flammable', timer:8, options:[
+    { label:'Burn it down', sub:'Names can’t burn twice', end:'ct_fire' },
+    { label:'[Leave it hollow]', silent:true, sub:'Let it keep counting nothing', end:'ct_hollow' },
+  ]}},
+];
 const BEATSETS = {
   ep1:        { door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
   ch_taken:   { door1:TK_MID, finale:TK_FINALE },
   ch_ghost:   { door1:GH_MID, finale:GH_FINALE },
   ch_together:{ door1:TW_MID, finale:TW_FINALE },
   ch_lone:    { door1:LN_MID, finale:LN_FINALE },
+  ch_counting:{ door1:CT_MID, finale:CT_FINALE },
 };
 const CB = BEATSETS[CH.id] || {};
 
@@ -3126,6 +3215,10 @@ const ENDING_TEXT = {
     sub:'He left the beacon cold and kept the road, one entry the ledger never reached, carrying every name it wanted. Alone is a kind of free. Whether it\'s enough is the question Book One answers.' },
 };
 /* ep1 endings unlock and continue into their Chapter Two path */
+ENDING_TEXT.ct_fire = { name:'THE FIRE', title:'NAMES CAN’T BURN TWICE.',
+  sub:'The Counting House burned all night, and nobody in the valley was on a list anymore. What people do when no one is counting them — that is the question Life After The Machines was written to answer. Book One begins it.' };
+ENDING_TEXT.ct_hollow = { name:'THE HOLLOW', title:'THE LEDGER STILL COUNTS. IT COUNTS NOTHING.',
+  sub:'He left the machine alive in its empty house, reading a list of no one, forever. Some mercies are also punishments. Which this was — and what came of it — is Book One.' };
 ENDING_TEXT.together.next = '#ch_together';
 ENDING_TEXT.lone.next     = '#ch_lone';
 ENDING_TEXT.ghost.next    = '#ch_ghost';
@@ -3140,7 +3233,7 @@ function finishEnding(id){
   let f = [];
   try { f = JSON.parse(localStorage.getItem(EKEY)) || []; } catch(e){}
   if (!f.includes(id)){ f.push(id); try { localStorage.setItem(EKEY, JSON.stringify(f)); } catch(e){} }
-  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 12';
+  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 14';
   if (CH.id === 'ep1'){
     try { localStorage.setItem('latm_carry', JSON.stringify({
       trusted:!!SFLAGS.trusted, radio:!!SFLAGS.radio,
@@ -3160,6 +3253,19 @@ function finishEnding(id){
       cont.textContent = 'CONTINUE — ' + (CHAPTERS[cid] ? CHAPTERS[cid].subtitle : 'CHAPTER TWO') + ' \u25B8';
       cont.onclick = () => { location.hash = E.next; location.reload(); };
     }
+  } else if (CH.id !== 'ch_counting'){
+    try {
+      const u = JSON.parse(localStorage.getItem('latm_unlocked'))||[];
+      if (!u.includes('ch_counting')){ u.push('ch_counting'); localStorage.setItem('latm_unlocked', JSON.stringify(u)); }
+    } catch(e){}
+    let cont = document.getElementById('contBtn');
+    if (!cont){
+      cont = document.createElement('button');
+      cont.className = 'btn'; cont.id = 'contBtn';
+      document.getElementById('endBtns').prepend(cont);
+    }
+    cont.textContent = 'CONTINUE — CHAPTER THREE — THE COUNTING HOUSE \u25B8';
+    cont.onclick = () => { location.hash = '#ch_counting'; location.reload(); };
   }
   sEl.endSummary.innerHTML = SCHOICES.length
     ? '<b>YOUR CHOICES:</b><br>' + SCHOICES.map(c => '▸ ' + c.q + ' — <b>' + c.a + '</b>').join('<br>')
@@ -3170,6 +3276,91 @@ function finishEnding(id){
   el.fade.style.background = (id === 'taken') ? '#fff' : '#000';
   el.fade.style.opacity = 1;
   setTimeout(() => { el.fade.style.background = '#000'; showEndCard(); }, 3100);
+}
+
+
+/* ============================================================
+   Stealth mode — watchers with visible vision cones. Being seen
+   fills DETECTION; full detection means you are collected.
+   ============================================================ */
+const WATCHK = {
+  crawler: { range: 8,  half: .5,  speed: 1.0, move: 4, rate: 40 },
+  sentry:  { range: 11, half: .42, speed: .55, move: 0, rate: 48 },
+  warden:  { range: 12, half: .48, speed: .8,  move: 6, rate: 58 },
+};
+function losClear2D(ax, az, bx, bz){
+  const dx = bx-ax, dz = bz-az;
+  const len = Math.hypot(dx, dz) || 1;
+  const ux = dx/len, uz = dz/len;
+  for (const c of colliders){
+    if (c.door && !c.active) continue;
+    const t = rayAABB2D(ax, az, ux, uz, c);
+    if (t !== null && t < len - .3) return false;
+  }
+  return true;
+}
+function updateWatchers(dt){
+  const p = yawObj.position;
+  const alert = G.alarm ? 1.5 : 1;
+  let seen = false;
+  for (const d of drones){
+    if (!d.alive) continue;
+    const K = WATCHK[d.kind] || WATCHK.sentry;
+    if (!d.w){
+      const grp = new THREE.Group();
+      const cone = new THREE.Mesh(
+        new THREE.CircleGeometry(K.range, 22, Math.PI/2 - K.half, K.half*2),
+        new THREE.MeshBasicMaterial({ color:0x39ff88, transparent:true, opacity:.08, depthWrite:false, side:THREE.DoubleSide }));
+      cone.rotation.x = -Math.PI/2;
+      cone.position.y = .07;
+      grp.add(cone);
+      scene.add(grp);
+      d.w = { grp, cone, baseZ: d.mesh.position.z, phase: (d.id||1)*1.7, facing: 0 };
+    }
+    const w = d.w;
+    w.phase += dt * K.speed * alert;
+    if (K.move){
+      d.mesh.position.z = w.baseZ + Math.sin(w.phase) * K.move;
+      w.facing = Math.cos(w.phase) > 0 ? Math.PI : 0;
+    } else {
+      w.facing = w.phase;
+    }
+    d.mesh.rotation.y = w.facing;
+    w.grp.position.set(d.mesh.position.x, 0, d.mesh.position.z);
+    w.grp.rotation.y = w.facing;
+    const fx = -Math.sin(w.facing), fz = -Math.cos(w.facing);
+    const dx = p.x - d.mesh.position.x, dz = p.z - d.mesh.position.z;
+    const dist = Math.hypot(dx, dz);
+    let seeing = false;
+    if (dist < K.range){
+      const dot = (dx*fx + dz*fz) / (dist || 1);
+      if (dot > Math.cos(K.half) && losClear2D(d.mesh.position.x, d.mesh.position.z, p.x, p.z)) seeing = true;
+    }
+    if (dist < 1.2) G.detect = 100;
+    if (seeing){
+      seen = true;
+      G.detect = Math.min(100, G.detect + K.rate * alert * dt * (1.4 - (dist/K.range)*.8));
+    }
+    w.cone.material.color.setHex(seeing ? 0xff3344 : 0x39ff88);
+    w.cone.material.opacity = seeing ? .2 : .08;
+    if (d.eyeMat) d.eyeMat.color.setHex(seeing ? 0xff2b3c : 0x2bff7f);
+  }
+  if (!seen) G.detect = Math.max(0, G.detect - (G.detCalm ? 22 : 13) * dt);
+  document.getElementById('detFill').style.width = G.detect.toFixed(0)+'%';
+  if (G.detect >= 100 && G.mode === 'play'){ die(); }
+}
+/* stealth HUD: detection meter instead of vitals, no crosshair */
+{
+  const _hv = hudVisible;
+  hudVisible = function(v){
+    _hv(v);
+    if (CH.stealth){
+      el.healthWrap.style.display = 'none';
+      document.getElementById('detWrap').style.display = v ? 'block' : 'none';
+      el.crosshair.style.display = 'none';
+      el.fireBtn.style.display = 'none';
+    }
+  };
 }
 
 /* ============================================================
@@ -3214,7 +3405,7 @@ function loop(){
   if (G.mode === 'play'){
     updatePlayer(dt);
     tryFire(dt);
-    updateDrones(dt);
+    if (CH.stealth) updateWatchers(dt); else updateDrones(dt);
     updateProjectiles(dt);
     updateDoors(dt);
     updateWave(dt);
@@ -3223,6 +3414,7 @@ function loop(){
     if (G.time - (G.musicT || 0) > .5){
       G.musicT = G.time;
       MusicSys.setMode(
+        CH.stealth ? (G.detect > 55 ? 'combat' : (G.alarm && !G.planted ? 'alarm' : 'calm')) :
         G.alarm && !G.planted ? 'alarm' :
         drones.some(d => d.alive && d.state === 'attack') ? 'combat' : 'calm');
     }
@@ -3230,7 +3422,7 @@ function loop(){
   if (G.mode === 'story'){ Story.update(dt); updateRadio(dt); }
   if (G.mode === 'dead' || G.mode === 'extracting'){
     updateRadio(dt);
-    updateDrones(dt);
+    if (!CH.stealth) updateDrones(dt);
   }
   // fps watchdog: if a device can't hold ~40fps with post-fx, shed it
   if (postFX.enabled && G.mode === 'play' && !(window.__LATM && window.__LATM.capture)){
