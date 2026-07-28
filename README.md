@@ -41,8 +41,12 @@ and the radio carry over):
 | Ghost | **The Listening Dark** — tap the hive's trunk line |
 | Taken | **Inside the Hive** — wake in a pod, burn your way out |
 
-Each path has its own palette, enemy mix, radio script, mid-chapter
-choice, and a final choice with **two endings** — 8 Chapter Two endings
+Each path is **its own world**, not a re-skin: Inside the Hive is tall
+wide pod-lined chambers pinched by a narrow throat; The Listening Dark
+is cramped low tunnels; The Convoy and The Long Road play **outdoors
+under the blood sky** — an open staging yard with long sightlines, and
+a stretched highway climb. Each has its own palette, enemy mix, radio
+script, mid-chapter choice, and a final choice with **two endings** — 8 Chapter Two endings
 plus Episode One's 4 = **12 endings** tracked across runs. Endings you
 reach unlock their path on the title screen ("CHAPTER TWO PATHS
 UNLOCKED: n / 4"), so replaying Episode One differently is how you see

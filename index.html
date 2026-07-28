@@ -523,6 +523,116 @@ const CHAPTERS = {
     endTitle:'', endSub:'' };
 }
 
+/* ---- distinct worlds per path: each Chapter Two has its own geometry ---- */
+
+// INSIDE THE HIVE: tall wide chambers, pod rows, a narrow throat
+Object.assign(CHAPTERS.ch_taken, {
+  wallH: 6,
+  rooms: [
+    { x1:-4, x2:4, z1:-10,  z2:2    },   // the cracked pod
+    { x1:-8, x2:8, z1:-40,  z2:-10  },   // pod gallery
+    { x1:-3, x2:3, z1:-64,  z2:-40  },   // the throat
+    { x1:-9, x2:9, z1:-98,  z2:-64  },   // nursery
+    { x1:-7, x2:7, z1:-124, z2:-98  },   // core cradle
+  ],
+  pillars: [[-5,-18,.5],[5,-18,.5],[-5,-26,.5],[5,-26,.5],[-5,-34,.5],[5,-34,.5],
+    [-1.8,-50,.4],[1.8,-56,.4],
+    [-6,-72,.55],[6,-72,.55],[-6,-80,.55],[6,-80,.55],[-6,-88,.55],[6,-88,.55],
+    [-4,-106,.6],[4,-106,.6],[-4,-116,.6],[4,-116,.6]],
+  crates: [[-6,-14,.9,.3],[6.5,-22,.8,.6],[2,-46,.7,.2],[-2,-58,.8,.5],
+    [7,-70,.9,.4],[-7,-84,.85,.7],[5,-102,.8,.3],[-5,-118,.9,.6]],
+  cylinders: [[-6.8,-14],[6.8,-14],[-6.8,-20],[6.8,-20],[-6.8,-26],[6.8,-26],[-6.8,-32],[6.8,-32],[-6.8,-38],[6.8,-38],
+    [-7.8,-68],[7.8,-68],[-7.8,-76],[7.8,-76],[-7.8,-84],[7.8,-84],[-7.8,-92],[7.8,-92],
+    [-5.8,-104],[5.8,-104],[-5.8,-112],[5.8,-112],[-5.8,-120],[5.8,-120]],
+  drones: [
+    ['crawler',0,-16,1],['crawler',-4,-24,1],['crawler',4,-30,1],['sentry',0,-36,1],
+    ['crawler',-1.5,-44,2],['crawler',1.5,-50,2],['warden',0,-56,2],['sentry',0,-61,2],
+    ['crawler',0,-68,3],['sentry',-5,-74,3],['warden',0,-82,3],['sentry',5,-88,3],['warden',0,-94,3],
+    ['warden',-4,-108,4],['sentry',4,-108,4]],
+  waveSpawns: [[-5,-100],[5,-100],[-5,-120],[5,-120]],
+  zones: [ {z:-24,key:'seg1_mid'}, {z:-52,key:'seg2_mid'}, {z:-80,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -116],
+});
+
+// THE LISTENING DARK: cramped low tunnels opening into a junction chamber
+Object.assign(CHAPTERS.ch_ghost, {
+  wallH: 2.7,
+  rooms: [
+    { x1:-2.5, x2:2.5, z1:-8,   z2:2    },  // the well
+    { x1:-2.5, x2:2.5, z1:-42,  z2:-8   },  // service tunnel
+    { x1:-3.5, x2:3.5, z1:-72,  z2:-42  },  // pump hall
+    { x1:-2.5, x2:2.5, z1:-106, z2:-72  },  // cable run
+    { x1:-6,   x2:6,   z1:-128, z2:-106 },  // junction chamber
+  ],
+  pillars: [[-1.6,-20,.35],[1.6,-30,.35],[-2.4,-52,.45],[2.4,-60,.45],
+    [-1.6,-80,.35],[1.6,-92,.35],[-4,-112,.5],[4,-112,.5],[-4,-122,.5],[4,-122,.5]],
+  crates: [[-1.7,-14,.6,.3],[1.8,-26,.7,.5],[2.6,-48,.7,.2],[-2.6,-64,.8,.6],
+    [1.7,-78,.6,.4],[-1.7,-98,.7,.2],[4.6,-110,.8,.5],[-4.6,-124,.75,.3]],
+  cylinders: [],
+  drones: [
+    ['crawler',0,-14,1],['crawler',-1.5,-22,1],['crawler',1.5,-30,1],['crawler',0,-38,1],
+    ['crawler',-2,-46,2],['crawler',2,-52,2],['sentry',0,-58,2],['crawler',0,-66,2],
+    ['crawler',-1.5,-76,3],['crawler',1.5,-84,3],['sentry',0,-90,3],['crawler',-1.5,-96,3],['warden',0,-102,3],
+    ['sentry',-3.5,-110,4],['sentry',3.5,-110,4]],
+  waveSpawns: [[-4,-108],[4,-108],[-4,-124],[4,-124]],
+  zones: [ {z:-25,key:'seg1_mid'}, {z:-57,key:'seg2_mid'}, {z:-89,key:'seg3_mid'} ],
+  objectivePos: [0, 1.3, -120],
+});
+
+// THE CONVOY: open-air staging yard under the blood sky, wide sightlines
+Object.assign(CHAPTERS.ch_together, {
+  outdoor: true, wallH: 3,
+  rooms: [
+    { x1:-4,  x2:4,  z1:-10,  z2:2    },   // the ridge cut
+    { x1:-11, x2:11, z1:-44,  z2:-10  },   // freight cut
+    { x1:-5,  x2:5,  z1:-72,  z2:-44  },   // checkpoint
+    { x1:-13, x2:13, z1:-110, z2:-72  },   // staging yard
+    { x1:-9,  x2:9,  z1:-138, z2:-110 },   // carrier dock
+  ],
+  pillars: [[-8,-20,.45],[8,-20,.45],[-8,-32,.45],[8,-32,.45],
+    [-3,-52,.4],[3,-62,.4],
+    [-10,-80,.5],[10,-80,.5],[-10,-94,.5],[10,-94,.5],
+    [-6,-118,.55],[6,-118,.55],[-6,-130,.55],[6,-130,.55]],
+  crates: [[-6,-16,1.4,.4],[7,-26,1.2,.8],[-8,-38,1.5,.3],[2.5,-50,.9,.5],[-2.5,-62,1.0,.2],
+    [8,-78,1.6,.6],[-9,-90,1.3,.4],[4,-102,1.2,.7],[-5,-116,1.1,.3],[6,-128,1.4,.5]],
+  cylinders: [[-7.5,-114],[7.5,-114],[-7.5,-120],[7.5,-120],[-7.5,-126],[7.5,-126],[-7.5,-132],[7.5,-132]],
+  drones: [
+    ['crawler',0,-16,1],['sentry',-7,-26,1],['crawler',7,-34,1],['crawler',0,-40,1],
+    ['sentry',-3,-50,2],['warden',0,-58,2],['sentry',3,-66,2],
+    ['sentry',-8,-78,3],['crawler',8,-84,3],['warden',0,-90,3],['sentry',-8,-98,3],['warden',8,-104,3],
+    ['warden',-5,-116,4],['warden',5,-116,4]],
+  waveSpawns: [[-7,-112],[7,-112],[-7,-134],[7,-134]],
+  zones: [ {z:-27,key:'seg1_mid'}, {z:-58,key:'seg2_mid'}, {z:-90,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -128],
+});
+
+// THE LONG ROAD: an open highway at dusk, long hauls between fights
+Object.assign(CHAPTERS.ch_lone, {
+  outdoor: true, wallH: 2.8,
+  rooms: [
+    { x1:-3,   x2:3,   z1:-12,  z2:2    },  // roadside start
+    { x1:-4,   x2:4,   z1:-58,  z2:-12  },  // the overpass (long)
+    { x1:-6,   x2:6,   z1:-88,  z2:-58  },  // toll plaza
+    { x1:-3.5, x2:3.5, z1:-132, z2:-88  },  // access road (long climb)
+    { x1:-7,   x2:7,   z1:-156, z2:-132 },  // beacon platform
+  ],
+  pillars: [[-2.8,-24,.4],[2.8,-24,.4],[-2.8,-40,.4],[2.8,-40,.4],
+    [-4.5,-66,.5],[4.5,-74,.5],
+    [-2.4,-100,.4],[2.4,-114,.4],[-2.4,-126,.4],
+    [-5,-140,.5],[5,-140,.5],[-5,-150,.5],[5,-150,.5]],
+  crates: [[-2.5,-18,.9,.3],[3,-32,.8,.6],[-3,-48,.85,.2],[4.5,-64,1.1,.5],[-4.5,-78,1.0,.4],
+    [2.6,-94,.8,.7],[-2.6,-110,.9,.3],[2.6,-122,.75,.5],[-5,-138,1.0,.4],[5,-148,.9,.6]],
+  cylinders: [],
+  drones: [
+    ['crawler',0,-20,1],['crawler',-2.5,-32,1],['sentry',2.5,-44,1],['crawler',0,-52,1],
+    ['crawler',-4,-64,2],['sentry',4,-70,2],['sentry',0,-78,2],['crawler',-4,-84,2],
+    ['sentry',0,-94,3],['crawler',-2,-104,3],['warden',0,-112,3],['sentry',2,-120,3],['sentry',0,-128,3],
+    ['warden',-4,-138,4],['sentry',4,-138,4]],
+  waveSpawns: [[-5,-134],[5,-134],[-5,-152],[5,-152]],
+  zones: [ {z:-34,key:'seg1_mid'}, {z:-72,key:'seg2_mid'}, {z:-110,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -146],
+});
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -1188,7 +1298,7 @@ const Cinematic = (() => {
 /* ============================================================
    Level: 5 rooms (start, 3 segments, core) along -Z
    ============================================================ */
-const WALL_H = 4, DOOR_HALF = 1.6;
+const WALL_H = CH.wallH || 4, DOOR_HALF = 1.6;
 const ROOMS = CH.rooms;
 const PILLARS = CH.pillars;
 
@@ -1296,12 +1406,37 @@ function addBox(x1,x2,z1,z2,h,mat,solid=true){
   return m;
 }
 
-// floor + ceiling (single big slabs)
+// floor + ceiling sized to the chapter's rooms; outdoor chapters get sky
 {
-  const fl = new THREE.Mesh(new THREE.BoxGeometry(26, .2, 148), surfMat(floorTex, 9, 50));
-  fl.position.set(0,-.1,-69); scene.add(fl); wallMeshes.push(fl);
-  const ce = new THREE.Mesh(new THREE.BoxGeometry(26, .2, 148), surfMat(ceilTex, 7, 40));
-  ce.position.set(0, WALL_H+.1, -69); scene.add(ce); wallMeshes.push(ce);
+  const minX = Math.min(...ROOMS.map(r=>r.x1))-2, maxX = Math.max(...ROOMS.map(r=>r.x2))+2;
+  const minZ = Math.min(...ROOMS.map(r=>r.z1))-2, maxZ = Math.max(...ROOMS.map(r=>r.z2))+1;
+  const Wd = maxX-minX, Ld = maxZ-minZ, cx=(minX+maxX)/2, cz=(minZ+maxZ)/2;
+  const fl = new THREE.Mesh(new THREE.BoxGeometry(Wd, .2, Ld), surfMat(floorTex, 9, 50));
+  fl.position.set(cx,-.1,cz); scene.add(fl); wallMeshes.push(fl);
+  if (!CH.outdoor){
+    const ce = new THREE.Mesh(new THREE.BoxGeometry(Wd, .2, Ld), surfMat(ceilTex, 7, 40));
+    ce.position.set(cx, WALL_H+.1, cz); scene.add(ce); wallMeshes.push(ce);
+  } else {
+    // blood sky dome, same look as the opening cinematic
+    const skyTex = makeTex((g,s)=>{
+      const grd = g.createLinearGradient(0,s,0,0);
+      grd.addColorStop(0,'#6e1c10'); grd.addColorStop(.35,'#571309');
+      grd.addColorStop(.7,'#2a0a06'); grd.addColorStop(1,'#120404');
+      g.fillStyle = grd; g.fillRect(0,0,s,s);
+    }, 256);
+    const skyMat = new THREE.MeshBasicMaterial({ map:skyTex, side:THREE.BackSide, fog:false });
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(100, 24, 16), skyMat);
+    dome.onBeforeRender = () => { dome.position.set(yawObj.position.x, 0, yawObj.position.z); };
+    scene.add(dome);
+    new THREE.TextureLoader().load('sky.jpg', tx => {
+      tx.colorSpace = THREE.SRGBColorSpace;
+      tx.wrapS = THREE.MirroredRepeatWrapping;
+      tx.repeat.set(2, 1.15); tx.offset.y = -.06;
+      skyMat.map = tx; skyMat.needsUpdate = true;
+    });
+    const sun = new THREE.DirectionalLight(0xff6a40, .45);
+    sun.position.set(-40, 30, cz-40); scene.add(sun);
+  }
 }
 
 // side walls per room + boundary walls with door gaps
@@ -1341,7 +1476,7 @@ ROOMS.forEach(r=>{
       const housing = new THREE.Mesh(new THREE.BoxGeometry(.16, .2, 2.4), fixtureMat);
       housing.position.set(x, 2.6, z); scene.add(housing);
       const s = new THREE.Mesh(new THREE.BoxGeometry(.1, .12, 2.2), matStrip);
-      s.position.set(x + (x<0?.05:-.05), 2.6, z); scene.add(s); strips.push(s);
+      s.position.set(x + (x<0?.05:-.05), Math.min(2.6, WALL_H-.4), z); scene.add(s); strips.push(s);
     });
   }
 });
