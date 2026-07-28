@@ -1,51 +1,46 @@
 # DYSTOPIA — Episode One: The Waking
 
-A free playable 3D episode set in the world of
-**Life After The Machines** by Matthew Culwell — built on the same engine
-as [LATM: Hive Infiltration](https://github.com/matpcul-tech/Dystopiabook1),
-funneling players to Book One.
+A cinematic, choice-driven episode (Telltale-style) set in the world of
+**Life After The Machines** by Matthew Culwell, rendered in the same
+Three.js visual style as [LATM: Hive Infiltration](https://github.com/matpcul-tech/Dystopiabook1)
+and funneling players to Book One.
 
-**Episode One — The Waking**: Marcus wakes in the gravel under a sky the
-wrong color, follows a dead man's radio — and Reyes's voice — through the
-ruined streets and the hardware district, crosses the warden-guarded rail
-bridge, and reaches the depot refuge across the river. The gate is open.
-The cots are empty. The far wall is a screen, and the screen is a list of
-names. Pull the ledger, survive the net, get out. This is where Book One
-begins.
+You don't control Marcus directly — you watch the episode play out in
+staged 3D scenes with camera cuts, and you make his decisions:
 
-The episode plays through the book's opening in-engine: the "Awakening in
-Rust" cinematic runs before the level starts.
+- **Timed choices** — the Telltale signature. A timer drains while you
+  decide; saying nothing is also a choice, and the story takes it.
+- **Consequence toasts** — *"◆ REYES WILL REMEMBER THAT."* Choices set
+  flags that change scenes, dialogue, and which endings you can reach.
+- **Quick-time events** — hold your breath under the tarp, open fire on
+  the patrol, cross the bridge between searchlight sweeps. Fail and the
+  ledger collects you: a death card with **REWIND** back to the last
+  checkpoint.
+- **Choice summary** — the end card lists every decision you made this
+  run, plus a persistent endings tracker (**4 endings**: Taken, Ghost,
+  Together, Runner).
+
+Eight 3D sets, all procedural in the engine's phosphor-and-ash style:
+the gravel lot under the blood sky, the machine column herding people in
+rows, the hardware store with the dead man's radio, the pharmacy
+basement, the patrol street, the rail bridge, the depot with its
+scrolling ledger of COLLECTED names, and the ridge above the harvest.
+Machine models (sentry, warden, pod) are shared with Dystopiabook1.
 
 ## Play
 
 Single file, no build step. Serve `index.html` from anywhere
-(GitHub Pages works as-is). Three.js is loaded from the jsdelivr CDN.
+(GitHub Pages works as-is). Three.js loads from the jsdelivr CDN.
 
-- **Desktop:** WASD move, mouse look (click for pointer lock), click/Space
-  fire, hold E to pull the ledger, M toggles music.
-- **Mobile:** left side virtual stick to move, right side drag to look,
-  FIRE button, hold PULL at the depot screen.
-
-## Structure
-
-The chapter is a pure data object (`CHAPTERS.ep1` in `index.html`):
-rooms, enemy placements, radio script, palette, objectives. The engine —
-shared with Dystopiabook1 — builds whatever the data describes. Adding
-another episode = adding a data block.
-
-- One weapon (pulse rifle, hitscan, infinite ammo, fire-rate cap)
-- Three enemies: Crawler (melee rush), Sentry (telegraphed ranged), and
-  Warden (heavy frame) with three-state AI and line-of-sight triggers
-- 100 HP with regen after 5s out of combat; checkpoints at segment doors
-- Wave defense at the depot while the ledger copies
-- All audio synthesized (WebAudio); textures procedural; enemy/rifle
-  GLB models in `models/`
+- **Desktop:** click/Space advances dialogue · 1–4 or click picks a
+  choice · Space answers quick-time events.
+- **Mobile:** tap to advance · tap choices · tap during quick-time events.
 
 ## Author config
 
-Everything an author should tweak lives in the `CONFIG` block and the
-`CHAPTERS.ep1` data at the top of the `<script type="module">`:
-
-- `BOOK1_URL` — the Kindle store URL for Book One.
-- `radio` — all of Reyes's chatter lines, keyed by trigger.
-- `introLines` — the awakening text; `endTitle` / `endSub` — the end card.
+- `CONFIG.BOOK1_URL` — the Kindle store URL for Book One.
+- `CONFIG.CHOICE_SECONDS` — default choice timer.
+- The whole episode is data: the `B`/`label` script near the middle of
+  the file is a list of beats (sets, camera shots, dialogue, choices,
+  QTEs, branches, endings). Sets live in the `SETS` object. Adding a
+  scene = adding beats.

@@ -4,187 +4,159 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DYSTOPIA: The Waking &mdash; A Life After The Machines Episode</title>
-<meta name="description" content="Episode One: The Waking. A free playable episode set in the world of Life After The Machines. Wake in the ruins, cross the city, and learn what the depot really is.">
+<meta name="description" content="Episode One: The Waking. A cinematic choice-driven episode set in the world of Life After The Machines. Your choices decide who survives.">
 <style>
-  :root{
-    --grn:#39ff88; --grn-dim:#1a7a44; --red:#ff3344; --bg:#020604;
-  }
+  :root{ --grn:#39ff88; --grn-dim:#1a7a44; --red:#ff3344; --amber:#ffb85c; --bg:#020604; --bone:#eef2ea; }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);
+  html,body{height:100%;overflow:hidden;background:var(--bg);
     font-family:"Courier New",ui-monospace,monospace;color:var(--grn);
-    touch-action:none;overscroll-behavior:none;user-select:none;-webkit-user-select:none;}
-  canvas{display:block;}
-  #hud,#overlays{position:fixed;inset:0;pointer-events:none;}
+    -webkit-user-select:none;user-select:none;touch-action:manipulation;}
+  canvas{display:block;position:fixed;inset:0;}
+  /* scanlines */
+  body::after{content:"";position:fixed;inset:0;z-index:90;pointer-events:none;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0 1px,transparent 1px 3px);}
+  /* cinematic letterbox */
+  .bar{position:fixed;left:0;right:0;height:0;background:#000;z-index:20;transition:height .8s;}
+  #barTop{top:0;} #barBot{bottom:0;}
+  body.cine #barTop,body.cine #barBot{height:9vh;}
 
-  /* crosshair */
-  #crosshair{position:absolute;left:50%;top:50%;width:14px;height:14px;
-    transform:translate(-50%,-50%);opacity:.85;display:none;}
-  #crosshair:before,#crosshair:after{content:"";position:absolute;background:var(--grn);}
-  #crosshair:before{left:6px;top:0;width:2px;height:14px;}
-  #crosshair:after{left:0;top:6px;width:14px;height:2px;}
+  /* dialogue */
+  #dlg{position:fixed;left:50%;bottom:calc(9vh + 18px);transform:translateX(-50%);
+    width:min(720px,92vw);text-align:center;z-index:30;pointer-events:none;}
+  #speaker{font-size:12px;letter-spacing:4px;margin-bottom:6px;text-shadow:0 0 8px rgba(57,255,136,.7);}
+  #speaker.reyes{color:var(--grn);} #speaker.marcus{color:var(--bone);}
+  #speaker.ledger{color:var(--red);text-shadow:0 0 8px rgba(255,51,68,.7);}
+  #subtitle{font-size:clamp(14px,2.4vw,19px);line-height:1.55;color:#e8f5ec;
+    text-shadow:0 1px 2px #000,0 0 12px rgba(0,0,0,.9);}
+  #subtitle.narr{font-style:italic;color:#cfe2d4;}
+  #tapHint{position:fixed;right:16px;bottom:calc(9vh + 8px);font-size:10px;letter-spacing:2px;
+    color:rgba(57,255,136,.5);z-index:30;opacity:0;transition:opacity .4s;}
 
-  /* health */
-  #healthWrap{position:absolute;left:16px;top:14px;width:180px;display:none;}
-  #healthLabel{font-size:10px;letter-spacing:2px;opacity:.8;margin-bottom:3px;}
-  #healthBar{height:10px;border:1px solid var(--grn-dim);background:rgba(0,20,8,.6);}
-  #healthFill{height:100%;width:100%;background:var(--grn);box-shadow:0 0 8px var(--grn);transition:width .15s;}
+  /* timed choices — the telltale signature */
+  #choiceWrap{position:fixed;left:50%;bottom:calc(9vh + 14px);transform:translateX(-50%);
+    width:min(860px,96vw);z-index:40;display:none;}
+  #choiceTimer{height:3px;background:rgba(57,255,136,.18);margin:0 6px 10px;position:relative;}
+  #choiceFill{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--grn);
+    box-shadow:0 0 8px rgba(57,255,136,.8);}
+  #choiceFill.hot{background:var(--red);box-shadow:0 0 8px rgba(255,51,68,.8);}
+  #choiceRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+  .opt{flex:1 1 0;min-width:150px;max-width:260px;background:rgba(2,10,5,.85);
+    border:1px solid var(--grn-dim);color:var(--grn);padding:12px 12px 10px;cursor:pointer;
+    font:inherit;font-size:13px;letter-spacing:1px;text-transform:uppercase;text-align:center;
+    transition:background .12s,border-color .12s,color .12s;}
+  .opt:hover,.opt:focus-visible{background:var(--grn);color:#02150a;border-color:var(--grn);outline:none;}
+  .opt .key{display:block;font-size:9px;opacity:.55;margin-bottom:5px;letter-spacing:3px;}
+  .opt.silent{border-style:dashed;opacity:.85;}
+  .opt small{display:block;text-transform:none;letter-spacing:0;font-size:11px;opacity:.65;margin-top:4px;}
 
-  /* objective */
-  #objective{position:absolute;top:14px;left:50%;transform:translateX(-50%);
-    font-size:11px;letter-spacing:3px;opacity:.75;text-align:center;display:none;white-space:nowrap;}
+  /* consequence toast */
+  #toast{position:fixed;top:calc(9vh + 16px);left:18px;z-index:45;font-size:12px;letter-spacing:2px;
+    color:var(--bone);background:rgba(2,10,5,.78);border-left:3px solid var(--grn);
+    padding:10px 16px;opacity:0;transform:translateX(-12px);transition:all .45s;max-width:76vw;}
+  #toast.show{opacity:1;transform:translateX(0);}
+  #toast.ember{border-left-color:var(--red);}
 
-  /* radio feed */
-  #radio{position:absolute;left:16px;bottom:110px;max-width:78%;font-size:14px;
-    line-height:1.5;text-shadow:0 0 6px rgba(57,255,136,.7);}
-  .radioLine{opacity:0;transition:opacity .3s;margin-top:6px;}
-  .radioLine .who{color:#baffd9;font-weight:bold;letter-spacing:1px;}
-  .radioLine.show{opacity:1;}
-
-  /* center prompt */
-  #prompt{position:absolute;left:50%;bottom:26%;transform:translateX(-50%);
-    font-size:14px;letter-spacing:2px;padding:8px 14px;border:1px solid var(--grn-dim);
-    background:rgba(0,15,6,.7);display:none;text-align:center;animation:pulse 1.2s infinite;}
-  @keyframes pulse{0%,100%{opacity:.95}50%{opacity:.55}}
-
-  /* plant progress */
-  #plantWrap{position:absolute;left:50%;bottom:34%;transform:translateX(-50%);
-    width:220px;display:none;}
-  #plantLabel{font-size:11px;letter-spacing:2px;text-align:center;margin-bottom:4px;}
-  #plantBar{height:8px;border:1px solid var(--grn-dim);background:rgba(0,20,8,.6);}
-  #plantFill{height:100%;width:0%;background:var(--grn);box-shadow:0 0 8px var(--grn);}
-
-  /* vignettes / fades */
-  #dmgVignette{position:absolute;inset:0;opacity:0;
-    background:radial-gradient(ellipse at center,transparent 55%,rgba(255,20,40,.55) 100%);
-    transition:opacity .2s;}
-  #fade{position:absolute;inset:0;background:#000;opacity:1;transition:opacity 1s;}
-  #redFade{position:absolute;inset:0;background:#2a0006;opacity:0;transition:opacity .8s;}
-
-  /* touch controls */
-  #stickZone,#lookZone{position:absolute;top:0;bottom:0;pointer-events:auto;display:none;}
-  #stickZone{left:0;width:45%;}
-  #lookZone{right:0;width:55%;}
-  #stickBase{position:absolute;width:110px;height:110px;border:1px solid rgba(57,255,136,.4);
-    border-radius:50%;display:none;transform:translate(-50%,-50%);}
-  #stickNub{position:absolute;left:50%;top:50%;width:46px;height:46px;border-radius:50%;
-    background:rgba(57,255,136,.25);border:1px solid var(--grn);transform:translate(-50%,-50%);}
-  #fireBtn{position:absolute;right:24px;bottom:34px;width:86px;height:86px;border-radius:50%;
-    border:2px solid var(--grn);background:rgba(0,40,16,.4);color:var(--grn);
-    font-family:inherit;font-size:11px;letter-spacing:2px;display:none;pointer-events:auto;
-    text-shadow:0 0 6px var(--grn);}
-  #fireBtn:active{background:rgba(57,255,136,.3);}
-  #plantBtn{position:absolute;right:28px;bottom:136px;width:78px;height:78px;border-radius:50%;
-    border:2px solid #ffd23f;background:rgba(60,45,0,.4);color:#ffd23f;
-    font-family:inherit;font-size:10px;letter-spacing:1px;display:none;pointer-events:auto;}
+  /* QTE */
+  #qte{position:fixed;left:50%;top:52%;transform:translate(-50%,-50%);z-index:46;display:none;
+    text-align:center;}
+  #qteRing{width:120px;height:120px;border-radius:50%;border:3px solid var(--grn);margin:0 auto 12px;
+    display:flex;align-items:center;justify-content:center;position:relative;
+    box-shadow:0 0 24px rgba(57,255,136,.35),inset 0 0 18px rgba(57,255,136,.2);}
+  #qteRing .k{font-size:22px;letter-spacing:2px;color:var(--bone);}
+  #qteShrink{position:absolute;inset:-3px;border-radius:50%;border:3px solid rgba(255,51,68,.9);}
+  #qteLabel{font-size:12px;letter-spacing:3px;color:var(--bone);text-shadow:0 0 10px #000;}
+  #qteBar{width:180px;height:8px;border:1px solid var(--grn-dim);margin:10px auto 0;display:none;}
+  #qteFill{height:100%;width:0;background:var(--grn);}
 
   /* screens */
-  .screen{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;
-    align-items:center;justify-content:center;text-align:center;pointer-events:auto;padding:24px;}
-  .screen h1{font-size:clamp(20px,5vw,38px);letter-spacing:6px;text-shadow:0 0 18px var(--grn);}
-  .screen h2{font-size:clamp(12px,2.6vw,16px);letter-spacing:4px;opacity:.7;margin-top:10px;}
-  .btn{margin-top:34px;padding:14px 34px;border:1px solid var(--grn);background:rgba(0,30,12,.5);
-    color:var(--grn);font-family:inherit;font-size:14px;letter-spacing:3px;cursor:pointer;
-    text-shadow:0 0 8px var(--grn);text-decoration:none;display:inline-block;}
-  .btn:hover{background:rgba(57,255,136,.15);}
-  .btn.amber{border-color:#ffd23f;color:#ffd23f;text-shadow:0 0 8px #ffd23f;}
-  #startHint{margin-top:24px;font-size:11px;letter-spacing:2px;opacity:.5;line-height:1.8;}
-
-  /* intro */
-  #intro{background:#000;display:none;}
-  #introText{font-size:clamp(15px,3.4vw,22px);letter-spacing:2px;line-height:2;
-    max-width:640px;min-height:4em;opacity:0;transition:opacity 1.2s;color:#cfeede;
-    text-shadow:0 0 10px rgba(57,255,136,.5);}
-  #skipBtn{position:absolute;right:18px;bottom:18px;padding:8px 16px;border:1px solid var(--grn-dim);
-    background:transparent;color:var(--grn);font-family:inherit;font-size:11px;letter-spacing:2px;
-    cursor:pointer;opacity:0;transition:opacity .6s;}
-
-  /* end card */
-  #endCard{display:none;background:radial-gradient(ellipse at center,#03140a 0%,#000 75%);}
-  #endTitle{font-size:clamp(16px,4vw,26px);letter-spacing:5px;margin-bottom:26px;
-    text-shadow:0 0 14px var(--grn);}
-  #cover{width:min(200px,44vw);aspect-ratio:2/3;border:1px solid var(--grn);
-    background:linear-gradient(160deg,#04170c 0%,#010804 60%,#04170c 100%);
-    box-shadow:0 0 30px rgba(57,255,136,.35), inset 0 0 40px rgba(57,255,136,.12);
-    position:relative;overflow:hidden;margin:0 auto;}
+  .screen{position:fixed;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;background:rgba(1,5,3,.92);padding:30px 20px;overflow-y:auto;}
+  .screen h1{font-size:clamp(30px,7vw,52px);letter-spacing:14px;text-shadow:0 0 24px rgba(57,255,136,.6);}
+  .screen h2{font-size:clamp(11px,2.2vw,14px);letter-spacing:6px;color:#9fd8b4;margin-top:14px;font-weight:normal;}
+  .screen .mini{font-size:10px;letter-spacing:3px;color:rgba(57,255,136,.55);margin-top:10px;}
+  .btn{font:inherit;margin-top:26px;background:transparent;border:1px solid var(--grn);color:var(--grn);
+    padding:14px 34px;font-size:14px;letter-spacing:4px;cursor:pointer;text-transform:uppercase;
+    text-decoration:none;display:inline-block;transition:all .15s;}
+  .btn:hover{background:var(--grn);color:#02150a;box-shadow:0 0 24px rgba(57,255,136,.5);}
+  .btn.amber{border-color:var(--amber);color:var(--amber);}
+  .btn.amber:hover{background:var(--amber);color:#150a02;box-shadow:0 0 24px rgba(255,184,92,.5);}
+  #deathTitle{color:var(--red);letter-spacing:10px;text-shadow:0 0 24px rgba(255,51,68,.6);}
+  #choiceSummary{margin-top:22px;font-size:12px;letter-spacing:1px;color:#cfe2d4;text-align:left;
+    max-width:520px;line-height:2;}
+  #choiceSummary b{color:var(--grn);font-weight:normal;}
+  #tracker{margin-top:16px;font-size:11px;letter-spacing:3px;color:var(--amber);}
+  #cover{width:min(170px,40vw);aspect-ratio:2/3;border:1px solid var(--grn);margin-top:20px;
+    position:relative;box-shadow:0 0 30px rgba(57,255,136,.25);}
   #coverImg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none;}
-  #coverFallback{position:absolute;inset:0;display:flex;flex-direction:column;
-    justify-content:space-between;padding:16px 12px;}
-  #cover .cTop{font-size:9px;letter-spacing:3px;opacity:.7;}
-  #cover .cTitle{font-size:clamp(13px,3vw,17px);letter-spacing:2px;line-height:1.6;
-    text-shadow:0 0 10px var(--grn);}
-  #cover .cGlyph{font-size:34px;opacity:.9;text-shadow:0 0 16px var(--grn);}
-  #cover .cBottom{font-size:9px;letter-spacing:3px;opacity:.7;}
-  #endSub{margin-top:22px;font-size:12px;letter-spacing:2px;opacity:.75;max-width:480px;line-height:1.8;}
-  #endBtns{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
+  #coverFallback{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;
+    padding:12px 8px;font-size:10px;letter-spacing:2px;}
+  #fade{position:fixed;inset:0;background:#000;z-index:70;opacity:1;pointer-events:none;transition:opacity 1.2s;}
+  #fade.white{background:#fff;}
 </style>
 </head>
 <body>
 
-<div id="hud">
-  <div id="crosshair"></div>
-  <div id="healthWrap">
-    <div id="healthLabel">VITALS</div>
-    <div id="healthBar"><div id="healthFill"></div></div>
-  </div>
-  <div id="objective"></div>
-  <div id="radio"></div>
-  <div id="prompt"></div>
-  <div id="plantWrap">
-    <div id="plantLabel">ARMING CHARGE</div>
-    <div id="plantBar"><div id="plantFill"></div></div>
-  </div>
-  <div id="dmgVignette"></div>
+<div class="bar" id="barTop"></div>
+<div class="bar" id="barBot"></div>
+
+<div id="dlg"><div id="speaker"></div><div id="subtitle"></div></div>
+<div id="tapHint">TAP / SPACE</div>
+
+<div id="choiceWrap">
+  <div id="choiceTimer"><div id="choiceFill"></div></div>
+  <div id="choiceRow"></div>
 </div>
 
-<div id="stickZone"></div>
-<div id="lookZone"></div>
-<div id="stickBase"><div id="stickNub"></div></div>
-<button id="fireBtn">FIRE</button>
-<button id="plantBtn">PLANT</button>
+<div id="toast"></div>
 
-<div id="overlays">
-  <div id="redFade"></div>
-  <div id="fade"></div>
+<div id="qte">
+  <div id="qteRing"><div id="qteShrink"></div><span class="k" id="qteKey">SPACE</span></div>
+  <div id="qteLabel"></div>
+  <div id="qteBar"><div id="qteFill"></div></div>
+</div>
 
-  <div class="screen" id="startScreen">
-    <h1>DYSTOPIA</h1>
-    <h2>A LIFE AFTER THE MACHINES EPISODE</h2>
-    <button class="btn" id="startBtn">TAP TO BEGIN</button>
-    <div id="startHint"></div>
-  </div>
+<div class="screen" id="startScreen" style="display:flex;">
+  <h1>DYSTOPIA</h1>
+  <h2>EPISODE ONE &mdash; THE WAKING</h2>
+  <div class="mini">A LIFE AFTER THE MACHINES STORY &middot; BY MATTHEW CULWELL</div>
+  <div class="mini" id="loadState">LOADING&hellip;</div>
+  <button class="btn" id="startBtn" style="display:none;">TAP TO BEGIN</button>
+  <div class="mini" id="ctlHint"></div>
+  <div class="mini" id="titleTracker"></div>
+</div>
 
-  <div class="screen" id="intro">
-    <div id="introText"></div>
-    <button id="skipBtn">SKIP &#9656;</button>
-  </div>
+<div class="screen" id="deathScreen">
+  <h1 id="deathTitle">COLLECTED</h1>
+  <h2 id="deathSub">THE LEDGER HAS YOUR NAME.</h2>
+  <button class="btn" id="rewindBtn">&#8630; REWIND</button>
+</div>
 
-  <div class="screen" id="endCard">
-    <div id="endTitle">MARCUS'S STORY CONTINUES.</div>
-    <div id="cover">
-      <div id="coverFallback">
-        <div class="cTop">A NOVEL</div>
-        <div class="cTitle">LIFE<br>AFTER THE<br>MACHINES</div>
-        <div class="cGlyph">&#10683;</div>
-        <div class="cBottom">BOOK ONE</div>
-      </div>
-      <img id="coverImg" alt="Dystopia: Life After The Machines — Book One cover"
-           onload="if(this.naturalWidth<50){this.remove()}else{this.style.display='block';document.getElementById('coverFallback').style.display='none'}"
-           onerror="this.remove()">
+<div class="screen" id="endCard">
+  <h2 id="endingName"></h2>
+  <h1 style="font-size:clamp(18px,4vw,30px);letter-spacing:6px;margin-top:10px;">THIS IS WHERE<br>BOOK ONE BEGINS</h1>
+  <div id="choiceSummary"></div>
+  <div id="tracker"></div>
+  <div id="cover">
+    <div id="coverFallback">
+      <div>A NOVEL</div>
+      <div style="font-size:13px;line-height:1.6;">LIFE<br>AFTER THE<br>MACHINES</div>
+      <div>BOOK ONE</div>
     </div>
-    <div id="endSub">The hive was only the beginning. Find out how Marcus's war really started &mdash; and where it goes from here.</div>
-    <div id="endBtns" style="margin-top:26px;">
-      <a class="btn amber" id="book1Btn" target="_blank" rel="noopener">READ BOOK 1</a>
-      <button class="btn" id="replayBtn">REPLAY</button>
-    </div>
+    <img id="coverImg" alt="Life After The Machines — Book One cover"
+      onload="if(this.naturalWidth<50){this.remove()}else{this.style.display='block';document.getElementById('coverFallback').style.display='none'}"
+      onerror="this.remove()">
+  </div>
+  <div>
+    <a class="btn amber" id="bookBtn" target="_blank" rel="noopener">READ BOOK 1</a>
+    <button class="btn" id="replayBtn">REPLAY EPISODE</button>
   </div>
 </div>
+
+<div id="fade"></div>
 
 <script>
-// Known caching fix: unregister any service workers left by previous deploys.
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations()
-    .then(rs => rs.forEach(r => r.unregister()))
-    .catch(()=>{});
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
 }
 </script>
 
@@ -197,2332 +169,1050 @@ if ('serviceWorker' in navigator) {
 
 <script type="module">
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /* ============================================================
-   CONFIG — edit these without touching game code.
+   CONFIG — edit without touching the engine.
    ============================================================ */
 const CONFIG = {
   BOOK1_URL: 'https://www.amazon.com/dp/B0H2SGHFNN',
-  // Real cover art, self-hosted alongside the game. If it ever fails to
-  // load, the end card falls back to the stylized CSS cover.
   COVER_URL: 'cover.jpg',
-  // Marcus's resistance team, from Book One.
-  NAMES: { lead:'KARA', ops:'THOMAS', medic:'ELENA' },
+  CHOICE_SECONDS: 9,          // default timer on choices
 };
 
-const N = CONFIG.NAMES;
-
 /* ============================================================
-   CHAPTERS — each chapter is pure data; the engine below builds
-   whichever one the URL hash selects (default ch1, '#ch2' etc.)
-   ============================================================ */
-const CHAPTERS = {
-  ep1: {
-    id: 'ep1',
-    subtitle: 'EPISODE ONE — THE WAKING',
-    nextHash: null,
-    startArmed: false,
-    cinematic: true,          // the book's opening scene plays first
-    setPiece: 'ledger',       // the depot screen: the list of taken names
-    palette: {
-      // surface ruins at dusk: ash concrete, phosphor-green machine light
-      wallA:'#514f47', wallB:'#42413c', wallC:'#363531',
-      floor:'#3d3b34', ceil:'#2b2a26', crate:'#484639',
-      crateMark:'rgba(57,255,136,.14)',
-      strip:0x39ff88, fog:0x060504, bg:0x030302,
-      hemi:0x5c5747, lamp:0xffe4bd, dust:0xb0a488, coreLight:0x39ff88,
-    },
-    rooms: [
-      { x1:-3, x2:3, z1:-10,  z2:2    },   // the gravel lot where he wakes
-      { x1:-5, x2:5, z1:-42,  z2:-10  },   // ruined street
-      { x1:-4, x2:4, z1:-76,  z2:-42  },   // hardware district
-      { x1:-3, x2:3, z1:-112, z2:-76  },   // the rail bridge
-      { x1:-9, x2:9, z1:-136, z2:-112 },   // the depot
-    ],
-    pillars: [
-      [-3.4,-20,.5],[3.4,-27,.5],[-3.4,-35,.5],
-      [-2.6,-50,.45],[2.6,-56,.45],[-2.6,-64,.45],[2.6,-70,.45],
-      [-1.9,-84,.35],[1.9,-91,.35],[-1.9,-99,.35],[1.9,-106,.35],
-      [-6,-118,.55],[6,-118,.55],[-6,-130,.55],[6,-130,.55],
-    ],
-    crates: [
-      [-2.0,-14,.8,.35],[3.6,-24,.7,1.0],[-3.8,-33,.9,.5],
-      [2.9,-48,.75,.2],[-2.7,-58,.85,.6],[3.1,-68,.8,.4],
-      [-1.7,-88,.7,.3],[1.7,-98,.75,.6],
-      [-7.4,-116,1.0,.3],[7.3,-132,.85,.5],[0,-124,.9,.8],
-    ],
-    cylinders: [],
-    drones: [
-      ['crawler',  0, -18, 1], ['crawler', -3, -26, 1], ['crawler',  3, -33, 1], ['crawler', 0, -39, 1],
-      ['crawler', -2, -48, 2], ['crawler',  2, -55, 2], ['sentry', -3, -60, 2], ['crawler', 0, -66, 2], ['sentry', 3, -72, 2],
-      ['crawler',  0, -82, 3], ['sentry', -2, -88, 3], ['crawler', 0, -95, 3], ['sentry', 2, -101, 3], ['warden', 0, -108, 3],
-      ['sentry', -5, -120, 4], ['sentry', 5, -120, 4],
-    ],
-    waveSpawns: [[-7,-114],[7,-114],[-7,-134],[7,-134]],
-    waveTotal: 12,
-    zones: [ {z:-26,key:'seg1_mid'}, {z:-58,key:'seg2_mid'}, {z:-94,key:'seg3_mid'} ],
-    objectivePos: [0, 1.4, -128],
-    obj: {
-      find:"FIND THE DEAD MAN'S RIFLE", advance:'HEAD FOR THE RIVER',
-      segs:['CROSS THE RUINED STREET','CLEAR THE HARDWARE DISTRICT','CROSS THE RAIL BRIDGE'],
-      final:'PULL THE LEDGER AT THE DEPOT SCREEN', done:'GET OUT OF THE NET',
-      armLabel:'COPYING LEDGER', btn:'PULL',
-      promptKey:'HOLD [E] TO PULL THE LEDGER', promptTouch:'HOLD PULL TO COPY THE LEDGER',
-    },
-    introLines: [
-      "...",
-      "Gravel. Cold. The taste of copper.",
-      "The sky was the wrong color.",
-      "Somewhere past the overpass: a sound like counting.",
-      "A dead man's radio crackled. \"—can hear you breathing. My name is Reyes. Get up.\"",
-    ],
-    radio: {
-      pickup:      [{who:'REYES', text:"There's a rifle by the man who didn't make it. He'd want it used."},
-                    {who:'REYES', text:"Crawlers between you and the river. Light them up and keep moving."}],
-      seg1_mid:    [{who:'REYES', text:"I'm across the river — the old rail depot. Real walls. Come find me."}],
-      seg1_clear:  [{who:'REYES', text:"Street's clear. You're better at this than you sound."}],
-      seg2_enter:  [{who:'REYES', text:"Hardware district. They collect here. Don't be collectible."}],
-      seg2_mid:    [{who:'REYES', text:"Sentries ahead — the red flare is the wind-up. Move on the flare."}],
-      seg2_clear:  [{who:'REYES', text:"Clear. The bridge is next. I'll talk you across."}],
-      seg3_enter:  [{who:'REYES', text:"Rail bridge. Eyes forward. Don't look at the water — it's in on something."}],
-      seg3_mid:    [{who:'REYES', text:"Heavy frame on the span — a warden. Use the trusses, Marcus."}],
-      seg3_clear:  [{who:'REYES', text:"You're across. Marcus... the depot gate is open. It shouldn't be open."}],
-      core_enter:  [{who:'REYES', text:"Cots. Cartons. Lights. No people. Get to that screen — the list is everyone."}],
-      alarm:       [{who:'LEDGER', text:"SUBJECT M-1. UNREGISTERED. REMAIN WHERE YOU ARE."},
-                    {who:'REYES', text:"It's a net! Copy the ledger and RUN!"}],
-      planted:     [{who:'REYES', text:"You have the names. Every name they took. Now GET OUT!"}],
-      extract:     [{who:'REYES', text:"I see you — south gate! I've got you, Marcus. I've got you."}],
-    },
-    endTitle: "THIS IS WHERE BOOK ONE BEGINS.",
-    endSub: "The machines didn't destroy us. They organized us. Marcus's story — the hive, the names, the war — begins in Dystopia: Life After The Machines, Book One.",
-  },
-};
-
-const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
-const RADIO = CH.radio;
-const INTRO_LINES = CH.introLines;
-
-/* ============================================================
-   DOM refs & tiny helpers
-   ============================================================ */
-const $ = id => document.getElementById(id);
-const el = {
-  fade:$('fade'), redFade:$('redFade'), start:$('startScreen'), startBtn:$('startBtn'),
-  startHint:$('startHint'), intro:$('intro'), introText:$('introText'), skipBtn:$('skipBtn'),
-  end:$('endCard'), book1:$('book1Btn'), replay:$('replayBtn'),
-  crosshair:$('crosshair'), healthWrap:$('healthWrap'), healthFill:$('healthFill'),
-  objective:$('objective'), radio:$('radio'), prompt:$('prompt'),
-  plantWrap:$('plantWrap'), plantFill:$('plantFill'),
-  dmg:$('dmgVignette'), stickZone:$('stickZone'), lookZone:$('lookZone'),
-  stickBase:$('stickBase'), stickNub:$('stickNub'), fireBtn:$('fireBtn'), plantBtn:$('plantBtn'),
-};
-el.book1.href = CONFIG.BOOK1_URL;
-document.getElementById('coverImg').src = CONFIG.COVER_URL;
-document.querySelector('#startScreen h2').textContent = CH.subtitle;
-document.getElementById('plantLabel').textContent = CH.obj.armLabel;
-document.getElementById('plantBtn').textContent = CH.obj.btn;
-document.getElementById('endTitle').textContent = CH.endTitle;
-document.getElementById('endSub').textContent = CH.endSub;
-{
-  Object.values(CHAPTERS).forEach(c => {
-    if (c.id === CH.id) return;
-    const sw = document.createElement('button');
-    sw.className = 'btn';
-    sw.style.cssText = 'margin-top:14px;font-size:11px;padding:10px 18px;opacity:.85';
-    sw.textContent = '\u25B8 ' + c.subtitle;
-    sw.onclick = () => { location.hash = '#' + c.id; location.reload(); };
-    document.getElementById('startScreen').appendChild(sw);
-  });
-  if (CH.nextHash){
-    const nx = document.createElement('button');
-    nx.className = 'btn';
-    nx.textContent = 'NEXT CHAPTER \u25B8';
-    nx.onclick = () => { location.hash = CH.nextHash; location.reload(); };
-    document.getElementById('endBtns').appendChild(nx);
-  }
-}
-
-const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-el.startHint.innerHTML = IS_TOUCH
-  ? 'LEFT SIDE: MOVE &nbsp;&bull;&nbsp; RIGHT SIDE: LOOK &nbsp;&bull;&nbsp; FIRE BUTTON: SHOOT'
-  : 'WASD: MOVE &nbsp;&bull;&nbsp; MOUSE: LOOK &nbsp;&bull;&nbsp; CLICK: FIRE &nbsp;&bull;&nbsp; E: INTERACT &nbsp;&bull;&nbsp; M: MUSIC';
-
-/* ============================================================
-   Audio — all synthesized, zero assets
-   ============================================================ */
-const AudioSys = (() => {
-  let ctx = null, master = null, humOsc = null, humGain = null, alarmTimer = null, heartTimer = null;
-  function init(){
-    if (ctx) return;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
-  }
-  function now(){ return ctx.currentTime; }
-  function env(g, t0, a, peak, d){
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.linearRampToValueAtTime(peak, t0 + a);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + a + d);
-  }
-  function tone(type, f0, f1, dur, peak, t0){
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = type; o.frequency.setValueAtTime(f0, t0);
-    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(f1,1), t0 + dur);
-    env(g, t0, 0.005, peak, dur);
-    o.connect(g); g.connect(master);
-    o.start(t0); o.stop(t0 + dur + 0.05);
-  }
-  function noise(dur, peak, t0, freq, q){
-    const len = Math.ceil(ctx.sampleRate * dur);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<len;i++) d[i] = Math.random()*2-1;
-    const src = ctx.createBufferSource(); src.buffer = buf;
-    const flt = ctx.createBiquadFilter(); flt.type='bandpass'; flt.frequency.value=freq; flt.Q.value=q;
-    const g = ctx.createGain(); env(g, t0, 0.003, peak, dur);
-    src.connect(flt); flt.connect(g); g.connect(master);
-    src.start(t0); src.stop(t0 + dur + 0.05);
-  }
-  return {
-    init,
-    getCtx(){ init(); return ctx; },
-    resume(){ if (ctx && ctx.state === 'suspended') ctx.resume(); },
-    heartbeatStart(){
-      init(); if (heartTimer) return;
-      const thump = () => {
-        const t = now();
-        tone('sine', 62, 38, 0.16, 0.9, t);
-        tone('sine', 55, 34, 0.13, 0.6, t + 0.28);
-      };
-      thump(); heartTimer = setInterval(thump, 1050);
-    },
-    heartbeatStop(){ if (heartTimer){ clearInterval(heartTimer); heartTimer = null; } },
-    humStart(){
-      init(); if (humOsc) return;
-      humOsc = ctx.createOscillator(); humOsc.type='sawtooth'; humOsc.frequency.value=42;
-      const flt = ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=140;
-      humGain = ctx.createGain(); humGain.gain.value = 0.05;
-      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.13;
-      const lfoG = ctx.createGain(); lfoG.gain.value = 20;
-      lfo.connect(lfoG); lfoG.connect(flt.frequency);
-      humOsc.connect(flt); flt.connect(humGain); humGain.connect(master);
-      humOsc.start(); lfo.start();
-    },
-    shot(){ if(!ctx)return; const t=now();
-      tone('square', 880, 140, 0.09, 0.35, t); noise(0.07, 0.25, t, 2500, 0.8); },
-    hitConfirm(){ if(!ctx)return; tone('square', 1600, 1600, 0.04, 0.18, now()); },
-    droneDie(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 300, 40, 0.35, 0.4, t); noise(0.3, 0.3, t, 700, 0.6); },
-    alert(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 220, 660, 0.22, 0.3, t); },
-    sentryCharge(){ if(!ctx)return; const t=now();
-      tone('sine', 300, 1200, 0.6, 0.22, t); },
-    sentryFire(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 700, 120, 0.18, 0.35, t); noise(0.12, 0.2, t, 1800, 1); },
-    hurt(){ if(!ctx)return; const t=now();
-      noise(0.18, 0.5, t, 300, 0.5); tone('sine', 120, 60, 0.2, 0.5, t); },
-    windStart(){
-      init(); if (this._wind) return;
-      const len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const d = buf.getChannelData(0);
-      for (let i=0;i<len;i++) d[i] = Math.random()*2-1;
-      const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
-      const flt = ctx.createBiquadFilter(); flt.type='lowpass'; flt.frequency.value=460;
-      const g = ctx.createGain(); g.gain.value = .05;
-      const lfo = ctx.createOscillator(); lfo.frequency.value = .17;
-      const lg = ctx.createGain(); lg.gain.value = .02;
-      lfo.connect(lg); lg.connect(g.gain);
-      src.connect(flt); flt.connect(g); g.connect(master);
-      src.start(); lfo.start();
-      this._wind = { src, lfo, g };
-    },
-    windStop(){
-      if (!this._wind) return;
-      this._wind.g.gain.setTargetAtTime(0.0001, now(), .4);
-      const w = this._wind; this._wind = null;
-      setTimeout(()=>{ try{ w.src.stop(); w.lfo.stop(); }catch(e){} }, 1500);
-    },
-    radioBlip(){ if(!ctx)return; const t=now();
-      tone('square', 1046, 1046, 0.05, 0.12, t); tone('square', 1568, 1568, 0.05, 0.12, t+0.08); },
-    checkpoint(){ if(!ctx)return; const t=now();
-      tone('sine', 523, 523, 0.1, 0.25, t); tone('sine', 784, 784, 0.16, 0.25, t+0.11); },
-    doorOpen(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 90, 55, 0.9, 0.25, t); noise(0.8, 0.12, t, 400, 0.4); },
-    plantTick(){ if(!ctx)return; tone('square', 988, 988, 0.03, 0.12, now()); },
-    planted(){ if(!ctx)return; const t=now();
-      [523,659,784,1046].forEach((f,i)=>tone('sine',f,f,0.14,0.25,t+i*0.09)); },
-    alarmStart(){
-      init(); if (alarmTimer) return;
-      let hi = false;
-      alarmTimer = setInterval(()=>{ tone('square', hi?540:404, hi?540:404, 0.28, 0.1, now()); hi=!hi; }, 460);
-    },
-    alarmStop(){ if (alarmTimer){ clearInterval(alarmTimer); alarmTimer = null; } },
-    death(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 200, 30, 1.2, 0.4, t); noise(1.0, 0.3, t, 200, 0.4); },
-    extract(){ if(!ctx)return; const t=now();
-      tone('sine', 220, 880, 1.6, 0.2, t); tone('sine', 330, 1320, 1.6, 0.12, t); },
-  };
-})();
-
-/* ============================================================
-   Generative music — a dark ambient score composed live by the
-   game, zero audio assets. Three intensities crossfade with the
-   situation; each chapter plays in its own key.
-   ============================================================ */
-const MusicSys = (() => {
-  let ctx=null, out=null, padGain=null, padFilter=null, arpGain=null, percGain=null,
-      delay=null, timer=null, step=0, mode='calm', muted=false, running=false;
-  const ROOT = ({ ep1:65.41, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41; // C2 for the surface
-  const SCALE = [0,3,5,7,10,12,15,19];            // minor pentatonic, two octaves
-  const MODES = {
-    calm:   { pad:.05,  arp:.05, perc:0,    stepDur:.42, density:.20 },
-    combat: { pad:.06,  arp:.07, perc:.05,  stepDur:.30, density:.45 },
-    alarm:  { pad:.075, arp:.09, perc:.09,  stepDur:.22, density:.70 },
-  };
-  let stepDur=.42, density=.2;
-  function applyMode(m, hard){
-    mode = m;
-    const p = MODES[m], t = ctx.currentTime, k = hard ? .01 : 1.1;
-    padGain.gain.setTargetAtTime(p.pad, t, k);
-    arpGain.gain.setTargetAtTime(p.arp, t, k);
-    percGain.gain.setTargetAtTime(p.perc, t, k);
-    stepDur = p.stepDur; density = p.density;
-  }
-  function start(){
-    if (running) return;
-    running = true;
-    ctx = AudioSys.getCtx();
-    out = ctx.createGain(); out.gain.value = muted ? 0 : 1; out.connect(ctx.destination);
-    // pad: two detuned saws under a slowly breathing lowpass
-    padGain = ctx.createGain(); padGain.gain.value = 0;
-    padFilter = ctx.createBiquadFilter();
-    padFilter.type = 'lowpass'; padFilter.frequency.value = 380; padFilter.Q.value = .9;
-    [0.994, 1.006].forEach(dt => {
-      const o = ctx.createOscillator();
-      o.type = 'sawtooth'; o.frequency.value = ROOT * dt;
-      o.connect(padFilter); o.start();
-    });
-    const lfo = ctx.createOscillator(); lfo.frequency.value = .05;
-    const lg = ctx.createGain(); lg.gain.value = 170;
-    lfo.connect(lg); lg.connect(padFilter.frequency); lfo.start();
-    padFilter.connect(padGain); padGain.connect(out);
-    // echo bus for the motif plucks
-    delay = ctx.createDelay(1); delay.delayTime.value = .34;
-    const fb = ctx.createGain(); fb.gain.value = .42;
-    delay.connect(fb); fb.connect(delay);
-    arpGain = ctx.createGain(); arpGain.gain.value = 0;
-    delay.connect(arpGain); arpGain.connect(out);
-    percGain = ctx.createGain(); percGain.gain.value = 0; percGain.connect(out);
-    applyMode('calm', true);
-    tick();
-  }
-  function pluck(t){
-    const f = ROOT * 2 * Math.pow(2, SCALE[Math.floor(Math.random()*SCALE.length)] / 12);
-    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(.0001, t);
-    g.gain.linearRampToValueAtTime(.5, t + .012);
-    g.gain.exponentialRampToValueAtTime(.0001, t + .55);
-    o.connect(g); g.connect(delay); g.connect(arpGain);
-    o.start(t); o.stop(t + .6);
-  }
-  function thump(t, f0, f1, dur, peak){
-    const o = ctx.createOscillator(); o.type = 'sine';
-    o.frequency.setValueAtTime(f0, t);
-    o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(.0001, t);
-    g.gain.linearRampToValueAtTime(peak, t + .008);
-    g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    o.connect(g); g.connect(percGain);
-    o.start(t); o.stop(t + dur + .05);
-  }
-  function tickNoise(t){
-    const len = Math.ceil(ctx.sampleRate * .05);
-    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<len;i++) d[i] = Math.random()*2 - 1;
-    const src = ctx.createBufferSource(); src.buffer = buf;
-    const flt = ctx.createBiquadFilter();
-    flt.type = 'highpass'; flt.frequency.value = 4200;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(.5, t);
-    g.gain.exponentialRampToValueAtTime(.0001, t + .05);
-    src.connect(flt); flt.connect(g); g.connect(percGain);
-    src.start(t); src.stop(t + .08);
-  }
-  function tick(){
-    if (!running) return;
-    const t = ctx.currentTime;
-    if (Math.random() < density || step % 8 === 0) pluck(t);
-    if (step % 8 === 0){                       // sub-bass pulse each bar
-      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = ROOT / 2;
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(.0001, t);
-      g.gain.linearRampToValueAtTime(.09, t + .3);
-      g.gain.exponentialRampToValueAtTime(.0001, t + 1.6);
-      o.connect(g); g.connect(out);
-      o.start(t); o.stop(t + 1.8);
-    }
-    if (mode !== 'calm'){
-      if (step % 2 === 0) tickNoise(t);
-      if (step % 4 === 0) thump(t, 92, 40, .17, .8);
-      if (mode === 'alarm' && step % 8 === 4) thump(t, 140, 60, .2, .6);
-    }
-    step++;
-    timer = setTimeout(tick, stepDur * 1000);
-  }
-  return {
-    start,
-    setMode(m){ if (running && m !== mode) applyMode(m); },
-    stop(){
-      if (!running) return;
-      out.gain.setTargetAtTime(0, ctx.currentTime, .6);
-      setTimeout(() => { running = false; clearTimeout(timer); }, 2500);
-    },
-    toggleMute(){
-      muted = !muted;
-      if (out) out.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, .05);
-    },
-  };
-})();
-
-/* ============================================================
-   Three.js scene
+   Renderer / core
    ============================================================ */
 const renderer = new THREE.WebGLRenderer({ antialias:false, powerPreference:'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
-document.body.prepend(renderer.domElement);
+document.body.appendChild(renderer.domElement);
 
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(CH.palette.bg);
-scene.fog = new THREE.FogExp2(CH.palette.fog, 0.042);
+const camera = new THREE.PerspectiveCamera(58, innerWidth/innerHeight, .1, 600);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
 
-const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 120);
-// Yaw/pitch rig: yawObj carries position + yaw, pitchObj carries pitch + camera.
-const yawObj = new THREE.Object3D();
-const pitchObj = new THREE.Object3D();
-yawObj.add(pitchObj); pitchObj.add(camera); scene.add(yawObj);
-
-scene.add(new THREE.HemisphereLight(CH.palette.hemi, 0x11150f, 2.1));
-const dirLight = new THREE.DirectionalLight(0xd8ffe8, 0.9);
-dirLight.position.set(3, 10, 4);
-scene.add(dirLight);
-// player headlamp — carries most of the close-range lighting
-const lamp = new THREE.PointLight(CH.palette.lamp, 26, 26, 1.55);
-lamp.position.set(0, 0.1, 0);
-yawObj.add(lamp);
-// muzzle flash (intensity pulsed on fire, decays in updateFX)
-const muzzleLight = new THREE.PointLight(0xaaffcc, 0, 10, 2);
-muzzleLight.position.set(.24, -.2, -.9);
-camera.add(muzzleLight);
-// hive core glow
-const coreLight = new THREE.PointLight(CH.palette.coreLight, 34, 30, 1.7);
-coreLight.position.set(CH.objectivePos[0], CH.objectivePos[1] + 1, CH.objectivePos[2]);
-scene.add(coreLight);
+const $ = id => document.getElementById(id);
+const el = {
+  speaker:$('speaker'), subtitle:$('subtitle'), tapHint:$('tapHint'),
+  choiceWrap:$('choiceWrap'), choiceRow:$('choiceRow'), choiceFill:$('choiceFill'),
+  toast:$('toast'), qte:$('qte'), qteLabel:$('qteLabel'), qteShrink:$('qteShrink'),
+  qteKey:$('qteKey'), qteBar:$('qteBar'), qteFill:$('qteFill'),
+  start:$('startScreen'), startBtn:$('startBtn'), loadState:$('loadState'), ctlHint:$('ctlHint'),
+  death:$('deathScreen'), deathSub:$('deathSub'), rewindBtn:$('rewindBtn'),
+  end:$('endCard'), endingName:$('endingName'), choiceSummary:$('choiceSummary'),
+  tracker:$('tracker'), bookBtn:$('bookBtn'), replayBtn:$('replayBtn'),
+  fade:$('fade'), titleTracker:$('titleTracker'),
+};
+el.bookBtn.href = CONFIG.BOOK1_URL;
+$('coverImg').src = CONFIG.COVER_URL;
+const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+el.ctlHint.textContent = IS_TOUCH ? 'TAP TO ADVANCE · TAP CHOICES BEFORE THE TIMER RUNS OUT'
+                                  : 'SPACE/CLICK ADVANCES · 1-4 OR CLICK CHOOSES · CHOOSE BEFORE THE TIMER RUNS OUT';
 
 /* ============================================================
-   Cinematic post-processing: bloom + vignette + film grain.
-   Loaded dynamically — if the addons CDN fails or the device
-   is too slow (fps watchdog), the game renders plain instead.
+   Audio — tiny synthesized pad + stings (WebAudio)
    ============================================================ */
-const postFX = { enabled:false };
-(async () => {
-  try {
-    const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-    const { RenderPass }     = await import('three/addons/postprocessing/RenderPass.js');
-    const { UnrealBloomPass }= await import('three/addons/postprocessing/UnrealBloomPass.js');
-    const { ShaderPass }     = await import('three/addons/postprocessing/ShaderPass.js');
-    const { OutputPass }     = await import('three/addons/postprocessing/OutputPass.js');
-    const composer = new EffectComposer(renderer);
-    const rp = new RenderPass(scene, camera);
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight), .55, .35, .6);
-    const grade = new ShaderPass({
-      uniforms: { tDiffuse:{value:null}, uTime:{value:0} },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-      fragmentShader: `
-        uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv;
-        float rnd(vec2 c){ return fract(sin(dot(c, vec2(12.9898,78.233)))*43758.5453); }
-        void main(){
-          vec3 col = texture2D(tDiffuse, vUv).rgb;
-          float d = distance(vUv, vec2(.5));
-          col *= 1.0 - smoothstep(.42, .95, d) * .42;                          // vignette
-          col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .032;      // film grain
-          col = mix(vec3(dot(col, vec3(.299,.587,.114))), col, 1.07);          // saturation
-          gl_FragColor = vec4(col, 1.);
-        }`,
+const Audio2 = (() => {
+  let ac=null, padGain=null, hbTimer=null;
+  function init(){
+    if (ac) return;
+    try { ac = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){ return; }
+    padGain = ac.createGain(); padGain.gain.value = .05; padGain.connect(ac.destination);
+    [65.41, 98.0, 130.8].forEach((f,i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sawtooth'; o.frequency.value = f; g.gain.value = i? .12 : .3;
+      const lp = ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=220;
+      o.connect(lp); lp.connect(g); g.connect(padGain); o.start();
     });
-    composer.addPass(rp); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(grade);
-    postFX.composer = composer; postFX.renderPass = rp; postFX.grade = grade; postFX.bloom = bloom;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-    composer.setSize(window.innerWidth, window.innerHeight);
-    postFX.enabled = true;
-  } catch (e) { /* addons unavailable — plain rendering */ }
+  }
+  function blip(f, d=.07, v=.05, type='square'){
+    if (!ac) return;
+    const o=ac.createOscillator(), g=ac.createGain();
+    o.type=type; o.frequency.value=f; g.gain.value=v;
+    o.connect(g); g.connect(ac.destination);
+    o.start(); g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime+d); o.stop(ac.currentTime+d);
+  }
+  function heartbeat(on){
+    clearInterval(hbTimer); hbTimer=null;
+    if (on && ac) hbTimer = setInterval(()=>{ blip(52,.1,.09,'sine'); setTimeout(()=>blip(48,.09,.07,'sine'),180); }, 900);
+  }
+  return { init, blip, heartbeat,
+    sting(){ blip(392,.25,.06,'triangle'); setTimeout(()=>blip(311,.35,.06,'triangle'),140); },
+    danger(){ blip(110,.3,.08,'sawtooth'); },
+    resume(){ if (ac && ac.state==='suspended') ac.resume(); } };
 })();
+
 /* ============================================================
-   GLB hero models (author-generated). Loaded async; the code-built
-   models remain as fallbacks if a file or the loader fails.
+   Shared builders — procedural, in the engine's style
    ============================================================ */
+const texLoader = new THREE.TextureLoader();
+function canvasTex(draw, size=256){
+  const c=document.createElement('canvas'); c.width=c.height=size;
+  draw(c.getContext('2d'), size);
+  const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+const unitBox = new THREE.BoxGeometry(1,1,1);
+function box(scene, color, sx,sy,sz, x,y,z, opts={}){
+  const m = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color, roughness:opts.rough??.9, metalness:opts.metal??.1, emissive:opts.emissive??0 }));
+  m.scale.set(sx,sy,sz); m.position.set(x,y,z);
+  if (opts.ry) m.rotation.y = opts.ry;
+  if (opts.rx) m.rotation.x = opts.rx;
+  if (opts.rz) m.rotation.z = opts.rz;
+  scene.add(m); return m;
+}
+
+function bloodSky(scene){
+  const mat = new THREE.MeshBasicMaterial({ side:THREE.BackSide, fog:false, map:canvasTex((g,s)=>{
+    const grd=g.createLinearGradient(0,s,0,0);
+    grd.addColorStop(0,'#6e1c10'); grd.addColorStop(.35,'#571309');
+    grd.addColorStop(.7,'#2a0a06'); grd.addColorStop(1,'#120404');
+    g.fillStyle=grd; g.fillRect(0,0,s,s);
+  })});
+  scene.add(new THREE.Mesh(new THREE.SphereGeometry(320,24,16), mat));
+  texLoader.load('sky.jpg', tx => {
+    tx.colorSpace=THREE.SRGBColorSpace; tx.wrapS=THREE.MirroredRepeatWrapping;
+    tx.repeat.set(2,1.15); tx.offset.y=-.06; mat.map=tx; mat.needsUpdate=true;
+  });
+}
+
+function ashGround(scene, color=0x241812){
+  const g = new THREE.Mesh(new THREE.PlaneGeometry(600,600),
+    new THREE.MeshStandardMaterial({ color, roughness:1 }));
+  g.rotation.x = -Math.PI/2; scene.add(g); return g;
+}
+
+function rubbleField(scene, n=40, rMin=3, rMax=30){
+  const mat = new THREE.MeshStandardMaterial({ color:0x2e2016, roughness:.95 });
+  for (let i=0;i<n;i++){
+    const m=new THREE.Mesh(unitBox, mat);
+    const a=Math.random()*6.283, r=rMin+Math.random()*(rMax-rMin), s=.3+Math.random()*1.8;
+    m.position.set(Math.sin(a)*r, s*.3, Math.cos(a)*r);
+    m.scale.set(s, s*(.4+Math.random()*.5), s*(.5+Math.random()));
+    m.rotation.y=Math.random()*3.14; scene.add(m);
+  }
+}
+
+function burningCity(scene, dist=-120){
+  const fl=[];
+  for (let i=0;i<14;i++){
+    const w=6+Math.random()*10, h=8+Math.random()*30;
+    const b = box(scene, 0x0d0806, w,h,6, -70+i*11+Math.random()*4, h/2, dist+Math.random()*24);
+    if (Math.random()<.5){
+      const f = new THREE.PointLight(0xff5a22, 3+Math.random()*4, 40, 1.6);
+      f.position.set(b.position.x, h*.6+Math.random()*h*.3, b.position.z+4);
+      scene.add(f); fl.push(f);
+    }
+  }
+  return t => fl.forEach((f,i)=>{ f.intensity = 3+2.4*Math.abs(Math.sin(t*3+i*2.1)); });
+}
+
+/* low-poly stylized human, phosphor-lit — same procedural spirit as the engine */
+function makeHuman({jacket=0x3a4a3e, pants=0x2a2f2a, skin=0xb9a894, h=1.0}={}){
+  const g = new THREE.Group();
+  const mJ=new THREE.MeshStandardMaterial({color:jacket,roughness:.85});
+  const mP=new THREE.MeshStandardMaterial({color:pants,roughness:.9});
+  const mS=new THREE.MeshStandardMaterial({color:skin,roughness:.7});
+  const mk=(mat,sx,sy,sz,x,y,z)=>{ const m=new THREE.Mesh(unitBox,mat); m.scale.set(sx,sy,sz); m.position.set(x,y,z); g.add(m); return m; };
+  const legL=mk(mP,.13,.42,.15,-.09,.21,0), legR=mk(mP,.13,.42,.15,.09,.21,0);
+  const torso=mk(mJ,.34,.44,.2,0,.64,0);
+  const armL=mk(mJ,.09,.38,.12,-.24,.63,0), armR=mk(mJ,.09,.38,.12,.24,.63,0);
+  const head=mk(mS,.16,.18,.16,0,.97,0);
+  g.scale.setScalar(h*1.75);
+  g.userData = { legL,legR,armL,armR,torso,head, mode:'idle', walkT:0 };
+  g.userData.setMode = m => g.userData.mode = m;
+  g.userData.tick = (dt,t) => {
+    const u=g.userData;
+    if (u.mode==='walk'){
+      u.walkT += dt*7;
+      legL.rotation.x =  Math.sin(u.walkT)*.6; legR.rotation.x = -Math.sin(u.walkT)*.6;
+      armL.rotation.x = -Math.sin(u.walkT)*.5; armR.rotation.x =  Math.sin(u.walkT)*.5;
+    } else if (u.mode==='idle'){
+      legL.rotation.x=legR.rotation.x=0;
+      armL.rotation.x = Math.sin(t*1.3)*.05; armR.rotation.x = Math.sin(t*1.3+1)*.05;
+      torso.position.y = .64 + Math.sin(t*1.7)*.008;
+    } else if (u.mode==='lie'){
+      legL.rotation.x=legR.rotation.x=armL.rotation.x=armR.rotation.x=0;
+    }
+  };
+  return g;
+}
+
+/* machine models with procedural fallback */
 const MODELS = {};
 const modelsReady = (async () => {
-  try {
-    const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
-    const loader = new GLTFLoader();
-    const defs = [
-      ['crawler', 'models/crawler.glb', .80, -0.50,  0,     { eye:[0,.06,.42] }],
-      ['sentry',  'models/sentry.glb',  .90,  0,     0,     { eye:[0,.02,.45], muzzle:[0,-.30,.42] }],
-      ['warden',  'models/warden.glb', 1.30, -0.643, -0.104,{ eye:[0,.14,.66], muzzle:[0,-.30,.60] }],
-      ['rifle',   'models/rifle.glb',  1.08,  0,     0,     {}],
-      ['pod',     'models/pod.glb',    1.25,  0,     -0.024,{}],
-    ];
-    await Promise.all(defs.map(([kind, url, k, oy, oz, pts]) => new Promise(res => {
-      loader.load(url, g => {
-        const inner = g.scene;
-        // these GLBs ship untextured (near-white base) — tint to gunmetal
-        const tinted = new Map();
-        inner.traverse(o => {
-          if (o.isMesh && o.material){
-            if (!tinted.has(o.material)){
-              const m = o.material.clone();
-              if (!m.map) m.color.multiply(new THREE.Color(.40,.46,.42));
-              if (m.roughness !== undefined){ m.roughness = .62; m.metalness = .35; }
-              tinted.set(o.material, m);
-            }
-            o.material = tinted.get(o.material);
-          }
-        });
-        const wrap = new THREE.Group();
-        if (kind === 'rifle'){
-          inner.position.set(-0.131, -0.031, 0);   // recenter, then aim barrel down -Z
-          wrap.rotation.y = -Math.PI/2;
-        }
-        wrap.add(inner);
-        wrap.scale.setScalar(k);
-        const outer = new THREE.Group();
-        wrap.position.set(0, oy, oz);
-        outer.add(wrap);
-        MODELS[kind] = { template: outer, ...pts };
-        res();
-      }, undefined, () => res());
-    })));
-  } catch (e) { /* loader unavailable — procedural models remain */ }
+  const loader = new GLTFLoader();
+  for (const name of ['crawler','sentry','warden','pod']){
+    try {
+      const gltf = await loader.loadAsync(`models/${name}.glb`);
+      MODELS[name] = gltf.scene;
+    } catch(e){ MODELS[name] = null; }
+  }
 })();
-
-function renderFrame(sc, cm){
-  if (postFX.enabled){
-    postFX.renderPass.scene = sc; postFX.renderPass.camera = cm;
-    postFX.grade.uniforms.uTime.value = G.time;
-    postFX.composer.render();
-  } else {
-    renderer.render(sc, cm);
+function machine(name, scale=1){
+  let m;
+  if (MODELS[name]) m = MODELS[name].clone(true);
+  else {
+    m = new THREE.Group();
+    const mat=new THREE.MeshStandardMaterial({color:0x39423a,roughness:.5,metalness:.6});
+    const body=new THREE.Mesh(unitBox,mat); body.scale.set(.6,1.4,.5); body.position.y=1.1; m.add(body);
+    const eye=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8), new THREE.MeshBasicMaterial({color:0xff3344}));
+    eye.position.set(0,1.6,.28); m.add(eye);
   }
-}
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth/window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  if (postFX.enabled) postFX.composer.setSize(window.innerWidth, window.innerHeight);
-});
-
-/* ============================================================
-   Opening cinematic (chapter 1) — the book's first scene,
-   "Awakening in Rust", rendered in-engine. Fully procedural.
-   ============================================================ */
-const Cinematic = (() => {
-  let cScene=null, cCam=null, t=0, active=false, onDone=null, subIdx=-1;
-  let ash=null, smokes=[], patrols=[], hunter=null, flashed=false, alerted=false;
-  const SUBS = [
-    [0.8,  "Marcus tasted copper as he came to."],
-    [6.5,  "The sky was the color of old blood, streaked with smoke from unseen fires."],
-    [13.5, "The city he remembered was gone."],
-    [19.5, "The machines were not."],
-    [25.5, "They had taken everything. Everyone."],
-    [31.5, "Then the light found him."],
-  ];
-  const smooth = k => k<=0?0:k>=1?1:k*k*(3-2*k);
-  function cinTex(draw, size=256){
-    const c = document.createElement('canvas'); c.width=c.height=size;
-    draw(c.getContext('2d'), size);
-    const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
-    return tx;
-  }
-  function build(){
-    cScene = new THREE.Scene();
-    cScene.fog = new THREE.FogExp2(0x160604, .010);
-    cCam = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, .1, 500);
-    cCam.rotation.order = 'YXZ';
-    // blood sky dome
-    const skyTex = cinTex((g,s)=>{
-      const grd = g.createLinearGradient(0,s,0,0);
-      grd.addColorStop(0,'#6e1c10'); grd.addColorStop(.35,'#571309');
-      grd.addColorStop(.7,'#2a0a06'); grd.addColorStop(1,'#120404');
-      g.fillStyle = grd; g.fillRect(0,0,s,s);
-    });
-    const skyMat = new THREE.MeshBasicMaterial({ map:skyTex, side:THREE.BackSide, fog:false });
-    const sky = new THREE.Mesh(new THREE.SphereGeometry(320, 24, 16), skyMat);
-    cScene.add(sky);
-    new THREE.TextureLoader().load('sky.jpg', tx => {
-      tx.colorSpace = THREE.SRGBColorSpace;
-      tx.wrapS = THREE.MirroredRepeatWrapping;
-      tx.repeat.set(2, 1.15); tx.offset.y = -.06;
-      skyMat.map = tx; skyMat.needsUpdate = true;
-    });
-    cScene.add(new THREE.HemisphereLight(0x8a2a18, 0x120a06, 1.4));
-    const sun = new THREE.DirectionalLight(0xff6a40, .5);
-    sun.position.set(-40, 25, -60); cScene.add(sun);
-    // ground + rubble
-    const gndMat = new THREE.MeshStandardMaterial({ color:0x241812, roughness:1, metalness:0 });
-    const gnd = new THREE.Mesh(new THREE.PlaneGeometry(500,500), gndMat);
-    gnd.rotation.x = -Math.PI/2; cScene.add(gnd);
-    const rubbleMat = new THREE.MeshStandardMaterial({ color:0x2e2016, roughness:.95, metalness:.05 });
-    const box = new THREE.BoxGeometry(1,1,1);
-    for (let i=0;i<46;i++){
-      const m = new THREE.Mesh(box, rubbleMat);
-      const a = Math.random()*Math.PI*2, r = 2.5 + Math.random()*26;
-      const sc = .3 + Math.random()*1.9;
-      m.position.set(Math.sin(a)*r, sc*.35, Math.cos(a)*r);
-      m.scale.set(sc, sc*(.4+Math.random()*.5), sc*(.5+Math.random()));
-      m.rotation.set((Math.random()-.5)*.4, Math.random()*Math.PI, (Math.random()-.5)*.4);
-      cScene.add(m);
-    }
-    // ruined skyline ring
-    const cityMat = new THREE.MeshStandardMaterial({ color:0x17100c, roughness:.9, metalness:.1 });
-    for (let i=0;i<26;i++){
-      const a = i/26*Math.PI*2 + Math.random()*.2;
-      const r = 75 + Math.random()*70;
-      const h = 10 + Math.random()*38;
-      const m = new THREE.Mesh(box, cityMat);
-      m.position.set(Math.sin(a)*r, h/2 - Math.random()*4, Math.cos(a)*r);
-      m.scale.set(6+Math.random()*10, h, 6+Math.random()*10);
-      m.rotation.z = (Math.random()-.5)*.16;
-      m.rotation.y = Math.random()*Math.PI;
-      cScene.add(m);
-    }
-    // the hive monolith on the horizon (yaw ~ -1.25 direction)
-    const mono = new THREE.Group();
-    const mBody = new THREE.Mesh(box, new THREE.MeshStandardMaterial({ color:0x0c1410, roughness:.7, metalness:.4 }));
-    mBody.scale.set(34, 78, 26); mBody.position.y = 39;
-    mono.add(mBody);
-    const winMat = new THREE.MeshBasicMaterial({ color:0x39ff88 });
-    for (let i=0;i<12;i++){
-      const w = new THREE.Mesh(box, winMat);
-      w.scale.set(.8, 3+Math.random()*7, .8);
-      w.position.set(-14+Math.random()*28, 8+Math.random()*62, -13.6);
-      mono.add(w);
-    }
-    mono.position.set(105, 0, -42);
-    mono.lookAt(0,0,0); mono.rotateY(Math.PI);
-    cScene.add(mono);
-    // smoke streamers
-    const smokeTex = cinTex((g,s)=>{
-      g.clearRect(0,0,s,s);
-      for (let i=0;i<9;i++){
-        const x=Math.random()*s, y=s*.3+Math.random()*s*.4, r=s*(.12+Math.random()*.16);
-        const d=g.createRadialGradient(x,y,1,x,y,r);
-        d.addColorStop(0,'rgba(28,16,12,.55)'); d.addColorStop(1,'rgba(28,16,12,0)');
-        g.fillStyle=d; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
-      }
-    });
-    const smokeMat = new THREE.MeshBasicMaterial({ map:smokeTex, transparent:true,
-      opacity:.75, depthWrite:false, side:THREE.DoubleSide, fog:false });
-    for (let i=0;i<8;i++){
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(90, 20), smokeMat);
-      p.position.set(-120+Math.random()*240, 26+Math.random()*34, -140+Math.random()*160);
-      p.rotation.x = -.15;
-      cScene.add(p); smokes.push(p);
-    }
-    // falling ash
-    {
-      const n=420, pos=new Float32Array(n*3);
-      for (let i=0;i<n;i++){
-        pos[i*3]=(Math.random()-.5)*90; pos[i*3+1]=Math.random()*45; pos[i*3+2]=(Math.random()-.5)*90;
-      }
-      const g2 = new THREE.BufferGeometry();
-      g2.setAttribute('position', new THREE.BufferAttribute(pos,3));
-      ash = new THREE.Points(g2, new THREE.PointsMaterial({ color:0x9a8878, size:.14,
-        transparent:true, opacity:.6, depthWrite:false }));
-      cScene.add(ash);
-    }
-    // patrol drones with searchlight beams
-    const beamMat = new THREE.MeshBasicMaterial({ color:0xff3322, transparent:true,
-      opacity:.12, blending:THREE.AdditiveBlending, depthWrite:false, fog:false });
-    const bodyMat = new THREE.MeshStandardMaterial({ color:0x14100c, roughness:.5, metalness:.6 });
-    function mkDrone(){
-      const g3 = new THREE.Group();
-      const body = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), bodyMat);
-      body.scale.set(1.4,.7,1.4);
-      const eye = new THREE.Mesh(new THREE.SphereGeometry(.3, 8, 6),
-        new THREE.MeshBasicMaterial({ color:0xff3322 }));
-      eye.position.y = -.5;
-      const beam = new THREE.Mesh(new THREE.ConeGeometry(4.2, 26, 12, 1, true), beamMat);
-      beam.position.y = -13.5;
-      g3.add(body, eye, beam);
-      g3.userData.beam = beam;
-      cScene.add(g3);
-      return g3;
-    }
-    for (let i=0;i<3;i++){ patrols.push(mkDrone()); }
-    hunter = mkDrone();
-    hunter.visible = false;
-  }
-  function start(done){
-    onDone = done; t = 0; subIdx = -1; flashed = false; alerted = false;
-    build();
-    active = true;
-    el.fade.style.transition = 'none';
-    el.fade.style.background = '#000';
-    el.fade.style.opacity = 1;
-    AudioSys.windStart();
-    setTimeout(()=>{ el.skipBtn.style.opacity = .7; }, 2500);
-  }
-  function teardown(){
-    active = false;
-    AudioSys.windStop();
-    cScene = null; cCam = null; smokes = []; patrols = []; ash = null; hunter = null;
-  }
-  function update(dt){
-    if (!active) return;
-    t += dt;
-    // subtitles
-    const next = SUBS.findIndex(([st]) => t >= st && t < st + 5);
-    if (next !== subIdx){
-      subIdx = next;
-      if (next >= 0){ el.introText.textContent = SUBS[next][1]; el.introText.style.opacity = 1; }
-      else el.introText.style.opacity = 0;
-    }
-    // eyelids: slow open with one heavy re-blink
-    let fade = Math.max(0, .95 - t*.30);
-    if (t > 1.7 && t < 2.3) fade = Math.max(fade, .8*(1 - Math.abs((t-2)/.3)));
-    // final flash: the searchlight hits, then black
-    if (t > 33.6){
-      el.fade.style.background = t > 35.6 ? '#000' : '#fff';
-      fade = Math.min(1, (t-33.6)/1.6);
-      if (t > 35.6) fade = 1;
-    }
-    el.fade.style.opacity = fade;
-    // camera timeline
-    const yawAB = .05*Math.sin(t*.3);
-    let pitch, yaw = yawAB, y = .55;
-    if (t < 6){ pitch = 1.28 + Math.sin(t*.55)*.03; }
-    else if (t < 13){ const k = smooth((t-6)/7);  pitch = 1.28 - k*1.16; y = .55 + k*1.05; }
-    else if (t < 19){ const k = smooth((t-13)/6); pitch = .12 - k*.06;  y = 1.6; yaw = .95*k; }
-    else if (t < 25){ const k = smooth((t-19)/6); pitch = .06 + k*.06;  y = 1.6; yaw = .95 - 1.5*k; }
-    else if (t < 31){ const k = smooth((t-25)/6); pitch = .12 + k*.10;  y = 1.6; yaw = -.55 - .7*k; }
-    else            { const k = smooth((t-31)/4); pitch = .22 - k*.10;  y = 1.6; yaw = -1.25 + .35*k; }
-    cCam.position.set(0, y, 0);
-    cCam.rotation.y = yaw; cCam.rotation.x = pitch;
-    // world motion
-    smokes.forEach((p,i)=>{ p.position.x += dt*(1.1+i*.13); if (p.position.x > 140) p.position.x = -140; });
-    if (ash){
-      const a = ash.geometry.attributes.position;
-      for (let i=0;i<a.count;i++){
-        a.array[i*3+1] -= dt*(.5 + (i%5)*.22);
-        if (a.array[i*3+1] < 0) a.array[i*3+1] = 45;
-      }
-      a.needsUpdate = true;
-    }
-    patrols.forEach((d,i)=>{
-      const k = ((t*.032 + i*.34) % 1.3) - .5;
-      d.position.set(-k*150, 30+Math.sin(t*.8+i)*1.6, -55-i*16);
-      d.userData.beam.rotation.z = Math.sin(t*.6+i*2)*.25;
-    });
-    if (t > 29){
-      hunter.visible = true;
-      const k = smooth((t-29)/6);
-      hunter.position.set(-60+(k*58), 30-(k*17), -46+(k*39));
-      hunter.userData.beam.material.opacity = .12 + k*.3;
-      hunter.userData.beam.scale.setScalar(1 - k*.5);
-      hunter.lookAt(cCam.position);
-      if (!alerted && t > 31.2){ alerted = true; AudioSys.alert(); }
-      if (!flashed && t > 33.8){ flashed = true; AudioSys.hurt(); AudioSys.alert(); }
-    }
-    renderFrame(cScene, cCam);
-    if (t > 36.6) finish();
-  }
-  function finish(){
-    teardown();
-    el.introText.style.opacity = 0;
-    if (onDone) onDone();
-  }
-  return { start, update, skip: teardown, isActive: () => active };
-})();
-
-/* ============================================================
-   Level: 5 rooms (start, 3 segments, core) along -Z
-   ============================================================ */
-const WALL_H = 4, DOOR_HALF = 1.6;
-const ROOMS = CH.rooms;
-const PILLARS = CH.pillars;
-
-/* ---- procedural textures (canvas, zero image assets) ---- */
-function makeTex(draw, size=512){
-  const c = document.createElement('canvas'); c.width = c.height = size;
-  draw(c.getContext('2d'), size);
-  const t = new THREE.CanvasTexture(c);
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
-}
-function grime(g, s, n, dark){
-  for (let i=0;i<n;i++){
-    g.fillStyle = `rgba(${dark?'0,0,0':'160,200,175'},${(Math.random()*.22).toFixed(3)})`;
-    g.fillRect(Math.random()*s, Math.random()*s, Math.random()*4+1, Math.random()*14+2);
-  }
-}
-const wallTex = makeTex((g,s)=>{
-  const grd = g.createLinearGradient(0,0,0,s);
-  grd.addColorStop(0,CH.palette.wallA); grd.addColorStop(.5,CH.palette.wallB); grd.addColorStop(1,CH.palette.wallC);
-  g.fillStyle = grd; g.fillRect(0,0,s,s);
-  // panel seams
-  g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 5;
-  for (let x=0;x<=s;x+=s/2){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,s); g.stroke(); }
-  for (let y=0;y<=s;y+=s/2){ g.beginPath(); g.moveTo(0,y); g.lineTo(s,y); g.stroke(); }
-  // panel bevels
-  g.strokeStyle = 'rgba(190,230,205,.09)'; g.lineWidth = 2;
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2) g.strokeRect(x+7,y+7,s/2-14,s/2-14);
-  // rivets
-  g.fillStyle = 'rgba(210,235,220,.28)';
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2)
-    [[18,18],[s/2-18,18],[18,s/2-18],[s/2-18,s/2-18]].forEach(([dx,dy])=>{
-      g.beginPath(); g.arc(x+dx,y+dy,3.4,0,7); g.fill();
-    });
-  // rust/drip streaks
-  for (let i=0;i<26;i++){
-    const x = Math.random()*s, w = Math.random()*8+2, y0 = Math.random()*s*.5;
-    const d = g.createLinearGradient(0,y0,0,y0+s*.6);
-    d.addColorStop(0,'rgba(20,14,8,.3)'); d.addColorStop(1,'rgba(0,0,0,0)');
-    g.fillStyle = d; g.fillRect(x,y0,w,s*.6);
-  }
-  grime(g,s,900,true); grime(g,s,180,false);
-});
-const floorTex = makeTex((g,s)=>{
-  g.fillStyle = CH.palette.floor; g.fillRect(0,0,s,s);
-  // deck plates with diagonal tread
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2){
-    g.strokeStyle='rgba(0,0,0,.65)'; g.lineWidth=5; g.strokeRect(x+2,y+2,s/2-4,s/2-4);
-    g.strokeStyle='rgba(150,180,160,.07)'; g.lineWidth=3;
-    for (let t=-s/2;t<s/2;t+=22){
-      g.beginPath(); g.moveTo(x+Math.max(0,t), y+Math.max(0,-t));
-      g.lineTo(x+Math.min(s/2,t+s/2), y+Math.min(s/2,s/2-t)); g.stroke();
-    }
-  }
-  // oil stains
-  for (let i=0;i<10;i++){
-    const x=Math.random()*s, y=Math.random()*s, r=Math.random()*50+18;
-    const d=g.createRadialGradient(x,y,2,x,y,r);
-    d.addColorStop(0,'rgba(0,0,0,.4)'); d.addColorStop(1,'rgba(0,0,0,0)');
-    g.fillStyle=d; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
-  }
-  grime(g,s,1100,true);
-});
-const ceilTex = makeTex((g,s)=>{
-  g.fillStyle = CH.palette.ceil; g.fillRect(0,0,s,s);
-  g.strokeStyle='rgba(0,0,0,.6)'; g.lineWidth=4;
-  for (let x=0;x<=s;x+=s/4){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,s); g.stroke(); }
-  for (let y=0;y<=s;y+=s/4){ g.beginPath(); g.moveTo(0,y); g.lineTo(s,y); g.stroke(); }
-  // vent slats in some panels
-  g.fillStyle='rgba(0,0,0,.5)';
-  for (let x=0;x<s;x+=s/4) for (let y=0;y<s;y+=s/4)
-    if (Math.random()<.3) for (let v=10;v<s/4-10;v+=10) g.fillRect(x+12,y+v,s/4-24,4);
-  grime(g,s,500,true);
-});
-const crateTex = makeTex((g,s)=>{
-  g.fillStyle = CH.palette.crate; g.fillRect(0,0,s,s);
-  g.strokeStyle='rgba(0,0,0,.7)'; g.lineWidth=10; g.strokeRect(6,6,s-12,s-12);
-  g.strokeStyle='rgba(170,210,185,.12)'; g.lineWidth=4; g.strokeRect(26,26,s-52,s-52);
-  g.fillStyle=CH.palette.crateMark; g.fillRect(s*.3,s*.44,s*.4,s*.12);
-  grime(g,s,400,true);
-}, 256);
-
-function surfMat(tex, rx, ry, extra={}){
-  const map = tex.clone(); map.needsUpdate = true; map.repeat.set(rx, ry);
-  return new THREE.MeshStandardMaterial({
-    map, bumpMap: map, bumpScale: .05, roughness: .82, metalness: .5, ...extra });
-}
-
-const matStrip = new THREE.MeshBasicMaterial({ color:CH.palette.strip });
-const matDoor  = surfMat(wallTex, 1.2, 1.4, { color:0x9fb3a6, metalness:.7 });
-
-const colliders = [];   // {x1,x2,z1,z2, door?}  AABBs for movement + LOS
-const wallMeshes = [];  // meshes used for raycast occlusion / bullet stops
-const doors = [];       // {mesh, collider, open, anim}
-
-function addBox(x1,x2,z1,z2,h,mat,solid=true){
-  const w=x2-x1, d=z2-z1;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d),
-    mat || surfMat(wallTex, Math.max(1, Math.round(Math.max(w,d)/2.6)), Math.max(1, Math.round(h/2.6))));
-  m.position.set((x1+x2)/2, h/2, (z1+z2)/2);
-  scene.add(m); wallMeshes.push(m);
-  if (solid) colliders.push({x1,x2,z1,z2});
+  m.scale.setScalar(scale);
   return m;
 }
 
-// floor + ceiling (single big slabs)
-{
-  const fl = new THREE.Mesh(new THREE.BoxGeometry(26, .2, 148), surfMat(floorTex, 9, 50));
-  fl.position.set(0,-.1,-69); scene.add(fl); wallMeshes.push(fl);
-  const ce = new THREE.Mesh(new THREE.BoxGeometry(26, .2, 148), surfMat(ceilTex, 7, 40));
-  ce.position.set(0, WALL_H+.1, -69); scene.add(ce); wallMeshes.push(ce);
-}
-
-// side walls per room + boundary walls with door gaps
-ROOMS.forEach((r,i)=>{
-  addBox(r.x1-.5, r.x1, r.z1, r.z2, WALL_H, null);
-  addBox(r.x2, r.x2+.5, r.z1, r.z2, WALL_H, null);
-  if (i===0) addBox(r.x1-.5, r.x2+.5, r.z2, r.z2+.5, WALL_H, null);        // back wall
-  if (i===ROOMS.length-1) addBox(r.x1-.5, r.x2+.5, r.z1-.5, r.z1, WALL_H, null); // end wall
-  if (i < ROOMS.length-1){
-    const nx = ROOMS[i+1];
-    const lo = Math.min(r.x1,nx.x1)-.5, hi = Math.max(r.x2,nx.x2)+.5, b = r.z1;
-    addBox(lo, -DOOR_HALF, b-.3, b+.3, WALL_H, null);
-    addBox(DOOR_HALF, hi, b-.3, b+.3, WALL_H, null);
-    // sliding door panel with a lock-status light bar
-    const dm = new THREE.Mesh(new THREE.BoxGeometry(DOOR_HALF*2, WALL_H, .35), matDoor);
-    dm.position.set(0, WALL_H/2, b);
-    scene.add(dm); wallMeshes.push(dm);
-    const lock = new THREE.Mesh(new THREE.BoxGeometry(DOOR_HALF*1.6, .1, .05),
-      new THREE.MeshBasicMaterial({ color:0xff3344 }));
-    lock.position.set(0, 0, .21);
-    dm.add(lock);
-    const dc = {x1:-DOOR_HALF, x2:DOOR_HALF, z1:b-.2, z2:b+.2, door:true, active:true};
-    colliders.push(dc);
-    doors.push({ mesh:dm, lock, collider:dc, open:false, anim:0, boundaryZ:b, index:i });
-  }
-});
-
-// pillars
-PILLARS.forEach(([x,z,s])=> addBox(x-s, x+s, z-s, z+s, WALL_H, null));
-
-// emissive light strips along walls (green; pulse red in alarm state)
-const strips = [];
-const fixtureMat = new THREE.MeshStandardMaterial({ color:0x333c30, roughness:.5, metalness:.5 });
-ROOMS.forEach(r=>{
-  for (let z = r.z2-3; z > r.z1+1; z -= 6){
-    [r.x1+.07, r.x2-.07].forEach(x=>{
-      const housing = new THREE.Mesh(new THREE.BoxGeometry(.16, .2, 2.4), fixtureMat);
-      housing.position.set(x, 2.6, z); scene.add(housing);
-      const s = new THREE.Mesh(new THREE.BoxGeometry(.1, .12, 2.2), matStrip);
-      s.position.set(x + (x<0?.05:-.05), 2.6, z); scene.add(s); strips.push(s);
-    });
-  }
-});
-
-// structural ribs: wall posts + ceiling beam every 6m
-const ribMat = new THREE.MeshStandardMaterial({ color:0x39423a, roughness:.55, metalness:.5 });
-const unitBox = new THREE.BoxGeometry(1,1,1);
-ROOMS.forEach(r=>{
-  for (let z = r.z2-4; z > r.z1+2; z -= 6){
-    [[r.x1+.14, .32],[r.x2-.14, .32]].forEach(([x,sx])=>{
-      const post = new THREE.Mesh(unitBox, ribMat);
-      post.position.set(x, WALL_H/2, z); post.scale.set(sx, WALL_H, .4);
-      scene.add(post);
-    });
-    const beam = new THREE.Mesh(unitBox, ribMat);
-    beam.position.set((r.x1+r.x2)/2, WALL_H-.16, z);
-    beam.scale.set(r.x2-r.x1, .32, .4);
-    scene.add(beam);
-  }
-});
-
-// conduit pipes running the length of each room
-const pipeGeo = new THREE.CylinderGeometry(.07,.07,1,8);
-const pipeMat = new THREE.MeshStandardMaterial({ color:0x33403a, roughness:.45, metalness:.55 });
-ROOMS.forEach(r=>{
-  const len = r.z2-r.z1, zc = (r.z1+r.z2)/2;
-  [[r.x1+.24,3.4],[r.x1+.24,3.18],[r.x2-.24,3.3]].forEach(([x,y])=>{
-    const p = new THREE.Mesh(pipeGeo, pipeMat);
-    p.rotation.x = Math.PI/2;
-    p.position.set(x, y, zc); p.scale.set(1, len, 1);
-    scene.add(p);
-  });
-});
-
-// scattered supply crates (solid — they block movement, shots and sight lines)
-const crateMat = surfMat(crateTex, 1, 1, { metalness:.55 });
-CH.crates.forEach(([x,z,s,rot])=>{
-  const m = new THREE.Mesh(unitBox, crateMat);
-  m.scale.set(s,s,s); m.position.set(x, s/2, z); m.rotation.y = rot;
-  scene.add(m); wallMeshes.push(m);
-  colliders.push({x1:x-s*.72, x2:x+s*.72, z1:z-s*.72, z2:z+s*.72});
-});
-
-// dust motes hanging in the air
-{
-  const n = 260, pos = new Float32Array(n*3);
-  for (let i=0;i<n;i++){
-    pos[i*3] = (Math.random()-.5)*18;
-    pos[i*3+1] = .2 + Math.random()*3.4;
-    pos[i*3+2] = 3 - Math.random()*145;
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  scene.add(new THREE.Points(g, new THREE.PointsMaterial({
-    color:CH.palette.dust, size:.035, transparent:true, opacity:.45, depthWrite:false })));
-}
-
-// chapter set-piece (hive core / ledger console) — built after shared geometry
-const CORE_POS = new THREE.Vector3(...CH.objectivePos);
-let PROPS = null;
-
-// pickup rifle on floor in start room
-// shared unit geometries for all built models (scaled per part)
-const sphereGeo  = new THREE.SphereGeometry(1, 14, 12);
-const coneGeo    = new THREE.ConeGeometry(1, 1, 6);
-const cylGeo     = new THREE.CylinderGeometry(1, 1, 1, 8);
-const torusGeoLg = new THREE.TorusGeometry(.5, .045, 6, 24);
-const torusGeoSm = new THREE.TorusGeometry(.42, .028, 6, 20);
-const discGeo    = new THREE.CircleGeometry(.09, 10);
-const eyeGeoC    = new THREE.SphereGeometry(.09, 10, 8);
-const eyeGeoS    = new THREE.SphereGeometry(.12, 12, 10);
-
-const gunMetal = new THREE.MeshStandardMaterial({ color:0x46524a, roughness:.38, metalness:.55 });
-const gunDark  = new THREE.MeshStandardMaterial({ color:0x252c26, roughness:.5, metalness:.5 });
-const glowGreenMat = new THREE.MeshBasicMaterial({ color:0x2bff7f });
-
-// pulse rifle model, used for both the floor pickup and the view-model
-function buildRifle(){
-  const r = new THREE.Group();
-  const parts = [
-    [unitBox, gunMetal, [.085,.11,.42],  [0,0,0],       [0,0,0]],   // receiver
-    [unitBox, gunDark,  [.07,.08,.26],   [0,-.005,-.32],[0,0,0]],   // fore-end
-    [cylGeo,  gunDark,  [.018,.30,.018], [0,.02,-.55],  [Math.PI/2,0,0]], // barrel
-    [cylGeo,  gunMetal, [.028,.07,.028], [0,.02,-.70],  [Math.PI/2,0,0]], // muzzle brake
-    [unitBox, gunDark,  [.03,.02,.34],   [0,.07,-.10],  [0,0,0]],   // top rail
-    [unitBox, gunDark,  [.05,.05,.03],   [0,.10,.02],   [0,0,0]],   // sight base
-    [unitBox, gunDark,  [.05,.14,.06],   [0,-.12,.10],  [.35,0,0]], // grip
-    [unitBox, gunMetal, [.06,.09,.18],   [0,-.02,.28],  [0,0,0]],   // stock
-    [unitBox, glowGreenMat, [.04,.035,.09], [0,-.065,-.02], [0,0,0]], // power cell
-    [unitBox, matStrip, [.015,.015,.30], [.045,.02,-.15], [0,0,0]], // side light strip
-  ];
-  parts.forEach(([geo,mat,s,p,rot])=>{
-    const m = new THREE.Mesh(geo, mat);
-    m.scale.set(...s); m.position.set(...p); m.rotation.set(...rot);
-    r.add(m);
-  });
-  const ring = new THREE.Mesh(torusGeoSm, gunDark);       // holo sight ring
-  ring.scale.setScalar(.1); ring.position.set(0,.14,.02);
-  const dot = new THREE.Mesh(eyeGeoC, glowGreenMat);      // holo dot
-  dot.scale.setScalar(.22); dot.position.set(0,.14,.015);
-  r.add(ring, dot);
-  return r;
-}
-
-const rifleFloor = new THREE.Group();
-{
-  const rf = buildRifle();
-  rf.rotation.set(0, .9, Math.PI/2);
-  const glow = new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.5), matStrip);
-  glow.position.y = .12;
-  rifleFloor.add(rf, glow);
-  rifleFloor.position.set(0, .25, -4);
-  if (!CH.startArmed) scene.add(rifleFloor);
-}
-
-// view-model rifle (attached to camera after pickup)
-function dimViewmodel(group){
-  const dimmed = new Map();
-  group.traverse(o => {
-    if (o.isMesh && o.material && o.material.isMeshStandardMaterial){
-      if (!dimmed.has(o.material)){
-        const m = o.material.clone();
-        m.color.multiplyScalar(.09);
-        dimmed.set(o.material, m);
-      }
-      o.material = dimmed.get(o.material);
-    }
-  });
-}
-const viewRifle = new THREE.Group();
-{
-  const vr = buildRifle();
-  // the view-model sits ~0.5m from the headlamp; darken its lit materials
-  // so physically-correct falloff doesn't blow it out white
-  const dimmed = new Map();
-  vr.traverse(o => {
-    if (o.isMesh && o.material.isMeshStandardMaterial){
-      if (!dimmed.has(o.material)){
-        const m = o.material.clone();
-        m.color.multiplyScalar(.09);
-        dimmed.set(o.material, m);
-      }
-      o.material = dimmed.get(o.material);
-    }
-  });
-  viewRifle.add(vr);
-  viewRifle.position.set(.24,-.22,-.5);
-  viewRifle.visible = false;
-  camera.add(viewRifle);
-}
-modelsReady.then(() => {
-  if (!MODELS.rifle) return;
-  viewRifle.clear();
-  const vr = MODELS.rifle.template.clone();
-  dimViewmodel(vr);
-  viewRifle.add(vr);
-  if (rifleFloor.parent){
-    rifleFloor.remove(rifleFloor.children[0]);
-    const rf = MODELS.rifle.template.clone();
-    rf.rotation.set(0, .9, Math.PI/2);
-    rifleFloor.add(rf);
-  }
-});
-
-// tracer line pool
-const tracerMat = new THREE.LineBasicMaterial({ color:0xbaffd9, transparent:true, opacity:1 });
-const tracers = [];
-function spawnTracer(from, to){
-  const g = new THREE.BufferGeometry().setFromPoints([from, to]);
-  const line = new THREE.Line(g, tracerMat.clone());
-  scene.add(line);
-  tracers.push({ line, life:.07 });
-}
-
-// impact sparks
-const sparkMat = new THREE.PointsMaterial({ color:0xbfffd2, size:.06,
-  transparent:true, opacity:1, depthWrite:false, blending:THREE.AdditiveBlending });
-const sparks = [];
-function spawnSparks(at, n=10, color){
-  const pos = new Float32Array(n*3), vel = [];
-  for (let i=0;i<n;i++){
-    pos[i*3]=at.x; pos[i*3+1]=at.y; pos[i*3+2]=at.z;
-    vel.push(new THREE.Vector3((Math.random()-.5)*6,(Math.random()-.2)*5,(Math.random()-.5)*6));
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const m = sparkMat.clone(); if (color) m.color.setHex(color);
-  const pts = new THREE.Points(g, m);
-  scene.add(pts);
-  sparks.push({ pts, vel, life:.35 });
-}
-
-// soft blob shadow (grounds the drones)
-const shadowTex = makeTex((g,s)=>{
-  const d = g.createRadialGradient(s/2,s/2,4,s/2,s/2,s/2);
-  d.addColorStop(0,'rgba(0,0,0,.85)'); d.addColorStop(1,'rgba(0,0,0,0)');
-  g.fillStyle=d; g.fillRect(0,0,s,s);
-}, 128);
-const shadowMat = new THREE.MeshBasicMaterial({ map:shadowTex, transparent:true,
-  opacity:.6, depthWrite:false });
-const shadowGeo = new THREE.PlaneGeometry(1,1);
-
-/* ---- chapter set-piece props ---- */
-function textPlate(txt){
-  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
-  const g = c.getContext('2d');
-  g.fillStyle = '#0c1214'; g.fillRect(0,0,256,64);
-  g.strokeStyle = 'rgba(174,233,255,.5)'; g.lineWidth = 3; g.strokeRect(3,3,250,58);
-  g.fillStyle = '#cdeefb'; g.font = 'bold 30px monospace'; g.textAlign = 'center';
-  g.fillText(txt, 128, 42);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
-  return new THREE.MeshBasicMaterial({ map: t });
-}
-function buildPropsCh1(){
-  const g = new THREE.Group();
-  const coreMat = new THREE.MeshStandardMaterial({ color:0x0c1810, emissive:0x39ff88,
-    emissiveIntensity:.9, roughness:.3, metalness:.6 });
-  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5, 1), coreMat);
-  core.position.y = 2;
-  const wire = new THREE.LineSegments(new THREE.EdgesGeometry(core.geometry),
-    new THREE.LineBasicMaterial({ color:0xbaffd9 }));
-  wire.position.y = 2;
-  g.add(core, wire);
-  g.position.set(CORE_POS.x, 0, CORE_POS.z);
-  scene.add(g);
-  return {
-    animate(dt){ g.rotation.y += dt*.4; coreMat.emissiveIntensity = .9 + Math.sin(G.time*3)*.3; },
-    onComplete(){ coreMat.emissive.setHex(0xffd23f); },
-  };
-}
-function buildPropsCh2(){
-  const glassMat  = new THREE.MeshStandardMaterial({ color:0xbfe4ef, roughness:.12,
-    metalness:0, transparent:true, opacity:.16, depthWrite:false });
-  const fluidMat  = new THREE.MeshBasicMaterial({ color:0x86d8c9, transparent:true,
-    opacity:.13, blending:THREE.AdditiveBlending, depthWrite:false });
-  const figureMat = new THREE.MeshStandardMaterial({ color:0x0a0d0e, roughness:.9, metalness:0 });
-  const baseMat   = new THREE.MeshStandardMaterial({ color:0x39444a, roughness:.5, metalness:.6 });
-  const usePod = !!MODELS.pod;
-  CH.cylinders.forEach(([x,z,angela])=>{
-    if (usePod){
-      const pod = MODELS.pod.template.clone();
-      pod.position.set(x, 0, z);
-      pod.rotation.y = (x*3.1 + z*.7) % 6.28;
-      scene.add(pod);
-      if (angela){
-        const plate = new THREE.Mesh(new THREE.PlaneGeometry(.8,.2), textPlate('ANGELA M.'));
-        plate.position.set(x - Math.sign(x)*.62, 1.1, z);
-        plate.rotation.y = x > 0 ? -Math.PI/2 : Math.PI/2;
-        scene.add(plate);
-      }
-      colliders.push({x1:x-.55, x2:x+.55, z1:z-.55, z2:z+.55});
-      return;
-    }
-    const base = new THREE.Mesh(cylGeo, baseMat);
-    base.scale.set(.55,.3,.55); base.position.set(x,.15,z);
-    const glass = new THREE.Mesh(cylGeo, glassMat);
-    glass.scale.set(.45,2.3,.45); glass.position.set(x,1.45,z);
-    const fluid = new THREE.Mesh(cylGeo, angela ? fluidMat.clone() : fluidMat);
-    fluid.scale.set(.41,2.2,.41); fluid.position.set(x,1.45,z);
-    const fig = new THREE.Mesh(sphereGeo, figureMat);
-    fig.scale.set(.17,.62,.13); fig.position.set(x,1.35,z);
-    const cap = new THREE.Mesh(cylGeo, baseMat);
-    cap.scale.set(.5,.18,.5); cap.position.set(x,2.7,z);
-    scene.add(base, glass, fluid, fig, cap);
-    if (angela){
-      fluid.material.opacity = .3;
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(.8,.2), textPlate('ANGELA M.'));
-      plate.position.set(x - Math.sign(x)*.62, 1.1, z);
-      plate.rotation.y = x > 0 ? -Math.PI/2 : Math.PI/2;
-      scene.add(plate);
-    }
-    colliders.push({x1:x-.5, x2:x+.5, z1:z-.5, z2:z+.5});
-  });
-  // ledger console
-  const g = new THREE.Group();
-  const desk = new THREE.Mesh(unitBox, baseMat);
-  desk.scale.set(2.6,.95,.9); desk.position.y = .48;
-  const screenMat = new THREE.MeshBasicMaterial({ color:0xaee9ff, transparent:true, opacity:.85 });
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.2,.8), screenMat);
-  screen.position.set(0, 1.55, .1); screen.rotation.x = -.35;
-  const towerL = new THREE.Mesh(unitBox, baseMat);
-  towerL.scale.set(.5,2.4,.5); towerL.position.set(-1.8,1.2,0);
-  const towerR = towerL.clone(); towerR.position.x = 1.8;
-  g.add(desk, screen, towerL, towerR);
-  g.position.set(CORE_POS.x, 0, CORE_POS.z);
-  scene.add(g);
-  colliders.push({x1:CORE_POS.x-1.4, x2:CORE_POS.x+1.4, z1:CORE_POS.z-.5, z2:CORE_POS.z+.5});
-  return {
-    animate(dt){ screenMat.opacity = .7 + Math.sin(G.time*7)*.12 + Math.sin(G.time*23)*.06; },
-    onComplete(){ screenMat.color.setHex(0xffd23f); },
-  };
-}
-function buildPropsCh3(){
-  const frame = new THREE.MeshStandardMaterial({ color:0x4a4238, roughness:.5, metalness:.6 });
-  const amber = new THREE.MeshBasicMaterial({ color:0xffb85c, transparent:true, opacity:.9 });
-  const colMat = new THREE.MeshBasicMaterial({ color:0xffb85c, transparent:true,
-    opacity:.1, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
-  const screenMat = new THREE.MeshBasicMaterial({ color:0xffd9a0, transparent:true, opacity:.8 });
-  const g = new THREE.Group();
-  const base = new THREE.Mesh(cylGeo, frame);
-  base.scale.set(.6,.5,.6); base.position.y = .25;
-  const seat = new THREE.Mesh(unitBox, frame);
-  seat.scale.set(1.0,.15,1.0); seat.position.y = .6;
-  const back = new THREE.Mesh(unitBox, frame);
-  back.scale.set(1.0,1.25,.15); back.position.set(0,1.25,.5); back.rotation.x = -.18;
-  const cradle = new THREE.Mesh(torusGeoSm, amber);            // the contact array
-  cradle.scale.setScalar(.6); cradle.position.set(0,1.85,.42);
-  const halo = new THREE.Mesh(torusGeoLg, amber);
-  halo.scale.setScalar(1.7); halo.rotation.x = Math.PI/2; halo.position.y = 2.7;
-  const column = new THREE.Mesh(cylGeo, colMat);
-  column.scale.set(.85,3.6,.85); column.position.y = 1.8;
-  g.add(base, seat, back, cradle, halo, column);
-  [-2.2, 2.2].forEach(x => {
-    const desk = new THREE.Mesh(unitBox, frame);
-    desk.scale.set(1.4,.9,.7); desk.position.set(x,.45,.2);
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.1,.5), screenMat);
-    scr.position.set(x,1.25,.35); scr.rotation.x = -.3;
-    g.add(desk, scr);
-  });
-  g.position.set(CORE_POS.x, 0, CORE_POS.z);
-  scene.add(g);
-  colliders.push({x1:CORE_POS.x-.8, x2:CORE_POS.x+.8, z1:CORE_POS.z-.6, z2:CORE_POS.z+.6});
-  return {
-    animate(dt){
-      halo.rotation.z += dt * .7;
-      colMat.opacity = .08 + Math.sin(G.time*5)*.03 + Math.sin(G.time*17)*.02;
-      screenMat.opacity = .65 + Math.sin(G.time*9)*.15;
-    },
-    onComplete(){
-      amber.color.setHex(0xd6ffe6);
-      colMat.color.setHex(0xd6ffe6); colMat.opacity = .3;
-      screenMat.color.setHex(0xd6ffe6);
-    },
-  };
-}
-PROPS = { animate(){}, onComplete(){} };
-modelsReady.then(() => {
-  PROPS = CH.setPiece === 'ledger' ? buildPropsCh2() : CH.setPiece === 'uplink' ? buildPropsCh3() : buildPropsCh1();
-});
-
 /* ============================================================
-   Drones
+   SETS — each returns {scene, actors, tick(dt,t)}
    ============================================================ */
-const EYE_GREEN = 0x2bff7f, EYE_RED = 0xff2b3c;
-const droneMetal = new THREE.MeshStandardMaterial({ color:0x59685c, roughness:.42, metalness:.55 });
-const droneDark  = new THREE.MeshStandardMaterial({ color:0x2b332c, roughness:.55, metalness:.5 });
-const droneArmor = new THREE.MeshStandardMaterial({ color:0x48594d, roughness:.5, metalness:.6 });
-const thrusterGlowMat = new THREE.MeshBasicMaterial({ color:0x39ff88, transparent:true,
-  opacity:.7, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
+const SETS = {
 
-// six-legged hunter with an articulated walk cycle and a scanning sensor head
-function buildCrawler(eyeMat){
-  const g = new THREE.Group(), anim = { legs: [] };
-  const hull = new THREE.Mesh(sphereGeo, droneMetal);
-  hull.scale.set(.30,.20,.38); g.add(hull);
-  const shell = new THREE.Mesh(sphereGeo, droneArmor);
-  shell.scale.set(.26,.15,.33); shell.position.y = .10; g.add(shell);
-  const vent = new THREE.Mesh(unitBox, droneDark);
-  vent.scale.set(.18,.07,.24); vent.position.y = -.12; g.add(vent);
-  const head = new THREE.Group();
-  const skull = new THREE.Mesh(sphereGeo, droneDark); skull.scale.setScalar(.11);
-  const eye = new THREE.Mesh(eyeGeoC, eyeMat); eye.position.z = .08;
-  const antL = new THREE.Mesh(cylGeo, droneDark);
-  antL.scale.set(.008,.17,.008); antL.position.set(.05,.13,-.02); antL.rotation.z = .35;
-  const antR = antL.clone(); antR.position.x = -.05; antR.rotation.z = -.35;
-  head.add(skull, eye, antL, antR);
-  head.position.set(0,.15,.30);
-  g.add(head); anim.head = head;
-  for (let i=0;i<6;i++){
-    const side = i<3 ? 1 : -1;
-    const theta = side * (0.7 + (i%3) * 0.85);        // radians around from forward
-    const root = new THREE.Group();
-    root.position.set(Math.sin(theta)*.26, -.02, Math.cos(theta)*.26);
-    root.rotation.y = theta - Math.PI/2;               // local +x points outward
-    const upper = new THREE.Mesh(unitBox, droneMetal);
-    upper.scale.set(.30,.05,.05); upper.position.set(.14,.08,0); upper.rotation.z = .55;
-    const hip = new THREE.Mesh(sphereGeo, droneDark);
-    hip.scale.setScalar(.05);
-    const lower = new THREE.Mesh(coneGeo, droneDark);
-    lower.scale.set(.035,.52,.035); lower.position.set(.37,-.06,0); lower.rotation.z = 2.5;
-    root.add(upper, hip, lower);
-    g.add(root);
-    anim.legs.push({ root, baseYaw: root.rotation.y, phase: (i%2) * Math.PI });
-  }
-  return { g, anim };
-}
+  lot(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x160604, .012);
+    bloodSky(scene); ashGround(scene);
+    rubbleField(scene, 46, 2.5, 28);
+    const fires = burningCity(scene, -110);
+    scene.add(new THREE.HemisphereLight(0x8a2a18, 0x120a06, 1.5));
+    const sun = new THREE.DirectionalLight(0xff6a40, .55); sun.position.set(-40,25,-60); scene.add(sun);
+    // overpass silhouette
+    box(scene, 0x0f0a08, 60,1.6,7, 10,7.4,-46);
+    [[-14,-46],[0,-46],[14,-46],[28,-46]].forEach(([x,z])=>box(scene,0x0f0a08,1.6,7,1.6,x,3.5,z));
+    const marcus = makeHuman({});
+    marcus.rotation.z = Math.PI/2; marcus.position.set(0,.18,0); marcus.userData.setMode('lie');
+    scene.add(marcus);
+    return { scene, actors:{marcus}, tick:(dt,t)=>{ fires(t); marcus.userData.tick(dt,t); } };
+  },
 
-// armored hover-sentry: gyro rings, thruster pods, recoiling under-barrel gun
-function buildSentry(eyeMat){
-  const g = new THREE.Group(), anim = {};
-  const hull = new THREE.Mesh(sphereGeo, droneMetal);
-  hull.scale.set(.30,.26,.30); g.add(hull);
-  for (let i=0;i<4;i++){
-    const a = i*Math.PI/2 + Math.PI/4;
-    const plate = new THREE.Mesh(unitBox, droneArmor);
-    plate.scale.set(.17,.21,.035);
-    plate.position.set(Math.sin(a)*.30, .02, Math.cos(a)*.30);
-    plate.rotation.y = a;
-    g.add(plate);
-  }
-  const socket = new THREE.Mesh(torusGeoSm, droneDark);
-  socket.scale.setScalar(.45); socket.position.z = .28;
-  const eye = new THREE.Mesh(eyeGeoS, eyeMat); eye.position.z = .30;
-  const fin = new THREE.Mesh(unitBox, droneDark);
-  fin.scale.set(.04,.26,.16); fin.position.set(0,.36,-.08);
-  g.add(socket, eye, fin);
-  anim.ringH = new THREE.Mesh(torusGeoLg, droneDark);
-  anim.ringH.rotation.x = Math.PI/2;
-  const vGrp = new THREE.Group();
-  const ringV = new THREE.Mesh(torusGeoSm, droneMetal);
-  ringV.rotation.y = Math.PI/2;
-  vGrp.add(ringV); anim.ringV = vGrp;
-  g.add(anim.ringH, vGrp);
-  for (let i=0;i<4;i++){
-    const a = i*Math.PI/2 + Math.PI/4;
-    const pod = new THREE.Mesh(cylGeo, droneDark);
-    pod.scale.set(.05,.11,.05);
-    pod.position.set(Math.sin(a)*.19, -.24, Math.cos(a)*.19);
-    const jet = new THREE.Mesh(discGeo, thrusterGlowMat);
-    jet.rotation.x = -Math.PI/2;
-    jet.position.set(pod.position.x, -.31, pod.position.z);
-    g.add(pod, jet);
-  }
-  const mount = new THREE.Mesh(unitBox, droneDark);
-  mount.scale.set(.08,.09,.14); mount.position.set(0,-.27,.06);
-  g.add(mount);
-  anim.barrel = new THREE.Group();
-  anim.barrel.position.set(0,-.27,.12);
-  const barrel = new THREE.Mesh(cylGeo, gunDark);
-  barrel.scale.set(.03,.32,.03); barrel.rotation.x = Math.PI/2; barrel.position.z = .16;
-  anim.muzzle = new THREE.Object3D();
-  anim.muzzle.position.z = .34;
-  anim.barrel.add(barrel, anim.muzzle);
-  g.add(anim.barrel);
-  anim.recoil = 0;
-  return { g, anim };
-}
+  column(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x160604, .015);
+    bloodSky(scene); ashGround(scene, 0x1c130d);
+    scene.add(new THREE.HemisphereLight(0x8a2a18, 0x120a06, 1.4));
+    // road below, column of machines herding people
+    const walkers=[];
+    for (let i=0;i<10;i++){
+      const p = makeHuman({jacket:0x2c2c28, pants:0x232320, h:.98});
+      p.position.set(-3 + (i%2)*1.2, 0, -6*i);
+      p.userData.setMode('walk'); scene.add(p); walkers.push(p);
+    }
+    const guards=[];
+    for (let i=0;i<3;i++){
+      const w = machine('warden', 1.15); w.position.set(2.8, 0, -8-i*16); scene.add(w); guards.push(w);
+    }
+    const red = new THREE.PointLight(0xff3344, 8, 40, 1.6); red.position.set(2,6,-20); scene.add(red);
+    return { scene, actors:{}, tick:(dt,t)=>{
+      walkers.forEach(p=>{ p.position.z += dt*.9; if (p.position.z>4) p.position.z=-58; p.userData.tick(dt,t); });
+      guards.forEach(g=>{ g.position.z += dt*.9; if (g.position.z>6) g.position.z=-56; });
+      red.intensity = 7+2*Math.sin(t*2);
+    }};
+  },
 
-// per-kind combat stats; warden is the heavy sentry frame from chapter 2
-const KINDS = {
-  crawler: { hp:30,  rad:.55, homeY:.5 },
-  sentry:  { hp:60,  rad:.65, homeY:1.7, charge:1.6, tele:.7,  pdmg:12, pspeed:13, scale:1,    idleEye:0x2bff7f },
-  warden:  { hp:130, rad:.95, homeY:1.9, charge:1.0, tele:.5,  pdmg:16, pspeed:17, scale:1.55, idleEye:0xffc24d },
+  store(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x050403, .05);
+    scene.add(new THREE.HemisphereLight(0x33301f, 0x0a0805, .8));
+    ashGround(scene, 0x1a1712);
+    // walls + shelves
+    box(scene, 0x24201a, 12,.2,12, 0,4,0);
+    box(scene, 0x2a251d, 12,4,.3, 0,2,-6); box(scene, 0x2a251d, .3,4,12, -6,2,0); box(scene, 0x2a251d, .3,4,12, 6,2,0);
+    [[-4,-3],[-4,0],[4,-3],[4,1]].forEach(([x,z])=>box(scene,0x35302a,1,2.4,3,x,1.2,z));
+    const dead = makeHuman({jacket:0x33302c, skin:0x8f8478}); dead.rotation.z=Math.PI/2; dead.position.set(.6,.18,-1.8); dead.userData.setMode('lie'); scene.add(dead);
+    const marcus = makeHuman({}); marcus.position.set(-1.6,0,1.6); marcus.rotation.y = 2.6; scene.add(marcus);
+    const radio = box(scene, 0x1c1f1c, .3,.12,.2, .1,.28,-1.4, {metal:.6});
+    const led = new THREE.PointLight(0x39ff88, 2.2, 6, 2); led.position.set(.1,.5,-1.4); scene.add(led);
+    return { scene, actors:{marcus,dead,radio}, tick:(dt,t)=>{
+      led.intensity = 1.6+Math.abs(Math.sin(t*6))*1.4;
+      marcus.userData.tick(dt,t);
+    }};
+  },
+
+  basement(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x040403, .06);
+    scene.add(new THREE.HemisphereLight(0x2c2c20, 0x080806, .7));
+    ashGround(scene, 0x171512);
+    box(scene, 0x211e18, 10,.2,10, 0,3.2,0);
+    box(scene, 0x272319, 10,3.2,.3, 0,1.6,-5); box(scene, 0x272319, .3,3.2,10, -5,1.6,0);
+    box(scene, 0x272319, .3,3.2,10, 5,1.6,0); box(scene, 0x272319, 10,3.2,.3, 0,1.6,5);
+    [[-3.4,3],[3.6,-3.4],[3.2,3.4]].forEach(([x,z])=>box(scene,0x2e2a20,1.1,.9,1.1,x,.45,z));
+    box(scene, 0x3a352a, 2.4,.12,1, 0,.8,-2.6);
+    box(scene, 0x3a352a, .12,.8,.12, -1,.4,-2.3); box(scene, 0x3a352a, .12,.8,.12, 1,.4,-2.3);
+    // pistol + med kit on the table
+    box(scene, 0x22261f, .5,.12,.16, -.6,.93,-2.6, {metal:.7});
+    box(scene, 0x22261f, .1,.18,.12, -.75,.83,-2.6, {metal:.7});
+    box(scene, 0x5a5148, .44,.2,.3, .6,.96,-2.6);
+    box(scene, 0xd8d2c4, .22,.05,.06, .6,1.07,-2.6, {emissive:0x222222});
+    box(scene, 0xd8d2c4, .06,.05,.2, .6,1.07,-2.6, {emissive:0x222222});
+    const pen = new THREE.SpotLight(0xfff2d0, 60, 18, .5, .5, 1.6);
+    pen.position.set(-1.5,2.4,1.5); pen.target.position.set(0,.9,-2.6); scene.add(pen, pen.target);
+    // vent grate glow (Reyes on the other side)
+    const grate = box(scene, 0x11140f, 1.2,.7,.1, 3.6,1.1,-4.95);
+    const grateGlow = new THREE.PointLight(0x39ff88, 0, 8, 2); grateGlow.position.set(3.6,1.1,-4.4); scene.add(grateGlow);
+    grateGlow.userData.on = false;
+    const marcus = makeHuman({}); marcus.position.set(-1.2,0,-.6); marcus.rotation.y=.5; scene.add(marcus);
+    return { scene, actors:{marcus,grate,grateGlow}, tick:(dt,t)=>{
+      marcus.userData.tick(dt,t);
+      if (grateGlow.userData.on) grateGlow.intensity = 1.5+Math.abs(Math.sin(t*3))*1.2;
+    }};
+  },
+
+  street(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0a0705, .028);
+    bloodSky(scene); ashGround(scene, 0x1c1712);
+    scene.add(new THREE.HemisphereLight(0x5a2a1a, 0x0e0a06, 1.1));
+    // buildings either side
+    for (let i=0;i<5;i++){
+      box(scene, 0x14100c, 8,10+Math.random()*8,10, -10, 6, -i*14+6);
+      box(scene, 0x14100c, 8,10+Math.random()*8,10,  10, 6, -i*14+6);
+    }
+    // dead delivery van + tarp
+    box(scene, 0x2e3230, 2.2,2.1,4.6, -2.6,1.05,-6, {metal:.4});
+    box(scene, 0x23120c, 2.6,.06,3.4, -2.6,.5,-3.2, {rz:.12});
+    const sentry = machine('sentry', 1.1); sentry.position.set(1.8,0,-30); scene.add(sentry);
+    sentry.userData.approach = false;
+    const eyeGlow = new THREE.PointLight(0xff3344, 4, 14, 1.8); eyeGlow.position.set(1.8,2.4,-30); scene.add(eyeGlow);
+    const marcus = makeHuman({}); marcus.position.set(-1,0,2); marcus.rotation.y=Math.PI; scene.add(marcus);
+    const reyes = makeHuman({jacket:0x4a423a, h:.94}); reyes.position.set(-2.2,0,2.6); reyes.rotation.y=Math.PI; scene.add(reyes);
+    reyes.visible = false;
+    return { scene, actors:{marcus,reyes,sentry}, tick:(dt,t)=>{
+      marcus.userData.tick(dt,t); reyes.userData.tick(dt,t);
+      if (sentry.userData.approach && sentry.position.z < -10){ sentry.position.z += dt*1.3; eyeGlow.position.z = sentry.position.z; }
+      eyeGlow.intensity = 3.4+Math.sin(t*7)*1.2;
+    }};
+  },
+
+  bridge(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x0a0805, .02);
+    bloodSky(scene);
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(600,600),
+      new THREE.MeshStandardMaterial({ color:0x0a0d0c, roughness:.25, metalness:.6 }));
+    water.rotation.x=-Math.PI/2; water.position.y=-6; scene.add(water);
+    scene.add(new THREE.HemisphereLight(0x6a3020, 0x0a0806, 1.1));
+    // deck + trusses
+    box(scene, 0x241f18, 4,.3,90, 0,-.15,-38);
+    for (let i=0;i<9;i++){
+      box(scene, 0x1b1712, .28,3.4,.28, -1.9,1.7,-i*10);
+      box(scene, 0x1b1712, .28,3.4,.28,  1.9,1.7,-i*10);
+      box(scene, 0x1b1712, 4,.22,.22, 0,3.4,-i*10);
+    }
+    // depot on the far bank
+    box(scene, 0x141410, 26,7,10, 0,3.5,-92);
+    const gate = new THREE.PointLight(0x39ff88, 6, 30, 1.8); gate.position.set(0,3,-86); scene.add(gate);
+    // sweeping searchlight
+    const beam = new THREE.SpotLight(0xf2f6ee, 0, 90, .16, .4, 1.2);
+    beam.position.set(14,16,-40); scene.add(beam, beam.target);
+    beam.userData.on = false;
+    const marcus = makeHuman({}); marcus.position.set(-.6,0,4); marcus.rotation.y=Math.PI; scene.add(marcus);
+    const reyes = makeHuman({jacket:0x4a423a, h:.94}); reyes.position.set(.7,0,5.4); reyes.rotation.y=Math.PI; scene.add(reyes);
+    reyes.visible=false;
+    return { scene, actors:{marcus,reyes,beam}, tick:(dt,t)=>{
+      marcus.userData.tick(dt,t); reyes.userData.tick(dt,t);
+      const s = Math.sin(t*.55);
+      beam.target.position.set(0, 0, -38 + s*34);
+      beam.intensity = beam.userData.on ? 260 : 0;
+    }};
+  },
+
+  depot(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x030503, .03);
+    scene.add(new THREE.HemisphereLight(0x2a3c2e, 0x060806, .9));
+    ashGround(scene, 0x1c1e1a);
+    box(scene, 0x232620, 34,.3,50, 0,7,-14);
+    box(scene, 0x282b24, 34,7,.4, 0,3.5,-38); box(scene, 0x282b24, .4,7,50, -17,3.5,-14); box(scene, 0x282b24, .4,7,50, 17,3.5,-14);
+    // rows of cots + cartons
+    for (let r=0;r<4;r++) for (let c=0;c<5;c++){
+      box(scene, 0x3a3f37, 1,.35,2.2, -10+c*5, .35, -4-r*7);
+      if ((r+c)%3===0) box(scene, 0x44483c, .9,.9,.9, -10+c*5+1.4, .45, -5-r*7);
+    }
+    // humming striplights (they advance toward you at the end)
+    const strips=[];
+    for (let i=0;i<6;i++){
+      const s = new THREE.Mesh(unitBox, new THREE.MeshBasicMaterial({ color:0x0f120f }));
+      s.scale.set(8,.12,.5); s.position.set(0,6.8,-2-i*6);
+      strips.push(s); scene.add(s);
+    }
+    strips[0].userData.advance = 0;
+    // THE SCREEN — the ledger of names
+    const namePool = ['ADAMS T','AKANA R','BAUER S','BRISTOW K','CHEN L','COLE A','DIAZ M','ELLIS J','FLORES G','GRAY P','HALE D','IBARRA C','JAMES W','KEO S','LANE V','MEYER H','NGUYEN Q','ORTIZ B','PRICE N','QUINN F','REYES A','SATO E','TRAN P','UPTON L','VOSS M','WADE C','ANGELA M','YOUNG D','ZHOU X','MARSH O'];
+    const screenCanvas = document.createElement('canvas'); screenCanvas.width=512; screenCanvas.height=512;
+    const sg = screenCanvas.getContext('2d');
+    const screenTex = new THREE.CanvasTexture(screenCanvas); screenTex.colorSpace=THREE.SRGBColorSpace;
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(14,7),
+      new THREE.MeshBasicMaterial({ map:screenTex }));
+    screen.position.set(0,3.6,-37.7); scene.add(screen);
+    const screenGlow = new THREE.PointLight(0x39ff88, 10, 30, 1.6); screenGlow.position.set(0,3.6,-33); scene.add(screenGlow);
+    let scroll=0;
+    function drawScreen(){
+      scroll += .35;
+      sg.fillStyle='#02120a'; sg.fillRect(0,0,512,512);
+      sg.font='20px monospace'; sg.textBaseline='top';
+      for (let i=0;i<16;i++){
+        const idx = (Math.floor(scroll/28)+i) % namePool.length;
+        const y = i*30 - (scroll%28);
+        sg.fillStyle='#39ff88'; sg.fillText(namePool[idx]+'.', 30, y);
+        sg.fillStyle='#ff3344'; sg.fillText('COLLECTED', 330, y);
+      }
+      sg.fillStyle='rgba(57,255,136,.06)';
+      for (let y=0;y<512;y+=4) sg.fillRect(0,y,512,1);
+      screenTex.needsUpdate = true;
+    }
+    const marcus = makeHuman({}); marcus.position.set(0,0,-16); marcus.rotation.y=Math.PI; scene.add(marcus);
+    const reyes = makeHuman({jacket:0x4a423a,h:.94}); reyes.position.set(-14,0,-6); reyes.visible=false; scene.add(reyes);
+    const pod = machine('pod', 1); pod.position.set(13,0,-30); scene.add(pod);
+    return { scene, actors:{marcus,reyes,strips}, tick:(dt,t)=>{
+      drawScreen(); marcus.userData.tick(dt,t); reyes.userData.tick(dt,t);
+      screenGlow.intensity = 8+2.4*Math.sin(t*2.2);
+      const adv = strips[0].userData.advance || 0;
+      strips.forEach((s,i)=>{ s.material.color.setHex(i < adv ? 0xeef2ea : 0x0f120f); });
+    }};
+  },
+
+  ridge(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x120806, .008);
+    bloodSky(scene); ashGround(scene, 0x201710);
+    scene.add(new THREE.HemisphereLight(0x7a3a22, 0x120a06, 1.3));
+    // the hive on the horizon, glowing like a hearth
+    const hive = new THREE.Mesh(new THREE.SphereGeometry(26, 20, 14, 0, 6.283, 0, 1.35),
+      new THREE.MeshStandardMaterial({ color:0x121410, emissive:0x0f2a18, roughness:.7 }));
+    hive.position.set(0, 0, -220); scene.add(hive);
+    const hgl = new THREE.PointLight(0x39ff88, 120, 300, 1.5); hgl.position.set(0,24,-210); scene.add(hgl);
+    // roads of people walking in
+    const rows=[];
+    for (let i=0;i<24;i++){
+      const p = makeHuman({jacket:0x24241f,h:.9});
+      p.position.set(-8+(i%3)*8+Math.sin(i)*1.2, 0, -50-i*7);
+      p.rotation.y = Math.PI; p.userData.setMode('walk'); scene.add(p); rows.push(p);
+    }
+    const marcus = makeHuman({}); marcus.position.set(-1,0,6); scene.add(marcus);
+    const reyes = makeHuman({jacket:0x4a423a,h:.94}); reyes.position.set(.6,0,6.4); reyes.visible=false; scene.add(reyes);
+    return { scene, actors:{marcus,reyes}, tick:(dt,t)=>{
+      rows.forEach(p=>{ p.position.z -= dt*.8; if (p.position.z<-215) p.position.z=-50; p.userData.tick(dt,t); });
+      marcus.userData.tick(dt,t); reyes.userData.tick(dt,t);
+      hgl.intensity = 110+18*Math.sin(t*1.1);
+    }};
+  },
+
+  under(){
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x010201, .14);
+    scene.add(new THREE.HemisphereLight(0x1a201a, 0x020302, .5));
+    ashGround(scene, 0x0d0f0d);
+    box(scene, 0x141614, 6,.2,8, 0,2.2,0);
+    box(scene, 0x181b18, 6,2.2,.3, 0,1.1,-4); box(scene, 0x181b18, .3,2.2,8, -3,1.1,0); box(scene, 0x181b18, .3,2.2,8, 3,1.1,0);
+    const marcus = makeHuman({}); marcus.position.set(0,0,-1); marcus.rotation.y=.2; scene.add(marcus);
+    box(scene, 0x1c1f1c, .3,.12,.2, .5,.35,-1.6, {metal:.6});
+    const led = new THREE.PointLight(0x39ff88, 2.5, 7, 2); led.position.set(.5,.6,-1.4); scene.add(led);
+    return { scene, actors:{marcus}, tick:(dt,t)=>{
+      marcus.userData.tick(dt,t); led.intensity = 1.8+Math.abs(Math.sin(t*5))*1.6;
+    }};
+  },
 };
 
-const drones = [];
-let droneSeq = 0;
-
-function makeDrone(kind, x, z, segment){
-  const isCrawler = kind === 'crawler';
-  const K = KINDS[kind];
-  const eyeMat = new THREE.MeshBasicMaterial({ color: K.idleEye || EYE_GREEN });
-  const M = MODELS[kind];
-  let built;
-  if (M){
-    const g = M.template.clone();
-    const anim = { glb: true };
-    const eye = new THREE.Mesh(eyeGeoC, eyeMat);
-    eye.position.set(...M.eye);
-    g.add(eye);
-    if (M.muzzle){
-      anim.muzzle = new THREE.Object3D();
-      anim.muzzle.position.set(...M.muzzle);
-      g.add(anim.muzzle);
-      anim.recoil = 0;
-    }
-    built = { g, anim };
-  } else {
-    built = isCrawler ? buildCrawler(eyeMat) : buildSentry(eyeMat);
-  }
-  const mesh = built.g;
-  // blob shadow, child of the group but pinned to the floor each frame
-  const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-  shadow.rotation.x = -Math.PI/2;
-  shadow.scale.setScalar(isCrawler ? 1.2 : 1.4);
-  mesh.add(shadow);
-  if (!M && K.scale && K.scale !== 1) mesh.scale.setScalar(K.scale);
-  const d = {
-    id: droneSeq++, kind, segment, mesh, eyeMat, anim: built.anim, shadow,
-    baseScale: M ? 1 : (K.scale || 1), idleEye: K.idleEye || EYE_GREEN,
-    home: new THREE.Vector3(x, K.homeY, z),
-    hp: K.hp, maxHp: K.hp,
-    state: 'idle',            // idle > alert > attack
-    stateT: 0, losT: Math.random()*.15,
-    meleeCd: 0, chargeT: 0, patrolDir: 1,
-    alive: true, spawned: false, deathT: 0,
-  };
-  mesh.position.copy(d.home);
-  drones.push(d);
-  return d;
-}
-
-const INITIAL_DRONES = CH.drones;
-
-function spawnSegment(seg){
-  // (re)create the initial drones of a segment; used at load + on respawn
-  for (let i = drones.length-1; i >= 0; i--){
-    if (drones[i].segment === seg){
-      scene.remove(drones[i].mesh);
-      drones.splice(i,1);
-    }
-  }
-  INITIAL_DRONES.filter(d=>d[3]===seg).forEach(([k,x,z,s])=>{
-    const d = makeDrone(k,x,z,s);
-    d.spawned = true; scene.add(d.mesh);
-  });
-}
-modelsReady.then(() => { [1,2,3,4].forEach(spawnSegment); });
-
-function segmentCleared(seg){
-  return !drones.some(d => d.segment === seg && d.alive);
-}
-function activeDroneCount(){
-  return drones.filter(d => d.alive).length;
-}
-
-// core-wave spawn points (room corners)
-const WAVE_SPAWNS = CH.waveSpawns;
-const MAX_ACTIVE = 8, WAVE_TOTAL = CH.waveTotal;
-
 /* ============================================================
-   Sentry projectiles
-   ============================================================ */
-const projGeo = new THREE.SphereGeometry(.14, 6, 6);
-const projMat = new THREE.MeshBasicMaterial({ color:0xff5566 });
-const projectiles = [];
-function fireProjectile(from, target, speed = 13, dmg = 12){
-  const m = new THREE.Mesh(projGeo, projMat);
-  m.position.copy(from);
-  const vel = target.clone().sub(from).normalize().multiplyScalar(speed);
-  scene.add(m);
-  projectiles.push({ mesh:m, vel, life:4, dmg });
-  AudioSys.sentryFire();
-}
-
-/* ============================================================
-   Game state
+   Cinematic engine — beats, shots, choices, QTEs, toasts
    ============================================================ */
 const G = {
-  mode: 'boot',            // boot > title > intro > play > dead > extracting > end
-  hp: 100, lastDamageT: 0,
-  hasRifle: false, fireCd: 0,
-  yaw: 0, pitch: 0,
-  checkpoint: { pos: new THREE.Vector3(0,0,0), yaw: 0, segment: 0 },
-  currentSegment: 0,
-  radioQueue: [], radioT: 0, radioFired: new Set(),
-  plantProgress: 0, planting: false, planted: false,
-  alarm: false, waveSpawned: 0, waveT: 0,
-  time: 0, shakeT: 0,
+  mode:'title', set:null, setName:'',
+  bi:0, flags:{}, choices:[], checkpoint:null,
+  camFrom:null, camTo:null, camLook:null, camT:0, camDur:0,
+  waitTimer:0, sayTimer:0,
+  t:0,
 };
-const PLAYER_R = 0.4, PLAYER_EYE = 1.7;
-const MOVE_SPEED = 5.2;
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+};
+const END_KEY='latm_tt_endings';
+const ENDINGS = { e_taken:'TAKEN', e_ghost:'GHOST', e_together:'TOGETHER', e_lone:'RUNNER' };
+function endingsFound(){ return store.get(END_KEY)||[]; }
+{
+  const f=endingsFound();
+  if (f.length) el.titleTracker.textContent = 'ENDINGS RECOVERED: '+f.length+' / 4';
+}
 
-yawObj.position.set(0, PLAYER_EYE, 0);
+function switchSet(name){
+  G.setName = name;
+  G.set = SETS[name]();
+}
+function shot(pos, look, dur=0){
+  const p = new THREE.Vector3(...pos), l = new THREE.Vector3(...look);
+  if (dur<=0){ camera.position.copy(p); camera.lookAt(l); G.camTo=null; G.camLook=l; return; }
+  G.camFrom = { p:camera.position.clone(), l:(G.camLook||l).clone() };
+  G.camTo = { p, l }; G.camT = 0; G.camDur = dur;
+}
+function camTick(dt){
+  if (!G.camTo) return;
+  G.camT += dt/G.camDur;
+  const k = G.camT>=1?1:(G.camT*G.camT*(3-2*G.camT));
+  camera.position.lerpVectors(G.camFrom.p, G.camTo.p, k);
+  const look = new THREE.Vector3().lerpVectors(G.camFrom.l, G.camTo.l, k);
+  camera.lookAt(look); G.camLook = look;
+  if (G.camT>=1) G.camTo=null;
+}
+
+/* dialogue */
+function say(who, text){
+  el.speaker.textContent = who ? who : '';
+  el.speaker.className = who ? who.toLowerCase() : '';
+  el.subtitle.textContent = text;
+  el.subtitle.className = who ? '' : 'narr';
+  el.tapHint.style.opacity = .8;
+  G.sayTimer = Math.max(3.4, text.length*.06);
+  Audio2.blip(who==='LEDGER'?196:660,.03,.02);
+}
+function clearSay(){
+  el.speaker.textContent=''; el.subtitle.textContent='';
+  el.tapHint.style.opacity=0;
+}
+
+/* toast */
+let toastTimer=null;
+function toast(text, ember){
+  el.toast.textContent = '◆ '+text;
+  el.toast.className = 'show'+(ember?' ember':'');
+  Audio2.sting();
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{ el.toast.className=''; }, 3400);
+}
+
+/* choices */
+let choiceState=null;
+function showChoice(c){
+  G.mode='choice';
+  el.choiceRow.innerHTML='';
+  const opts = c.options.filter(o=>!o.req || G.flags[o.req]);
+  function pick(o){
+    el.choiceWrap.style.display='none';
+    Audio2.heartbeat(false);
+    choiceState=null;
+    G.choices.push({ q:c.record||'', a:o.label });
+    if (o.flags) Object.assign(G.flags, o.flags);
+    if (o.toast) toast(o.toast, o.ember);
+    G.mode='beat';
+    if (o.goto) jump(o.goto); else step();
+  }
+  opts.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt'+(o.silent?' silent':'');
+    b.innerHTML = '<span class="key">'+(i+1)+'</span>'+o.label+(o.sub?'<small>'+o.sub+'</small>':'');
+    b.onclick = e=>{ e.stopPropagation(); pick(o); };
+    el.choiceRow.appendChild(b);
+  });
+  el.choiceWrap.style.display='block';
+  choiceState = { c, opts, t: c.timer||CONFIG.CHOICE_SECONDS, pick };
+  choiceState.total = choiceState.t;
+  Audio2.heartbeat(true);
+}
+function choiceTick(dt){
+  if (!choiceState) return;
+  choiceState.t -= dt;
+  const k = Math.max(0, choiceState.t/choiceState.total);
+  el.choiceFill.style.width = (k*100)+'%';
+  el.choiceFill.className = k<.33?'hot':'';
+  if (choiceState.t<=0){
+    const def = choiceState.opts.find(o=>o.silent) || choiceState.opts[choiceState.opts.length-1];
+    choiceState.pick(def);
+  }
+}
+
+/* QTE */
+let qteState=null;
+function showQTE(q){
+  G.mode='qte';
+  el.qte.style.display='block';
+  el.qteLabel.textContent = q.label;
+  el.qteKey.textContent = IS_TOUCH ? 'TAP' : (q.key||'SPACE');
+  el.qteBar.style.display = q.mash ? 'block' : 'none';
+  el.qteFill.style.width='0%';
+  qteState = { q, t:0, window:q.window||1.7, hits:0, need:q.need||10 };
+  Audio2.heartbeat(true);
+  Audio2.danger();
+}
+function qteInput(){
+  if (!qteState) return;
+  const q = qteState.q;
+  if (q.mash){
+    qteState.hits++;
+    Audio2.blip(520+qteState.hits*30,.04,.04);
+    el.qteFill.style.width = Math.min(100, qteState.hits/qteState.need*100)+'%';
+    if (qteState.hits>=qteState.need) resolveQTE(true);
+  } else {
+    resolveQTE(true);
+  }
+}
+function qteTick(dt){
+  if (!qteState) return;
+  qteState.t += dt;
+  const k = Math.max(0, 1-qteState.t/qteState.window);
+  el.qteShrink.style.inset = (-3-(k*46))+'px';
+  el.qteShrink.style.opacity = .25+.75*k;
+  if (qteState.t>=qteState.window) resolveQTE(false);
+}
+function resolveQTE(hit){
+  const q=qteState.q;
+  qteState=null;
+  el.qte.style.display='none';
+  Audio2.heartbeat(false);
+  G.mode='beat';
+  if (hit){ Audio2.blip(880,.09,.05); if (q.okToast) toast(q.okToast); jump(q.ok); }
+  else { Audio2.danger(); if (q.failToast) toast(q.failToast, true); jump(q.fail); }
+}
+
+/* death + retry */
+function death(sub){
+  G.mode='death';
+  el.deathSub.textContent = sub || 'THE LEDGER HAS YOUR NAME.';
+  el.death.style.display='flex';
+  Audio2.danger();
+}
+el.rewindBtn.onclick = () => {
+  el.death.style.display='none';
+  if (G.checkpoint){
+    G.flags = { ...G.checkpoint.flags };
+    G.bi = G.checkpoint.bi;
+    G.mode='beat';
+    step();
+  }
+};
+
+/* fades */
+function fade(toBlack, dur=1.2){
+  el.fade.style.transition = 'opacity '+dur+'s';
+  el.fade.style.opacity = toBlack?1:0;
+}
+
+/* ============================================================
+   THE SCRIPT — Episode One: The Waking
+   ============================================================ */
+const B = [];
+const L = {};
+const add = b => B.push(b);
+const label = n => { L[n]=B.length; };
+
+/* ---- SCENE 1: THE WAKE ---- */
+add({set:'lot'});
+add({fade:'in'});
+add({shot:{pos:[0,1.2,6], look:[0,6,-60], dur:0}});
+add({shot:{pos:[0,2.2,6], look:[0,10,-60], dur:9}});
+add({say:[null,'The sky was the wrong color.']});
+add({shot:{pos:[1.6,.7,1.6], look:[0,.3,0], dur:0}});
+add({say:[null,'Marcus knew that before he knew his own name.']});
+add({say:[null,'Gravel under his back. Copper on his tongue. The city he grew up in stood against the horizon like a jaw with its teeth knocked out, burning quietly in a dozen places.']});
+add({act:{rise:true, dur:2.2}});
+add({shot:{pos:[-2.5,1.6,3.5], look:[0,1.4,0], dur:2.5}});
+add({say:[null,'Nothing hurt yet. That worried him more than the blood.']});
+add({shot:{pos:[0,1.7,-2], look:[10,7,-46], dur:5}});
+add({say:[null,'Then he heard it. Mechanical. Rhythmic. Patient. Not an engine — engines want something.']});
+add({say:['MARCUS','...It sounds like counting.']});
+add({choice:{
+  record:'The sound beyond the overpass',
+  options:[
+    { label:'Move toward the sound', sub:'Know your enemy', goto:'COLUMN' },
+    { label:'Move away from it', sub:'Stay dark', goto:'STORE' },
+    { label:'[Stand frozen]', silent:true, goto:'STORE', toast:'HESITATION HAS A COST.', ember:true },
+  ]}});
+
+/* ---- 1A: THE COLUMN ---- */
+label('COLUMN');
+add({set:'column'});
+add({shot:{pos:[-9,7,4], look:[0,1,-18], dur:0}});
+add({shot:{pos:[-7,6,-2], look:[1,1,-22], dur:10}});
+add({say:[null,'From the overpass he saw them: a column of machines moving through the ash, tall and unhurried. And between them walked people. Alive. In rows.']});
+add({say:[null,'Nobody screamed. Nobody ran. That was the part his brain refused to file.']});
+add({say:['MARCUS','They’re not hunting anyone. They’re... collecting.']});
+add({flags:{seen:true}});
+add({toastB:['A LENS TILTED YOUR WAY.', true]});
+add({goto:'NIGHTFALL'});
+
+/* ---- 1B: THE STORE ---- */
+label('STORE');
+add({set:'store'});
+add({shot:{pos:[-2.8,1.5,3.2], look:[.3,.3,-1.6], dur:0}});
+add({shot:{pos:[-1.6,1.2,1.2], look:[.2,.3,-1.6], dur:7}});
+add({say:[null,'He went the other way, through what used to be a hardware store, and nearly stepped on the man. Dead two days, maybe three. Still holding a hand radio that was still on.']});
+add({say:['LEDGER','...HALE, D. — COLLECTED. IBARRA, C. — COLLECTED. JAMES, W. — COLLECTED...']});
+add({say:[null,'A calm voice, reading names. Full names. And after each one, the same word.']});
+add({say:['MARCUS','I’m sorry. You’re past needing it. I’m not.']});
+add({flags:{radio:true}});
+add({toastB:['RADIO ADDED TO INVENTORY.']});
+add({goto:'NIGHTFALL'});
+
+/* ---- NIGHTFALL / SHELTER ---- */
+label('NIGHTFALL');
+add({fade:'out'});
+add({set:'basement'});
+add({checkpoint:true});
+add({fade:'in'});
+add({shot:{pos:[2.6,1.5,2.8], look:[-.5,.8,-1.5], dur:0}});
+add({shot:{pos:[1.8,1.3,1.6], look:[0,.9,-2.6], dur:8}});
+add({say:[null,'The light went out of the sky like something had unplugged it. He found a basement under a collapsed pharmacy — one night of safety, maybe.']});
+add({say:[null,'By penlight: two things worth their weight, and a bag with room for one.']});
+add({shot:{pos:[.2,1.35,-1.2], look:[0,.9,-2.7], dur:4}});
+add({choice:{
+  record:'The bag has room for one',
+  timer:10,
+  options:[
+    { label:'Take the gun', sub:'Fight what finds you', flags:{armed:true}, toast:'YOU ARE ARMED. THE LEDGER PREFERS THAT.', ember:true, goto:'VOICE' },
+    { label:'Take the med kit', sub:'Outrun what you can’t fight', flags:{medkit:true}, toast:'YOUR LEG IS TREATED.', goto:'VOICE' },
+    { label:'Take both', sub:'Ditch the food. Heavy and hungry.', flags:{armed:true, medkit:true, hungry:true}, toast:'YOU KEPT EVERYTHING BUT DINNER.', goto:'VOICE' },
+  ]}});
+
+/* ---- THE VOICE ---- */
+label('VOICE');
+add({act:{grateOn:true}});
+add({shot:{pos:[1.2,1.4,-1], look:[3.6,1.1,-5], dur:3}});
+add({say:[null,'Before dawn: a voice through the vent grate. Human. Young. Hurt.']});
+add({say:['REYES','I can hear you breathing. I’m not one of them.']});
+add({say:['REYES','My ankle’s wrecked, there’s a patrol two streets over, and I will absolutely die out here.']});
+add({say:[null,'A stranger was a risk. A stranger was also the first living voice in two days.']});
+add({choice:{
+  record:'The voice through the grate',
+  timer:7,
+  options:[
+    { label:'“Hold on. I’m coming.”', sub:'Slower together', flags:{trusted:true}, toast:'REYES WILL REMEMBER THAT.', goto:'HELPED' },
+    { label:'[Stay silent]', silent:true, flags:{seen:true}, toast:'SHE HEARD YOU LEAVE.', ember:true, goto:'ALONE' },
+  ]}});
+
+label('HELPED');
+add({say:['REYES','Reyes. Don’t wear it out.']});
+add({say:[null,'He splinted the ankle with a broom handle and half his patience, and she paid him back in the only currency left.']});
+add({say:['REYES','There’s a refuge across the river. Old rail depot. Real people, real walls. We move like one slow animal.']});
+add({goto:'PATROL'});
+
+label('ALONE');
+add({say:[null,'He left her voice behind in the dark and told himself it was math, not cowardice.']});
+add({say:[null,'The math felt heavier every block.']});
+add({goto:'PATROL'});
+
+/* ---- THE PATROL ---- */
+label('PATROL');
+add({fade:'out'});
+add({set:'street'});
+add({checkpoint:true});
+add({fade:'in'});
+add({act:{reyesVisible:'trusted'}});
+add({shot:{pos:[2.5,1.6,4], look:[-1.5,1,-8], dur:0}});
+add({shot:{pos:[1.5,1.4,1], look:[0,1.6,-28], dur:6}});
+add({say:[null,'They were halfway down the boulevard when the counting sound turned the corner with them.']});
+add({act:{sentryApproach:true}});
+add({shot:{pos:[-.5,.9,-1], look:[1.8,2,-24], dur:5}});
+add({say:['LEDGER','SCANNING. UNREGISTERED SIGNATURE IN GRID.']});
+add({choice:{
+  record:'The patrol has your street',
+  timer:6,
+  options:[
+    { label:'Under the tarp', sub:'Reyes’ trick', req:'trusted', goto:'TARP' },
+    { label:'Open fire', sub:'Half a magazine', req:'armed', goto:'FIRE' },
+    { label:'Run for the river', sub:'Give it nothing but your back', goto:'RUN' },
+  ]}});
+
+label('TARP');
+add({shot:{pos:[-1.8,.6,-1.5], look:[-2.6,.6,-5], dur:2}});
+add({say:['REYES','Under the van. They don’t look under things — they think we still act like people.']});
+add({say:[null,'Cold asphalt. Her elbow in his ribs. The machine’s shadow slid over the tarp... and stopped.']});
+add({say:[null,'It was listening for lungs.']});
+add({qte:{label:'HOLD YOUR BREATH — RELEASE THE INSTANT IT TURNS', window:1.9,
+  ok:'TARP_OK', okToast:'SIGNATURE COOLED.',
+  fail:'CAUGHT', failToast:'IT HEARD YOU BREATHE.'}});
+label('TARP_OK');
+add({say:[null,'The machine counted. Moved on. Reyes let her breath out an inch at a time, like paying a debt in coins.']});
+add({goto:'BRIDGE'});
+
+label('FIRE');
+add({shot:{pos:[-2,1.5,1.5], look:[1.8,1.8,-20], dur:1.5}});
+add({say:[null,'Marcus did the human thing.']});
+add({qte:{label:'FIRE — KEEP FIRING', mash:true, need:9, window:3.2,
+  ok:'FIRE_OK', fail:'CAUGHT', failToast:'THE RETURN SWEEP FOUND YOU.'}});
+label('FIRE_OK');
+add({flags:{seen:true}});
+add({say:[null,'Half a magazine, center mass. It worked. It also rang the whole dead city like a bell.']});
+add({toastB:['EVERY LENS TURNED. THE LEDGER KNOWS YOUR SHAPE.', true]});
+add({goto:'BRIDGE'});
+
+label('RUN');
+add({shot:{pos:[0,1.6,3], look:[0,1.2,-30], dur:1.2}});
+add({say:[null,'Machines are faster on the straightaways. The trick is to stop giving it straightaways.']});
+add({qte:{label:'CUT THE CORNER — NOW', window:1.6,
+  ok:'RUN_OK', okToast:'YOU GAVE IT GEOMETRY, NOT A TARGET.',
+  fail:'RUN_HURT', failToast:'IT CUT THE ANGLE. YOU PAID IN SKIN.'}});
+label('RUN_OK');
+add({goto:'BRIDGE'});
+label('RUN_HURT');
+add({flags:{hurt:true, seen:true}});
+add({say:[null,'Something opened a cold line across his ribs as he dove through a fence gap too small for it. He came up running and did not stop to count the blood.']});
+add({goto:'BRIDGE'});
+
+label('CAUGHT');
+add({death:'THE COUNTING STOPPED ON YOUR NAME.'});
+
+/* ---- THE BRIDGE ---- */
+label('BRIDGE');
+add({fade:'out'});
+add({set:'bridge'});
+add({checkpoint:true});
+add({fade:'in'});
+add({act:{reyesVisible:'trusted'}});
+add({act:{beamOn:true}});
+add({shot:{pos:[3.4,2,6], look:[0,2,-40], dur:0}});
+add({shot:{pos:[2.4,1.7,2], look:[0,2.4,-60], dur:8}});
+add({say:[null,'Dawn came up the color of an old bruise. The rail bridge was somehow still standing, and on the far bank: the depot. Intact. Lit.']});
+add({say:[null,'A searchlight walked the length of the bridge in slow, even passes. The water underneath moved like it was in on something.']});
+add({sayIf:{flag:'trusted', who:'REYES', text:'Between sweeps. Eyes forward, hands off the rail. Go when I say.'}});
+add({shot:{pos:[-2.6,1.5,-6], look:[0,1,-30], dur:3}});
+add({qte:{label:'CROSS BETWEEN SWEEPS — GO', window:1.8,
+  ok:'BRIDGE_OK', okToast:'CROSSED DARK. NO NEW ENTRIES.',
+  fail:'BRIDGE_LIT', failToast:'THE LIGHT FOUND THE BRIDGE — AND YOU ON IT.'}});
+label('BRIDGE_OK');
+add({act:{walkAcross:true, dur:3}});
+add({say:[null,'He moved when the light moved away and matched its patience step for step.']});
+add({goto:'DEPOT'});
+label('BRIDGE_LIT');
+add({flags:{seen:true}});
+add({act:{walkAcross:true, dur:2}});
+add({say:[null,'His shadow ran forty feet ahead of him, pinned to the ties, unmistakably human. Somewhere behind, the counting changed pitch — like a throat clearing.']});
+add({say:[null,'He took the last ten feet as a fall, and came up on the far bank soaked, bleeding, and filed under a new heading.']});
+add({goto:'DEPOT'});
+
+/* ---- THE DEPOT ---- */
+label('DEPOT');
+add({fade:'out'});
+add({set:'depot'});
+add({checkpoint:true});
+add({fade:'in'});
+add({shot:{pos:[0,1.6,4], look:[0,2,-20], dur:0}});
+add({shot:{pos:[0,1.8,-2], look:[0,2,-24], dur:9}});
+add({say:[null,'The gate was open. Inside: cots in rows. Food in cartons. Lights on and humming — actual electric light, the first he’d seen since the sky changed.']});
+add({say:[null,'And nobody. Not a body, not a struggle, not a note. Hundreds of people’s things, arranged neatly, like the people had simply been subtracted.']});
+add({shot:{pos:[0,2,-24], look:[0,3.6,-38], dur:6}});
+add({say:[null,'The far wall of the depot was a screen. And the screen was a list.']});
+add({say:['LEDGER','...VOSS, M. — COLLECTED. WADE, C. — COLLECTED. ANGELA, M. — COLLECTED...']});
+add({say:['MARCUS','It was never a refuge. It’s a net. They didn’t destroy anything they could use.']});
+add({say:['MARCUS','The machines didn’t destroy us. They organized us.']});
+add({act:{lights:1}});
+add({say:['LEDGER','SUBJECT M-1. UNREGISTERED. REMAIN WHERE YOU ARE.']});
+add({act:{lights:3}});
+add({say:[null,'The humming changed pitch. The lights walked themselves toward him down the ceiling, row by row, and under the floor the counting started — close, and everywhere at once.']});
+add({act:{lights:5}});
+add({say:[null,'The doors were still open. For a few more seconds, everything was still a choice.']});
+add({choice:{
+  record:'The depot is a net — and it is closing',
+  timer:8,
+  options:[
+    { label:'Run for the bridge', sub:'Everything you have left', goto:'END_RUN' },
+    { label:'Under the floor', sub:'The dead man’s radio, and the dark', req:'radio', goto:'END_GHOST' },
+    { label:'Walk into the light', silent:true, sub:'See what the hive keeps', goto:'END_TAKEN' },
+  ]}});
+
+/* ---- ENDINGS ---- */
+label('END_RUN');
+add({branch:{flag:'trusted', then:'END_TOGETHER', else:'END_LONE'}});
+
+label('END_TOGETHER');
+add({fade:'out'});
+add({set:'ridge'});
+add({act:{reyesVisible:'always'}});
+add({fade:'in'});
+add({shot:{pos:[-4,1.6,10], look:[0,8,-200], dur:0}});
+add({shot:{pos:[-2.4,2,8], look:[0,10,-200], dur:12}});
+add({say:[null,'Reyes was waiting at the bridge, because of course she was. Bad ankle, worse attitude, exactly where he needed her to be.']});
+add({say:[null,'They made the ridge above the valley by noon and looked back only once. The hive sat on the horizon, vast and patient, glowing like a hearth. Around it: roads of people, walking in.']});
+add({say:['REYES','It was never a war.']});
+add({say:['MARCUS','No. It was a harvest.']});
+add({ending:'e_together'});
+
+label('END_LONE');
+add({fade:'out'});
+add({set:'ridge'});
+add({fade:'in'});
+add({shot:{pos:[-4,1.6,10], look:[0,8,-200], dur:0}});
+add({shot:{pos:[-2.4,2,8], look:[0,10,-200], dur:12}});
+add({say:[null,'The bridge took him at a dead sprint, and the far bank asked no questions. He made the ridge alone, lungs full of knives.']});
+add({say:[null,'The hive glowed on the horizon like a hearth. Roads of people, walking in. Rows and rows. On the whole gray length of the ridge, there was no one to tell.']});
+add({say:[null,'The uncollected are just entries the ledger hasn’t reached yet.']});
+add({ending:'e_lone'});
+
+label('END_GHOST');
+add({fade:'out'});
+add({set:'under'});
+add({fade:'in'});
+add({shot:{pos:[1.6,1.2,2], look:[0,.6,-1.4], dur:0}});
+add({shot:{pos:[1,1,1.2], look:[.4,.5,-1.5], dur:10}});
+add({say:[null,'There was a maintenance well under the depot floor, and Marcus went down it like a rat with a plan. The counting passed overhead for an hour. Then silence, which was worse.']});
+add({say:[null,'In the dark he still had the dead man’s radio. He thumbed it on, volume at a whisper. The calm voice was mid-list.']});
+add({say:['LEDGER','...ZHOU, X. — COLLECTED. MARSH, O. — COLLECTED. ...']});
+add({say:['LEDGER','MARCUS.']});
+add({say:[null,'Not as an entry. As a question.']});
+add({ending:'e_ghost'});
+
+label('END_TAKEN');
+add({fadeWhite:true});
+add({say:[null,'The light was warm. That was the obscene part.']});
+add({say:[null,'Marcus woke somewhere without corners, in air that tasted filtered and faintly sweet, to the sound of ten thousand people breathing in rhythm.']});
+add({say:['LEDGER','MARCUS. — COLLECTED.']});
+add({say:[null,'He was inside the hive now. And the hive had plans for the ones it kept.']});
+add({ending:'e_taken'});
+
+/* ============================================================
+   Beat interpreter
+   ============================================================ */
+function jump(labelName){ G.bi = L[labelName]; step(); }
+function step(){
+  if (G.mode==='death' || G.mode==='end') return;
+  const b = B[G.bi++];
+  if (!b) return;
+  if (b.set){ switchSet(b.set); return step(); }
+  if (b.fade==='in'){ fade(false); return step(); }
+  if (b.fade==='out'){ fade(true,.9); G.mode='wait'; G.waitTimer=1.0; return; }
+  if (b.fadeWhite){ el.fade.className='white'; fade(true,2.4); G.mode='wait'; G.waitTimer=2.4; return; }
+  if (b.shot){ shot(b.shot.pos, b.shot.look, b.shot.dur); return step(); }
+  if (b.flags){ Object.assign(G.flags, b.flags); return step(); }
+  if (b.toastB){ toast(b.toastB[0], b.toastB[1]); return step(); }
+  if (b.checkpoint){ G.checkpoint = { bi:G.bi, flags:{...G.flags} }; return step(); }
+  if (b.goto){ return jump(b.goto); }
+  if (b.branch){ return jump(G.flags[b.branch.flag] ? b.branch.then : b.branch.else); }
+  if (b.say){ G.mode='say'; say(b.say[0], b.say[1]); return; }
+  if (b.sayIf){
+    if (G.flags[b.sayIf.flag]){ G.mode='say'; say(b.sayIf.who, b.sayIf.text); return; }
+    return step();
+  }
+  if (b.choice){ clearSay(); return showChoice(b.choice); }
+  if (b.qte){ clearSay(); return showQTE(b.qte); }
+  if (b.death){ clearSay(); return death(b.death); }
+  if (b.act){ return doAct(b); }
+  if (b.ending){ return showEnding(b.ending); }
+  step();
+}
+
+/* act handling — small set of scripted actions on the current set */
+let actAnim=null;
+function doAct(b){
+  const a = b.act, A = G.set.actors;
+  if (a.rise && A.marcus){
+    const m = A.marcus;
+    actAnim = { t:0, dur:a.dur||2, fn(k){
+      m.rotation.z = (1-k)*Math.PI/2;
+      m.position.y = .18*(1-k);
+    }, done(){ m.userData.setMode('idle'); } };
+    G.mode='wait'; G.waitTimer = a.dur||2;
+    return;
+  }
+  if (a.grateOn && A.grateGlow){ A.grateGlow.userData.on = true; return step(); }
+  if (a.sentryApproach && A.sentry){ A.sentry.userData.approach = true; return step(); }
+  if (a.beamOn && A.beam){ A.beam.userData.on = true; return step(); }
+  if (a.reyesVisible && A.reyes){
+    A.reyes.visible = a.reyesVisible==='always' || !!G.flags.trusted;
+    return step();
+  }
+  if (a.lights !== undefined && A.strips){ A.strips[0].userData.advance = a.lights; Audio2.danger(); return step(); }
+  if (a.walkAcross && A.marcus){
+    const m=A.marcus, r=A.reyes;
+    m.userData.setMode('walk'); if (r&&r.visible) r.userData.setMode('walk');
+    actAnim = { t:0, dur:a.dur||3, fn(k){
+      m.position.z = 4 - k*30;
+      if (r&&r.visible) r.position.z = 5.4 - k*30;
+    }, done(){ m.userData.setMode('idle'); if(r) r.userData.setMode('idle'); } };
+    shot([2.8,1.8,-8], [0,1.2,-30], a.dur||3);
+    G.mode='wait'; G.waitTimer = a.dur||3;
+    return;
+  }
+  step();
+}
+
+/* endings + end card */
+function showEnding(id){
+  const found = endingsFound();
+  if (!found.includes(id)){ found.push(id); store.set(END_KEY, found); }
+  G.mode='end';
+  clearSay();
+  document.body.classList.remove('cine');
+  el.endingName.textContent = 'ENDING: '+ENDINGS[id];
+  el.choiceSummary.innerHTML = '<b>YOUR EPISODE:</b><br>' +
+    G.choices.map(c=>'▸ '+c.q+' — <b>'+c.a.replace(/[\[\]]/g,'')+'</b>').join('<br>');
+  el.tracker.textContent = 'ENDINGS RECOVERED: '+found.length+' / 4';
+  el.end.style.display='flex';
+}
+el.replayBtn.onclick = () => location.reload();
 
 /* ============================================================
    Input
    ============================================================ */
-const keys = {};
-let mouseFiring = false, pointerLocked = false;
-
+function advance(){
+  if (G.mode==='say'){
+    clearSay();
+    G.mode='beat';
+    step();
+  } else if (G.mode==='qte'){
+    qteInput();
+  }
+}
+addEventListener('pointerdown', e => {
+  if (e.target.closest('.btn')||e.target.closest('.opt')) return;
+  if (G.mode==='qte'){ qteInput(); return; }
+  advance();
+});
 addEventListener('keydown', e => {
-  keys[e.code] = true;
-  if (e.code === 'KeyM') MusicSys.toggleMute();
-});
-addEventListener('keyup',   e => { keys[e.code] = false; });
-
-renderer.domElement.addEventListener('click', () => {
-  if (G.mode === 'play' && !IS_TOUCH && !pointerLocked){
-    renderer.domElement.requestPointerLock();
+  if (G.mode==='choice' && choiceState){
+    const i = parseInt(e.key)-1;
+    if (choiceState.opts[i]) { choiceState.pick(choiceState.opts[i]); return; }
   }
+  if (e.key===' '||e.key==='Enter'){ e.preventDefault(); if (G.mode==='qte') qteInput(); else advance(); }
 });
-document.addEventListener('pointerlockchange', () => {
-  pointerLocked = document.pointerLockElement === renderer.domElement;
-});
-addEventListener('mousemove', e => {
-  if (!pointerLocked || G.mode !== 'play') return;
-  G.yaw   -= e.movementX * 0.0022;
-  G.pitch -= e.movementY * 0.0022;
-  G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
-});
-addEventListener('mousedown', e => { if (pointerLocked && e.button === 0) mouseFiring = true; });
-addEventListener('mouseup',   e => { if (e.button === 0) mouseFiring = false; });
 
-// --- touch: left zone stick, right zone look, fire & plant buttons ---
-const stick = { active:false, id:null, ox:0, oy:0, dx:0, dy:0 };
-const look  = { active:false, id:null, lx:0, ly:0 };
-let touchFiring = false, touchPlanting = false;
-
-el.stickZone.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  stick.active = true; stick.id = t.identifier;
-  stick.ox = t.clientX; stick.oy = t.clientY; stick.dx = 0; stick.dy = 0;
-  el.stickBase.style.display = 'block';
-  el.stickBase.style.left = t.clientX+'px'; el.stickBase.style.top = t.clientY+'px';
-}, {passive:false});
-el.stickZone.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for (const t of e.changedTouches){
-    if (t.identifier !== stick.id) continue;
-    const dx = t.clientX - stick.ox, dy = t.clientY - stick.oy;
-    const len = Math.hypot(dx,dy), max = 48;
-    const k = len > max ? max/len : 1;
-    stick.dx = dx*k/max; stick.dy = dy*k/max;
-    el.stickNub.style.transform = `translate(calc(-50% + ${dx*k}px), calc(-50% + ${dy*k}px))`;
-  }
-}, {passive:false});
-const stickEnd = e => {
-  for (const t of e.changedTouches){
-    if (t.identifier !== stick.id) continue;
-    stick.active = false; stick.dx = 0; stick.dy = 0;
-    el.stickBase.style.display = 'none';
-    el.stickNub.style.transform = 'translate(-50%,-50%)';
-  }
+/* ============================================================
+   Boot + main loop
+   ============================================================ */
+modelsReady.then(()=>{
+  el.loadState.style.display='none';
+  el.startBtn.style.display='inline-block';
+});
+el.startBtn.onclick = () => {
+  Audio2.init(); Audio2.resume();
+  el.start.style.display='none';
+  document.body.classList.add('cine');
+  G.mode='beat';
+  el.fade.style.opacity=1;
+  setTimeout(()=>step(), 80);
 };
-el.stickZone.addEventListener('touchend', stickEnd);
-el.stickZone.addEventListener('touchcancel', stickEnd);
 
-el.lookZone.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.changedTouches[0];
-  look.active = true; look.id = t.identifier; look.lx = t.clientX; look.ly = t.clientY;
-}, {passive:false});
-el.lookZone.addEventListener('touchmove', e => {
-  e.preventDefault();
-  for (const t of e.changedTouches){
-    if (t.identifier !== look.id) continue;
-    G.yaw   -= (t.clientX - look.lx) * 0.005;
-    G.pitch -= (t.clientY - look.ly) * 0.005;
-    G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
-    look.lx = t.clientX; look.ly = t.clientY;
-  }
-}, {passive:false});
-const lookEnd = e => {
-  for (const t of e.changedTouches){ if (t.identifier === look.id) look.active = false; }
-};
-el.lookZone.addEventListener('touchend', lookEnd);
-el.lookZone.addEventListener('touchcancel', lookEnd);
-
-el.fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchFiring = true; }, {passive:false});
-el.fireBtn.addEventListener('touchend',   e => { e.preventDefault(); touchFiring = false; }, {passive:false});
-el.plantBtn.addEventListener('touchstart', e => { e.preventDefault(); touchPlanting = true; }, {passive:false});
-el.plantBtn.addEventListener('touchend',   e => { e.preventDefault(); touchPlanting = false; }, {passive:false});
-
-/* ============================================================
-   Collision: circle vs AABB list
-   ============================================================ */
-function collide(pos, r){
-  for (const c of colliders){
-    if (c.door && !c.active) continue;
-    const cx = Math.max(c.x1, Math.min(pos.x, c.x2));
-    const cz = Math.max(c.z1, Math.min(pos.z, c.z2));
-    const dx = pos.x - cx, dz = pos.z - cz;
-    const d2 = dx*dx + dz*dz;
-    if (d2 < r*r){
-      const d = Math.sqrt(d2) || 0.0001;
-      const push = (r - d) / d;
-      pos.x += dx * push; pos.z += dz * push;
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now; G.t+=dt;
+  if (G.set){
+    G.set.tick(dt, G.t);
+    camTick(dt);
+    if (actAnim){
+      actAnim.t += dt;
+      const k = Math.min(1, actAnim.t/actAnim.dur);
+      actAnim.fn(k*k*(3-2*k));
+      if (k>=1){ actAnim.done && actAnim.done(); actAnim=null; }
     }
-  }
-}
-
-/* ============================================================
-   Line of sight (2D grid vs AABBs — cheap, no raycaster allocs)
-   ============================================================ */
-function losBlocked(ax, az, bx, bz){
-  for (const c of colliders){
-    if (c.door && !c.active) continue;
-    if (segIntersectsAABB(ax, az, bx, bz, c)) return true;
-  }
-  return false;
-}
-function segIntersectsAABB(x0,z0,x1,z1,c){
-  // slab method
-  const dx = x1-x0, dz = z1-z0;
-  let tmin = 0, tmax = 1;
-  if (Math.abs(dx) < 1e-9){ if (x0 < c.x1 || x0 > c.x2) return false; }
-  else {
-    let t1 = (c.x1-x0)/dx, t2 = (c.x2-x0)/dx;
-    if (t1 > t2) [t1,t2] = [t2,t1];
-    tmin = Math.max(tmin,t1); tmax = Math.min(tmax,t2);
-    if (tmin > tmax) return false;
-  }
-  if (Math.abs(dz) < 1e-9){ if (z0 < c.z1 || z0 > c.z2) return false; }
-  else {
-    let t1 = (c.z1-z0)/dz, t2 = (c.z2-z0)/dz;
-    if (t1 > t2) [t1,t2] = [t2,t1];
-    tmin = Math.max(tmin,t1); tmax = Math.min(tmax,t2);
-    if (tmin > tmax) return false;
-  }
-  return true;
-}
-
-/* ============================================================
-   Radio
-   ============================================================ */
-function radio(key){
-  if (G.radioFired.has(key)) return;
-  G.radioFired.add(key);
-  (RADIO[key] || []).forEach(l => G.radioQueue.push(l));
-}
-function updateRadio(dt){
-  G.radioT -= dt;
-  if (G.radioT <= 0 && G.radioQueue.length){
-    const l = G.radioQueue.shift();
-    AudioSys.radioBlip();
-    const div = document.createElement('div');
-    div.className = 'radioLine';
-    div.innerHTML = `<span class="who">[${l.who}]</span> ${l.text}`;
-    el.radio.appendChild(div);
-    requestAnimationFrame(()=>div.classList.add('show'));
-    setTimeout(()=>{ div.classList.remove('show'); setTimeout(()=>div.remove(), 400); }, 4200);
-    while (el.radio.children.length > 3) el.radio.firstChild.remove();
-    G.radioT = 1.6;
-  }
-}
-
-/* ============================================================
-   Combat
-   ============================================================ */
-const _rayDir = new THREE.Vector3();
-const _muzzle = new THREE.Vector3();
-
-function tryFire(dt){
-  G.fireCd -= dt;
-  const wantFire = (mouseFiring || touchFiring || keys['Space']) && G.hasRifle;
-  if (!wantFire || G.fireCd > 0) return;
-  G.fireCd = 0.18; // fire-rate cap
-  AudioSys.shot();
-  G.shakeT = 0.06;
-  viewRifle.position.z = -0.42; // recoil, eased back in update
-
-  camera.getWorldDirection(_rayDir);
-  const origin = new THREE.Vector3();
-  camera.getWorldPosition(origin);
-
-  // find nearest hit: walls (2D) vs drones (3D sphere test along ray)
-  let bestT = 60, bestDrone = null;
-  // wall distance along ray (sample 2D)
-  const end = origin.clone().addScaledVector(_rayDir, 60);
-  let wallT = 60;
-  for (const c of colliders){
-    if (c.door && !c.active) continue;
-    const t = rayAABB2D(origin.x, origin.z, _rayDir.x, _rayDir.z, c);
-    if (t !== null && t < wallT) wallT = t;
-  }
-  bestT = wallT;
-  const _toDrone = new THREE.Vector3();
-  for (const d of drones){
-    if (!d.alive) continue;
-    _toDrone.copy(d.mesh.position).sub(origin);
-    const t = _toDrone.dot(_rayDir);
-    if (t < 0 || t > bestT) continue;
-    const closest2 = _toDrone.lengthSq() - t*t;
-    const rad = KINDS[d.kind].rad;
-    if (closest2 < rad*rad){ bestT = t; bestDrone = d; }
-  }
-
-  const hitPoint = origin.clone().addScaledVector(_rayDir, bestT);
-  viewRifle.getWorldPosition(_muzzle);
-  spawnTracer(_muzzle.clone().addScaledVector(_rayDir, .4), hitPoint);
-  muzzleLight.intensity = 26;
-  spawnSparks(hitPoint, bestDrone ? 12 : 6);
-
-  if (bestDrone){
-    AudioSys.hitConfirm();
-    damageDrone(bestDrone, 16);
-  }
-}
-function rayAABB2D(ox, oz, dx, dz, c){
-  let tmin = -Infinity, tmax = Infinity;
-  if (Math.abs(dx) < 1e-9){ if (ox < c.x1 || ox > c.x2) return null; }
-  else {
-    let t1=(c.x1-ox)/dx, t2=(c.x2-ox)/dx;
-    if (t1>t2)[t1,t2]=[t2,t1];
-    tmin=Math.max(tmin,t1); tmax=Math.min(tmax,t2);
-  }
-  if (Math.abs(dz) < 1e-9){ if (oz < c.z1 || oz > c.z2) return null; }
-  else {
-    let t1=(c.z1-oz)/dz, t2=(c.z2-oz)/dz;
-    if (t1>t2)[t1,t2]=[t2,t1];
-    tmin=Math.max(tmin,t1); tmax=Math.min(tmax,t2);
-  }
-  if (tmax < tmin || tmax < 0) return null;
-  return tmin > 0 ? tmin : tmax;
-}
-
-function damageDrone(d, dmg){
-  d.hp -= dmg;
-  if (d.state === 'idle') setDroneState(d, 'alert');
-  if (d.hp <= 0 && d.alive){
-    d.alive = false; d.deathT = .4;
-    spawnSparks(d.mesh.position, 16, 0xffcc88);
-    AudioSys.droneDie();
-  }
-}
-function setDroneState(d, s){
-  if (d.state === s) return;
-  d.state = s; d.stateT = 0;
-  d.eyeMat.color.setHex(s === 'idle' ? d.idleEye : EYE_RED);
-  if (s === 'alert') AudioSys.alert();
-}
-
-function damagePlayer(dmg){
-  if (G.mode !== 'play') return;
-  G.hp -= dmg;
-  G.lastDamageT = G.time;
-  AudioSys.hurt();
-  el.dmg.style.opacity = .9;
-  setTimeout(()=> el.dmg.style.opacity = 0, 220);
-  if (G.hp <= 0){ G.hp = 0; die(); }
-}
-
-/* ============================================================
-   Drone AI: idle > alert > attack
-   ============================================================ */
-function updateDrones(dt){
-  const px = yawObj.position.x, pz = yawObj.position.z;
-  let updated = 0;
-  for (const d of drones){
-    if (!d.alive){
-      if (d.deathT > 0){
-        d.deathT -= dt;
-        d.mesh.scale.setScalar(d.baseScale * Math.max(.01, d.deathT/.4));
-        d.mesh.rotation.y += dt*18;
-        d.mesh.rotation.x += dt*7;
-        d.mesh.position.y = Math.max(.15, d.mesh.position.y - dt*2.2);
-        if (d.deathT <= 0) scene.remove(d.mesh);
-      }
-      continue;
+    if (G.mode==='wait'){
+      G.waitTimer -= dt;
+      if (G.waitTimer<=0){ G.mode='beat'; step(); }
     }
-    const m = d.mesh.position;
-    const distX = m.x - px, distZ = m.z - pz;
-    const dist = Math.hypot(distX, distZ);
-    if (dist > 46) continue;              // far: fully dormant
-    if (++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
-    d.stateT += dt;
-    d.shadow.position.y = .03 - m.y;      // pin blob shadow to the floor
-    const A = d.anim;
-    if (A.glb){
-      if (A.recoil > 0) A.recoil = Math.max(0, A.recoil - dt*5);
-      if (d.state === 'idle')
-        d.mesh.rotation.y = d.kind === 'crawler'
-          ? Math.sin(G.time*.9 + d.id) * .5
-          : d.mesh.rotation.y + dt * .45;
-    } else if (d.kind !== 'crawler'){
-      A.ringH.rotation.z += dt * (d.state === 'idle' ? .8 : 3.2);
-      A.ringV.rotation.x += dt * (d.state === 'idle' ? .5 : 2.1);
-      if (A.recoil > 0) A.recoil = Math.max(0, A.recoil - dt*5);
-      A.barrel.position.z = .12 - A.recoil * .07;
-    } else {
-      const moving = d.state === 'attack';
-      for (const L of A.legs){
-        L.root.rotation.y = L.baseYaw + (moving ? Math.sin(G.time*9 + L.phase) * .3 : 0);
-        L.root.rotation.z = moving ? Math.max(0, Math.cos(G.time*9 + L.phase)) * .22 : 0;
-      }
-      A.head.rotation.y = d.state === 'idle'
-        ? Math.sin(G.time*1.3 + d.id) * .7
-        : A.head.rotation.y * Math.max(0, 1 - dt*8);
+    if (G.mode==='say'){
+      G.sayTimer -= dt;
+      if (G.sayTimer<=0) advance();
     }
-
-    // LOS check, throttled per-drone
-    d.losT -= dt;
-    let seesPlayer = d.seesPlayer || false;
-    if (d.losT <= 0){
-      d.losT = 0.16;
-      seesPlayer = dist < 17 && !losBlocked(m.x, m.z, px, pz);
-      d.seesPlayer = seesPlayer;
-    }
-
-    if (d.state === 'idle'){
-      // gentle bob / patrol (the sensor head does the visible scanning)
-      if (d.kind !== 'crawler'){
-        m.x += d.patrolDir * dt * .5;
-        if (Math.abs(m.x - d.home.x) > 1.4) d.patrolDir *= -1;
-      }
-      m.y = d.home.y + Math.sin(G.time*2 + d.id)*0.08;
-      if (seesPlayer) setDroneState(d, 'alert');
-    }
-    else if (d.state === 'alert'){
-      // face player, brief wind-up, then attack
-      d.mesh.lookAt(px, m.y, pz);
-      if (d.stateT > .45) setDroneState(d, 'attack');
-    }
-    else { // attack
-      d.mesh.lookAt(px, m.y, pz);
-      if (d.kind === 'crawler'){
-        if (dist > 1.1){
-          const s = 3.4 * dt / dist;
-          m.x -= distX * s; m.z -= distZ * s;
-          collide(m, .45);
-          m.y = .5 + Math.abs(Math.sin(G.time*10 + d.id))*.12;
-        }
-        if (d.anim.glb) d.mesh.rotation.x = Math.sin(G.time*13 + d.id) * .05;
-        d.meleeCd -= dt;
-        if (dist < 1.3 && d.meleeCd <= 0){
-          d.meleeCd = 1.0;
-          damagePlayer(10);
-        }
-        if (!seesPlayer && dist > 30) setDroneState(d, 'idle');
-      } else {
-        // sentry: telegraphed shot cycle
-        m.y = d.home.y + Math.sin(G.time*3 + d.id)*.1;
-        const K = KINDS[d.kind];
-        if (!seesPlayer){ d.chargeT = 0; d.eyeMat.color.setHex(EYE_RED); continue; }
-        d.chargeT += dt;
-        if (d.chargeT > K.charge){
-          // telegraph: eye flares white-hot before the shot
-          const w = d.chargeT - K.charge;
-          if (w < K.tele){
-            if (w < dt) AudioSys.sentryCharge();
-            d.eyeMat.color.setRGB(1, .17 + w*1.15, .24 + w*1.05);
-          } else {
-            d.eyeMat.color.setHex(EYE_RED);
-            d.chargeT = 0;
-            const mp = new THREE.Vector3();
-            (d.anim.muzzle || d.mesh).getWorldPosition(mp);
-            d.anim.recoil = 1;
-            fireProjectile(mp, new THREE.Vector3(px, PLAYER_EYE - .2, pz), K.pspeed, K.pdmg);
-          }
-        }
-      }
-    }
+    choiceTick(dt);
+    qteTick(dt);
+    renderer.render(G.set.scene, camera);
   }
-}
-
-function updateProjectiles(dt){
-  for (let i = projectiles.length-1; i >= 0; i--){
-    const p = projectiles[i];
-    p.life -= dt;
-    p.mesh.position.addScaledVector(p.vel, dt);
-    const dx = p.mesh.position.x - yawObj.position.x;
-    const dy = p.mesh.position.y - PLAYER_EYE + .2;
-    const dz = p.mesh.position.z - yawObj.position.z;
-    let dead = p.life <= 0;
-    if (dx*dx + dy*dy + dz*dz < .45){
-      damagePlayer(p.dmg); dead = true;
-    } else {
-      // wall hit
-      for (const c of colliders){
-        if (c.door && !c.active) continue;
-        const x = p.mesh.position.x, z = p.mesh.position.z;
-        if (x > c.x1-.1 && x < c.x2+.1 && z > c.z1-.1 && z < c.z2+.1){ dead = true; break; }
-      }
-    }
-    if (dead){ scene.remove(p.mesh); projectiles.splice(i,1); }
-  }
-}
-
-/* ============================================================
-   Doors / checkpoints / progression
-   ============================================================ */
-function updateDoors(dt){
-  doors.forEach(dr => {
-    if (!dr.open){
-      const canOpen = dr.index === 0 ? G.hasRifle : segmentCleared(dr.index);
-      if (canOpen){
-        dr.open = true;
-        dr.lock.material.color.setHex(0x39ff88);
-        AudioSys.doorOpen();
-        if (dr.index === 1) radio('seg1_clear');
-        if (dr.index === 2) radio('seg2_clear');
-        if (dr.index === 3) radio('seg3_clear');
-      }
-    }
-    if (dr.open && dr.anim < 1){
-      dr.anim = Math.min(1, dr.anim + dt*.7);
-      dr.mesh.position.y = WALL_H/2 - dr.anim * (WALL_H - .05); // slides into floor
-      if (dr.anim > .6) dr.collider.active = false;
-    }
-  });
-
-  // segment tracking + checkpoints + zone radio
-  const z = yawObj.position.z;
-  let seg = 0;
-  ROOMS.forEach((r,i)=>{ if (z <= r.z2 && z >= r.z1) seg = i; });
-  if (seg !== G.currentSegment && seg > G.currentSegment){
-    G.currentSegment = seg;
-    G.checkpoint.pos.set(0, 0, ROOMS[seg].z2 - 2);
-    G.checkpoint.yaw = 0; // yaw 0 faces -z, deeper into the hive
-    G.checkpoint.segment = seg;
-    AudioSys.checkpoint();
-    if (seg === 2) radio('seg2_enter');
-    if (seg === 3) radio('seg3_enter');
-    if (seg === 4){
-      radio('core_enter');
-      startAlarm();
-    }
-    setObjectiveText();
-  }
-  // chapter-defined chatter zones
-  CH.zones.forEach(zn => { if (z < zn.z) radio(zn.key); });
-}
-
-function setObjectiveText(){
-  const O = CH.obj;
-  const t = {
-    0: G.hasRifle ? O.advance : O.find,
-    1: O.segs[0], 2: O.segs[1], 3: O.segs[2],
-    4: G.planted ? O.done : O.final,
-  }[G.currentSegment] || '';
-  el.objective.textContent = t;
-}
-
-/* ============================================================
-   Alarm + core wave + objective
-   ============================================================ */
-function startAlarm(){
-  if (G.alarm) return;
-  G.alarm = true;
-  AudioSys.alarmStart();
-  radio('alarm');
-}
-function updateWave(dt){
-  if (!G.alarm || G.planted) return;
-  G.waveT -= dt;
-  if (G.waveT <= 0 && G.waveSpawned < WAVE_TOTAL && activeDroneCount() < MAX_ACTIVE){
-    G.waveT = 3;
-    const [x,z] = WAVE_SPAWNS[G.waveSpawned % WAVE_SPAWNS.length];
-    const kinds = CH.waveKinds || ['crawler'];
-    const d = makeDrone(kinds[G.waveSpawned % kinds.length], x, z, 9); // segment 9 = wave
-    d.spawned = true;
-    setDroneState(d, 'attack');
-    scene.add(d.mesh);
-    G.waveSpawned++;
-  }
-}
-
-function updateObjective(dt){
-  if (G.currentSegment !== 4 || G.planted) { el.plantWrap.style.display='none'; el.plantBtn.style.display='none'; return; }
-  const dx = yawObj.position.x - CORE_POS.x, dz = yawObj.position.z - CORE_POS.z;
-  const near = (dx*dx + dz*dz) < 9;
-  const holding = keys['KeyE'] || touchPlanting;
-  if (near){
-    if (IS_TOUCH) el.plantBtn.style.display = 'block';
-    el.prompt.style.display = holding ? 'none' : 'block';
-    el.prompt.textContent = IS_TOUCH ? CH.obj.promptTouch : CH.obj.promptKey;
-    if (holding){
-      G.planting = true;
-      const prev = G.plantProgress;
-      G.plantProgress = Math.min(1, G.plantProgress + dt/5);
-      if (Math.floor(prev*10) !== Math.floor(G.plantProgress*10)) AudioSys.plantTick();
-      el.plantWrap.style.display = 'block';
-      el.plantFill.style.width = (G.plantProgress*100).toFixed(1)+'%';
-      if (G.plantProgress >= 1) plantComplete();
-    } else {
-      G.planting = false;
-      el.plantWrap.style.display = G.plantProgress > 0 ? 'block' : 'none';
-    }
-  } else {
-    G.planting = false;
-    el.prompt.style.display = 'none';
-    el.plantBtn.style.display = 'none';
-    el.plantWrap.style.display = G.plantProgress > 0 ? 'block' : 'none';
-  }
-}
-
-function plantComplete(){
-  G.planted = true;
-  G.plantProgress = 1;
-  el.plantWrap.style.display = 'none';
-  el.prompt.style.display = 'none';
-  el.plantBtn.style.display = 'none';
-  AudioSys.planted();
-  AudioSys.alarmStop();
-  radio('planted');
-  setObjectiveText();
-  PROPS.onComplete();
-  // brief beat, then extraction
-  setTimeout(()=>{ if (G.mode === 'play') beginExtraction(); }, 2600);
-}
-
-function beginExtraction(){
-  G.mode = 'extracting';
-  radio('extract');
-  AudioSys.extract();
-  el.fade.style.transition = 'opacity 2.8s';
-  el.fade.style.opacity = 1;
-  setTimeout(showEndCard, 3100);
-}
-
-function showEndCard(){
-  G.mode = 'end';
-  MusicSys.stop();
-  if (document.pointerLockElement) document.exitPointerLock();
-  hudVisible(false);
-  el.end.style.display = 'flex';
-  el.fade.style.opacity = 0;
-}
-
-/* ============================================================
-   Death / respawn
-   ============================================================ */
-function die(){
-  if (G.mode !== 'play') return;
-  G.mode = 'dead';
-  AudioSys.death();
-  AudioSys.heartbeatStop();
-  el.redFade.style.opacity = 1;
-  setTimeout(respawn, 1600);
-}
-function respawn(){
-  const seg = G.checkpoint.segment;
-  // reset the segment being attempted (and the core wave if applicable)
-  if (seg >= 1 && seg <= 4) spawnSegment(seg);
-  if (seg === 4){
-    G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
-    // remove wave drones
-    for (let i = drones.length-1; i >= 0; i--){
-      if (drones[i].segment === 9){ scene.remove(drones[i].mesh); drones.splice(i,1); }
-    }
-  }
-  projectiles.forEach(p=>scene.remove(p.mesh)); projectiles.length = 0;
-  yawObj.position.set(G.checkpoint.pos.x, PLAYER_EYE, G.checkpoint.pos.z);
-  G.yaw = G.checkpoint.yaw; G.pitch = 0;
-  G.hp = 100; G.lastDamageT = G.time;
-  el.redFade.style.opacity = 0;
-  G.mode = 'play';
-}
-
-/* ============================================================
-   Player movement
-   ============================================================ */
-const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
-function updatePlayer(dt){
-  let mx = 0, mz = 0;
-  if (keys['KeyW'] || keys['ArrowUp'])    mz -= 1;
-  if (keys['KeyS'] || keys['ArrowDown'])  mz += 1;
-  if (keys['KeyA'] || keys['ArrowLeft'])  mx -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
-  if (stick.active){ mx += stick.dx; mz += stick.dy; }
-  const len = Math.hypot(mx, mz);
-  if (len > 1){ mx/=len; mz/=len; }
-
-  yawObj.rotation.y = G.yaw;
-  pitchObj.rotation.x = G.pitch;
-
-  _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
-  _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
-  yawObj.position.addScaledVector(_fwd, -mz * MOVE_SPEED * dt);
-  yawObj.position.addScaledVector(_right, mx * MOVE_SPEED * dt);
-  collide(yawObj.position, PLAYER_R);
-  yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
-
-  // camera shake
-  if (G.shakeT > 0){
-    G.shakeT -= dt;
-    camera.position.set((Math.random()-.5)*.02, (Math.random()-.5)*.02, 0);
-  } else camera.position.set(0,0,0);
-
-  // rifle recoil recovery + sway
-  if (viewRifle.visible){
-    viewRifle.position.z += (-.5 - viewRifle.position.z) * dt * 12;
-    viewRifle.position.y = -.22 + Math.sin(G.time*10)*(len>.1?.006:.002);
-  }
-
-  // health regen: 5s without damage
-  if (G.hp < 100 && G.time - G.lastDamageT > 5){
-    G.hp = Math.min(100, G.hp + 26*dt);
-  }
-  el.healthFill.style.width = G.hp.toFixed(0)+'%';
-  el.healthFill.style.background = G.hp > 35 ? 'var(--grn)' : 'var(--red)';
-
-  // rifle pickup
-  if (!G.hasRifle){
-    const d = yawObj.position.distanceTo(rifleFloor.position);
-    el.prompt.style.display = 'block';
-    el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
-    if (d < 1.6) pickupRifle();
-  }
-}
-function pickupRifle(){
-  if (G.hasRifle) return;
-  G.hasRifle = true;
-  scene.remove(rifleFloor);
-  viewRifle.visible = true;
-  el.prompt.style.display = 'none';
-  el.crosshair.style.display = 'block';
-  if (IS_TOUCH) el.fireBtn.style.display = 'block';
-  radio('pickup');
-  AudioSys.checkpoint();
-  AudioSys.humStart();
-  G.currentSegment = 0;
-  setObjectiveText();
-  setTimeout(setObjectiveText, 50);
-}
-
-/* ============================================================
-   Alarm visuals + misc FX
-   ============================================================ */
-function updateFX(dt){
-  // tracers
-  for (let i = tracers.length-1; i >= 0; i--){
-    const t = tracers[i];
-    t.life -= dt;
-    t.line.material.opacity = Math.max(0, t.life/.07);
-    if (t.life <= 0){ scene.remove(t.line); t.line.geometry.dispose(); tracers.splice(i,1); }
-  }
-  // impact sparks: fly out, fall, fade
-  for (let i = sparks.length-1; i >= 0; i--){
-    const s = sparks[i];
-    s.life -= dt;
-    const p = s.pts.geometry.attributes.position;
-    for (let j=0;j<s.vel.length;j++){
-      s.vel[j].y -= 14*dt;
-      p.array[j*3]   += s.vel[j].x*dt;
-      p.array[j*3+1] += s.vel[j].y*dt;
-      p.array[j*3+2] += s.vel[j].z*dt;
-    }
-    p.needsUpdate = true;
-    s.pts.material.opacity = Math.max(0, s.life/.35);
-    if (s.life <= 0){ scene.remove(s.pts); s.pts.geometry.dispose(); sparks.splice(i,1); }
-  }
-  // muzzle flash decay
-  if (muzzleLight.intensity > 0)
-    muzzleLight.intensity = Math.max(0, muzzleLight.intensity - dt*300);
-  // sentry thruster flicker (shared material — one write covers all pods)
-  thrusterGlowMat.opacity = .55 + Math.sin(G.time*22)*.25;
-  // chapter set-piece animation + objective light pulse
-  PROPS.animate(dt);
-  coreLight.intensity = 30 + Math.sin(G.time*3)*10;
-  // alarm strips + core light shift red
-  if (G.alarm && !G.planted){
-    const pulse = (Math.sin(G.time*6) + 1) / 2;
-    matStrip.color.setRGB(1, .1 + pulse*.2, .2);
-    coreLight.color.setRGB(1, .25 + pulse*.3, .3);
-  } else if (G.planted){
-    matStrip.color.setHex(0xffd23f);
-    coreLight.color.setHex(0xffd23f);
-  }
-}
-
-/* ============================================================
-   Intro sequence (Scene 1: Awakening)
-   ============================================================ */
-let introState = null;
-function startIntro(){
-  el.start.style.display = 'none';
-  AudioSys.init();
-  AudioSys.resume();
-  AudioSys.heartbeatStart();
-  MusicSys.start();
-  if (CH.cinematic){
-    // the book's opening scene plays first, then the hive awakening
-    G.mode = 'cinematic';
-    el.intro.style.display = 'flex';
-    el.intro.style.background = 'transparent';
-    Cinematic.start(beginWakeIntro);
-    return;
-  }
-  beginWakeIntro();
-}
-function beginWakeIntro(){
-  G.mode = 'intro';
-  el.intro.style.display = 'flex';
-  el.intro.style.background = '';
-  el.fade.style.transition = 'opacity 1s';
-  el.fade.style.background = '#000';
-  el.fade.style.opacity = 0;
-  // lying on the floor, looking up
-  yawObj.position.set(0, .35, 0);
-  G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
-  introState = { line: 0, t: 0, phase: 'lines', riseT: 0 };
-  setTimeout(()=>{ el.skipBtn.style.opacity = .7; }, 2500);
-}
-function updateIntro(dt){
-  const s = introState;
-  if (!s) return;
-  s.t += dt;
-  if (s.phase === 'lines'){
-    if (s.line < INTRO_LINES.length){
-      if (s.t > .4 && !s.shown){
-        el.introText.textContent = INTRO_LINES[s.line];
-        el.introText.style.opacity = 1;
-        s.shown = true;
-      }
-      if (s.t > 3.6){
-        el.introText.style.opacity = 0;
-        s.line++; s.t = 0; s.shown = false;
-      }
-    } else {
-      s.phase = 'rise'; s.t = 0;
-      el.intro.style.background = 'transparent';
-      el.introText.style.display = 'none';
-    }
-  }
-  else if (s.phase === 'rise'){
-    const k = Math.min(1, s.t / 2.6);
-    const e = k*k*(3-2*k); // smoothstep
-    yawObj.position.y = .35 + (PLAYER_EYE - .35) * e;
-    G.pitch = 1.1 * (1 - e);
-    pitchObj.rotation.x = G.pitch;
-    if (k >= 1) finishIntro();
-  }
-}
-function finishIntro(skipAll){
-  introState = null;
-  AudioSys.heartbeatStop();
-  el.intro.style.display = 'none';
-  el.intro.style.background = '';
-  el.introText.style.display = '';
-  el.introText.style.opacity = 0;
-  el.fade.style.transition = 'opacity 1s';
-  el.fade.style.background = '#000';
-  el.fade.style.opacity = 0;
-  yawObj.position.set(0, PLAYER_EYE, 0);
-  G.pitch = 0; G.yaw = 0;
-  G.mode = 'play';
-  hudVisible(true);
-  if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
-  else if (!pointerLocked) renderer.domElement.requestPointerLock();
-  if (skipAll || CH.startArmed) pickupRifle();
-  setObjectiveText();
-}
-el.skipBtn.addEventListener('click', e => {
-  e.stopPropagation();
-  if (G.mode === 'cinematic'){ Cinematic.skip(); finishIntro(true); }
-  else if (G.mode === 'intro') finishIntro(true);
-});
-
-function hudVisible(v){
-  const d = v ? 'block' : 'none';
-  el.healthWrap.style.display = d;
-  el.objective.style.display = d;
-  if (!v){
-    el.crosshair.style.display = 'none';
-    el.fireBtn.style.display = 'none';
-    el.plantBtn.style.display = 'none';
-    el.stickZone.style.display = 'none';
-    el.lookZone.style.display = 'none';
-    el.prompt.style.display = 'none';
-    el.plantWrap.style.display = 'none';
-  } else if (G.hasRifle){
-    el.crosshair.style.display = 'block';
-    if (IS_TOUCH) el.fireBtn.style.display = 'block';
-  }
-}
-
-/* ============================================================
-   Boot / title / replay
-   ============================================================ */
-el.startBtn.addEventListener('click', () => {
-  AudioSys.init(); AudioSys.resume();
-  startIntro();
-});
-el.replay.addEventListener('click', () => location.reload());
-
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) AudioSys.resume(); // context suspends itself; resumed on return
-});
-
-// reveal title
-requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
-G.mode = 'title';
-
-// debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX };
-
-/* ============================================================
-   Main loop
-   ============================================================ */
-let lastT = performance.now();
-function loop(){
   requestAnimationFrame(loop);
-  const nowT = performance.now();
-  let dt = (nowT - lastT) / 1000;
-  lastT = nowT;
-  dt = Math.min(dt, 0.05); // clamp tab-switch spikes
-  if (window.__LATM && window.__LATM.fixedDt) dt = window.__LATM.fixedDt; // offline capture
-  if (window.__LATM && window.__LATM.capture){ // frame-stepped capture
-    if (window.__LATM.stepFrames > 0){ dt = 1/24; window.__LATM.stepFrames--; }
-    else dt = 0;
-  }
-  G.time += dt;
-
-  if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
-  if (G.mode === 'intro') updateIntro(dt);
-  if (G.mode === 'play'){
-    updatePlayer(dt);
-    tryFire(dt);
-    updateDrones(dt);
-    updateProjectiles(dt);
-    updateDoors(dt);
-    updateWave(dt);
-    updateObjective(dt);
-    updateRadio(dt);
-    if (G.time - (G.musicT || 0) > .5){
-      G.musicT = G.time;
-      MusicSys.setMode(
-        G.alarm && !G.planted ? 'alarm' :
-        drones.some(d => d.alive && d.state === 'attack') ? 'combat' : 'calm');
-    }
-  }
-  if (G.mode === 'dead' || G.mode === 'extracting'){
-    updateRadio(dt);
-    updateDrones(dt);
-  }
-  // fps watchdog: if a device can't hold ~40fps with post-fx, shed it
-  if (postFX.enabled && G.mode === 'play' && !(window.__LATM && window.__LATM.capture)){
-    G._fpsN = (G._fpsN || 0) + 1;
-    if (!G._fpsT) G._fpsT = nowT;
-    if (nowT - G._fpsT > 3000){
-      if (G._fpsN / ((nowT - G._fpsT) / 1000) < 40){
-        postFX.enabled = false;
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      }
-      G._fpsN = 0; G._fpsT = nowT;
-    }
-  }
-  updateFX(dt);
-  renderFrame(scene, camera);
 }
-loop();
+requestAnimationFrame(loop);
+
+/* debug/testing hook */
+window.__TT = { G, B, L, jump, step, flags:()=>G.flags, choiceState:()=>choiceState, qteState:()=>qteState };
 </script>
 </body>
 </html>
