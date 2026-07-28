@@ -28,6 +28,26 @@ silence is the answer. Choices have teeth:
   (Together, Runner, Ghost, Taken), a per-run choice summary, and a
   persistent endings tracker on the end card.
 
+## The story trees out — Chapter Two
+
+Your Episode One ending decides which **Chapter Two** you get, and the
+end card offers CONTINUE straight into it (your perks, Reyes's trust,
+and the radio carry over):
+
+| Episode One ending | Chapter Two path |
+|---|---|
+| Together | **The Convoy** — you and Reyes crack a pod carrier |
+| Runner | **The Long Road** — follow a resistance beacon; meet KARA |
+| Ghost | **The Listening Dark** — tap the hive's trunk line |
+| Taken | **Inside the Hive** — wake in a pod, burn your way out |
+
+Each path has its own palette, enemy mix, radio script, mid-chapter
+choice, and a final choice with **two endings** — 8 Chapter Two endings
+plus Episode One's 4 = **12 endings** tracked across runs. Endings you
+reach unlock their path on the title screen ("CHAPTER TWO PATHS
+UNLOCKED: n / 4"), so replaying Episode One differently is how you see
+the whole tree.
+
 Graphics: bloom, filmic tone mapping, vignette + film grain post-fx
 (with an FPS watchdog that sheds effects on weak devices), GLB machine
 models, procedural textures, synthesized audio. Health regen, checkpoints

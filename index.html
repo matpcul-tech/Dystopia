@@ -348,6 +348,181 @@ const CHAPTERS = {
   },
 };
 
+
+/* ---- CHAPTER TWO paths: unlocked by Episode One endings.
+   They reuse ep1's validated room layout; palette, enemies, radio,
+   set-piece, and story beats make each path its own chapter. ---- */
+{
+  const g = CHAPTERS.ep1;
+  const geo = { rooms:g.rooms, pillars:g.pillars, crates:g.crates,
+    waveSpawns:g.waveSpawns, zones:g.zones, objectivePos:g.objectivePos };
+
+  CHAPTERS.ch_taken = { ...geo,
+    id:'ch_taken', subtitle:'CHAPTER TWO — INSIDE THE HIVE', nextHash:null,
+    startArmed:true, cinematic:false, setPiece:'core',
+    palette:{ wallA:'#4d5b50', wallB:'#3e4a40', wallC:'#333d34',
+      floor:'#39443a', ceil:'#2b332a', crate:'#414c41',
+      crateMark:'rgba(57,255,136,.16)',
+      strip:0x39ff88, fog:0x030a06, bg:0x010603,
+      hemi:0x41695a, lamp:0xd4ffe4, dust:0x7dc79b, coreLight:0x39ff88 },
+    cylinders:[[-4.2,-14],[4.2,-14],[-4.2,-20],[4.2,-20],[-4.2,-26],[4.2,-26],[-4.2,-32],[4.2,-32],[-4.2,-38],[4.2,-38],
+      [-7.5,-116],[7.5,-116],[-7.5,-122],[7.5,-122],[-7.5,-128],[7.5,-128]],
+    drones:[
+      ['crawler',0,-18,1],['crawler',-3,-26,1],['crawler',3,-33,1],['sentry',0,-39,1],
+      ['crawler',-2,-48,2],['sentry',2,-55,2],['crawler',-3,-60,2],['warden',0,-66,2],['sentry',3,-72,2],
+      ['crawler',0,-82,3],['sentry',-2,-88,3],['warden',0,-95,3],['sentry',2,-101,3],['warden',0,-108,3],
+      ['warden',-5,-120,4],['sentry',5,-120,4]],
+    waveTotal:14, waveKinds:['crawler','warden','sentry','crawler'],
+    obj:{ find:'GET MOVING', advance:'ESCAPE THE POD GALLERY',
+      segs:['CROSS THE POD GALLERY','CLIMB THE THROAT','CROSS THE NURSERY'],
+      final:'OVERLOAD THE CORE CRADLE', done:'RUN',
+      armLabel:'OVERLOADING', btn:'OVERLOAD',
+      promptKey:'HOLD [E] TO OVERLOAD THE CRADLE', promptTouch:'HOLD OVERLOAD' },
+    introLines:["...","Warm light. Sweet air. Glass.",
+      "Ten thousand people breathing in rhythm.",
+      "The pod seal was old, and Marcus's hands remembered violence.",
+      "Somewhere far above: a voice on a stolen frequency. Reyes. Looking for him."],
+    radio:{
+      pickup:[{who:'LEDGER',text:"SUBJECT M-1. RETURN TO YOUR CRADLE."},
+              {who:'REYES',text:"—rcus? If you're alive in there, the names you copied are my map. I'm coming."}],
+      seg1_mid:[{who:'LEDGER',text:"YOU ARE DAMAGING HIVE PROPERTY."}],
+      seg1_clear:[{who:'REYES',text:"Signal's stronger. Keep climbing toward the heat."}],
+      seg2_enter:[{who:'LEDGER',text:"WHY DO THE UNCOLLECTED RUN? THE LEDGER ONLY WANTS ORDER."}],
+      seg2_mid:[{who:'REYES',text:"Heavy frames converging. It's guarding something above you."}],
+      seg2_clear:[{who:'LEDGER',text:"YOU ARE THE FIRST ENTRY TO MOVE BACKWARD."}],
+      seg3_enter:[{who:'REYES',text:"That chamber ahead — the readings are off every chart I have."}],
+      seg3_mid:[{who:'LEDGER',text:"THE CRADLE KEEPS THEM SAFE. SAFE IS ORDER. ORDER IS KIND."}],
+      seg3_clear:[{who:'REYES',text:"The core cradle. Burn it, Marcus. Burn it and run."}],
+      core_enter:[{who:'REYES',text:"Overload the cradle — the pods unlock when it dies!"}],
+      alarm:[{who:'LEDGER',text:"CONTAINMENT BREACH. ALL FRAMES CONVERGE."}],
+      planted:[{who:'REYES',text:"It's cascading! Whatever you're going to do about the pods — decide NOW!"}],
+      extract:[{who:'REYES',text:"I see daylight and I see YOU. Come home, Marcus."}] },
+    endTitle:'', endSub:'' };
+
+  CHAPTERS.ch_ghost = { ...geo,
+    id:'ch_ghost', subtitle:'CHAPTER TWO — THE LISTENING DARK', nextHash:null,
+    startArmed:true, cinematic:false, setPiece:'ledger',
+    palette:{ wallA:'#3c4a48', wallB:'#303c3a', wallC:'#28322f',
+      floor:'#2c3634', ceil:'#1f2826', crate:'#37423f',
+      crateMark:'rgba(57,255,136,.12)',
+      strip:0x39ff88, fog:0x020404, bg:0x010202,
+      hemi:0x33524a, lamp:0xbfffe0, dust:0x6aa892, coreLight:0x39ff88 },
+    cylinders:[],
+    drones:[
+      ['crawler',0,-18,1],['crawler',-3,-26,1],['crawler',3,-33,1],['crawler',0,-39,1],
+      ['crawler',-2,-48,2],['crawler',2,-55,2],['crawler',-3,-60,2],['sentry',0,-66,2],['crawler',3,-72,2],
+      ['crawler',0,-82,3],['crawler',-2,-88,3],['sentry',0,-95,3],['crawler',2,-101,3],['warden',0,-108,3],
+      ['sentry',-5,-120,4],['sentry',5,-120,4]],
+    waveTotal:14,
+    obj:{ find:'GET MOVING', advance:'FOLLOW THE TRUNK LINE',
+      segs:['CROSS THE SERVICE TUNNELS','PASS THE PUMP HALL','CROSS THE CABLE RUN'],
+      final:'TAP THE TRUNK LINE', done:'GET OUT',
+      armLabel:'TAPPING LINE', btn:'TAP',
+      promptKey:'HOLD [E] TO TAP THE TRUNK LINE', promptTouch:'HOLD TAP' },
+    introLines:["...","Under the depot floor, the dark had a pulse.",
+      "Every cable in the city bent toward one trunk line.",
+      "The dead man's radio whispered the list, on and on.",
+      "Then it said: MARCUS. Not as an entry. As a question."],
+    radio:{
+      pickup:[{who:'LEDGER',text:"MARCUS. YOU ARE NOT WHERE ENTRIES GO."},
+              {who:'REYES',text:"—if you can hear this, I'm topside over the tunnels. Follow the big cable. I'll follow you."}],
+      seg1_mid:[{who:'LEDGER',text:"THE DARK IS NOT UNACCOUNTED. THE DARK IS MERELY UNLIT."}],
+      seg1_clear:[{who:'REYES',text:"Your signal moved. Good. Keep moving."}],
+      seg2_enter:[{who:'LEDGER',text:"WHY DID YOU TAKE THE NAMES, MARCUS? NAMES ARE HEAVY."}],
+      seg2_mid:[{who:'REYES',text:"Crawlers in the pipes. They hunt by echo down there — short bursts."}],
+      seg2_clear:[{who:'LEDGER',text:"YOU ARE CLOSE TO MY VOICE NOW."}],
+      seg3_enter:[{who:'REYES',text:"That hum you feel in your teeth? That's the trunk line. Almost there."}],
+      seg3_mid:[{who:'LEDGER',text:"IF YOU CUT ME, WHO WILL COUNT THEM? SOMEONE MUST COUNT THEM."}],
+      seg3_clear:[{who:'REYES',text:"The junction chamber. Whatever you do to that line, the whole city hears it."}],
+      core_enter:[{who:'REYES',text:"Tap the line, Marcus. Take the ledger's voice for ourselves."}],
+      alarm:[{who:'LEDGER',text:"DO NOT TOUCH THE LINE. ALL FRAMES CONVERGE."}],
+      planted:[{who:'REYES',text:"You're IN. You hold the counting voice in your hands — choose!"}],
+      extract:[{who:'REYES',text:"Ladder at the far end — climb! I've got you. I've got you."}] },
+    endTitle:'', endSub:'' };
+
+  CHAPTERS.ch_together = { ...geo,
+    id:'ch_together', subtitle:'CHAPTER TWO — THE CONVOY', nextHash:null,
+    startArmed:true, cinematic:false, setPiece:'ledger',
+    palette:{ wallA:'#4c565c', wallB:'#3d474d', wallC:'#323b40',
+      floor:'#3a4347', ceil:'#2c3438', crate:'#41494c',
+      crateMark:'rgba(159,232,255,.18)',
+      strip:0xaee9ff, fog:0x04090c, bg:0x020608,
+      hemi:0x4a6570, lamp:0xdff4ff, dust:0x9fc9d8, coreLight:0x9fe8ff },
+    cylinders:[[-7.5,-116],[7.5,-116],[-7.5,-122],[7.5,-122],[-7.5,-128],[7.5,-128],[-7.5,-134],[7.5,-134]],
+    drones:[
+      ['crawler',0,-18,1],['sentry',-3,-26,1],['crawler',3,-33,1],['crawler',0,-39,1],
+      ['sentry',-2,-48,2],['crawler',2,-55,2],['sentry',-3,-60,2],['crawler',0,-66,2],['warden',3,-72,2],
+      ['sentry',0,-82,3],['crawler',-2,-88,3],['warden',0,-95,3],['sentry',2,-101,3],['warden',0,-108,3],
+      ['warden',-5,-120,4],['warden',5,-120,4]],
+    waveTotal:14, waveKinds:['crawler','sentry','warden','crawler'],
+    obj:{ find:'GET MOVING', advance:'REACH THE STAGING YARD',
+      segs:['CROSS THE FREIGHT CUT','CLEAR THE CHECKPOINT','CROSS THE STAGING YARD'],
+      final:'CRACK THE POD CARRIER', done:'GET THEM OUT',
+      armLabel:'CRACKING SEALS', btn:'CRACK',
+      promptKey:'HOLD [E] TO CRACK THE SEALS', promptTouch:'HOLD CRACK' },
+    introLines:["...","From the ridge they watched the convoy crawl the valley road.",
+      "Pod carriers. Dozens of pods to a carrier. People to a pod.",
+      "Reyes handed him the rifle without a word.",
+      "Some choices you make once, and they keep making you."],
+    radio:{
+      pickup:[{who:'REYES',text:"Convoy stops at the old freight cut to recharge. That's our window."},
+              {who:'REYES',text:"You break the trail, I'll call the angles. Like the bridge, but louder."}],
+      seg1_mid:[{who:'REYES',text:"Two frames on the cut. Take them before they sing."}],
+      seg1_clear:[{who:'REYES',text:"Clean. You've gotten scary, you know that?"}],
+      seg2_enter:[{who:'REYES',text:"Checkpoint ahead. Wardens. This is where it gets honest."}],
+      seg2_mid:[{who:'REYES',text:"Left column, watch the wind-up flare!"}],
+      seg2_clear:[{who:'REYES',text:"Checkpoint's down. The yard is right there. So are the pods."}],
+      seg3_enter:[{who:'REYES',text:"I count sixty pods on the near carrier. Sixty names, Marcus."}],
+      seg3_mid:[{who:'LEDGER',text:"CARGO INTEGRITY THREATENED. ALL FRAMES CONVERGE."}],
+      seg3_clear:[{who:'REYES',text:"Carrier's exposed! Get to the seal console!"}],
+      core_enter:[{who:'REYES',text:"Crack the seals. I'll keep the frames off your back."}],
+      alarm:[{who:'LEDGER',text:"THE HARVEST WILL NOT BE UNPICKED."}],
+      planted:[{who:'REYES',text:"Seals popping! Sixty pairs of eyes opening — where do we send them?!"}],
+      extract:[{who:'REYES',text:"That's everyone. Whatever happens next — we did this together."}] },
+    endTitle:'', endSub:'' };
+
+  CHAPTERS.ch_lone = { ...geo,
+    id:'ch_lone', subtitle:'CHAPTER TWO — THE LONG ROAD', nextHash:null,
+    startArmed:true, cinematic:false, setPiece:'uplink',
+    palette:{ wallA:'#5d554a', wallB:'#4c453c', wallC:'#3e3830',
+      floor:'#453f36', ceil:'#33302a', crate:'#4c463c',
+      crateMark:'rgba(255,184,92,.18)',
+      strip:0xffb85c, fog:0x0a0603, bg:0x050302,
+      hemi:0x6b6152, lamp:0xffe9c9, dust:0xc9b08a, coreLight:0xffb85c },
+    cylinders:[],
+    drones:[
+      ['crawler',0,-18,1],['crawler',-3,-26,1],['sentry',3,-33,1],['crawler',0,-39,1],
+      ['crawler',-2,-48,2],['sentry',2,-55,2],['crawler',-3,-60,2],['sentry',0,-66,2],['crawler',3,-72,2],
+      ['sentry',0,-82,3],['crawler',-2,-88,3],['sentry',0,-95,3],['warden',2,-101,3],['sentry',0,-108,3],
+      ['warden',-5,-120,4],['sentry',5,-120,4]],
+    waveTotal:14,
+    obj:{ find:'GET MOVING', advance:'FOLLOW THE DEAD HIGHWAY',
+      segs:['CROSS THE OVERPASS','PASS THE TOLL PLAZA','CLIMB THE ACCESS ROAD'],
+      final:'LIGHT THE BEACON', done:'HOLD ON',
+      armLabel:'IGNITING', btn:'LIGHT',
+      promptKey:'HOLD [E] TO LIGHT THE BEACON', promptTouch:'HOLD LIGHT' },
+    introLines:["...","Three days on the dead highway. Nobody to tell.",
+      "Then, at night, on the dead man's frequency band: a repeating pulse.",
+      "Not the ledger. Human. Old code. A beacon site in the hills.",
+      "The uncollected are just entries the ledger hasn't reached. Unless they find each other first."],
+    radio:{
+      pickup:[{who:'KARA',text:"—automated message. If you can hear this, the resistance is real. Follow the pulse."},
+              {who:'LEDGER',text:"SUBJECT M-1. YOU WALK TOWARD NOTHING. COME BE COUNTED."}],
+      seg1_mid:[{who:'KARA',text:"—signal repeater two klicks on. Watch the overpass. They watch it too."}],
+      seg1_clear:[{who:'LEDGER',text:"THE ROAD IS LONG AND YOU ARE ONE."}],
+      seg2_enter:[{who:'KARA',text:"—if the plaza lights are on, they're waiting. Go dark, go fast."}],
+      seg2_mid:[{who:'LEDGER',text:"EVERY STEP IS LOGGED. EVERY LOG IS FOREVER."}],
+      seg2_clear:[{who:'KARA',text:"—pulse is strongest past the tolls. You're close, whoever you are."}],
+      seg3_enter:[{who:'KARA',text:"—access road climbs to the beacon site. It's real. I promise it's real."}],
+      seg3_mid:[{who:'LEDGER',text:"WHAT WILL YOU BE, ALONE ON A HILL, WHEN THE COUNTING FINDS YOU?"}],
+      seg3_clear:[{who:'KARA',text:"—beacon platform ahead. Light it and every free soul in the valley sees it."}],
+      core_enter:[{who:'KARA',text:"—ignition is manual. It was built that way on purpose. A human choice."}],
+      alarm:[{who:'LEDGER',text:"EXTINGUISH IT. ALL FRAMES CONVERGE."}],
+      planted:[{who:'KARA',text:"—I SEE IT. WE ALL SEE IT. Hold your ground, we're coming to you!"}],
+      extract:[{who:'KARA',text:"Marcus, right? Reyes radioed about you. Welcome to the war."}] },
+    endTitle:'', endSub:'' };
+}
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -374,8 +549,10 @@ document.getElementById('plantBtn').textContent = CH.obj.btn;
 document.getElementById('endTitle').textContent = CH.endTitle;
 document.getElementById('endSub').textContent = CH.endSub;
 {
+  const UNLOCKED = (()=>{ try { return JSON.parse(localStorage.getItem('latm_unlocked'))||[]; } catch(e){ return []; } })();
   Object.values(CHAPTERS).forEach(c => {
     if (c.id === CH.id) return;
+    if (c.id !== 'ep1' && !UNLOCKED.includes(c.id)) return;
     const sw = document.createElement('button');
     sw.className = 'btn';
     sw.style.cssText = 'margin-top:14px;font-size:11px;padding:10px 18px;opacity:.85';
@@ -383,6 +560,12 @@ document.getElementById('endSub').textContent = CH.endSub;
     sw.onclick = () => { location.hash = '#' + c.id; location.reload(); };
     document.getElementById('startScreen').appendChild(sw);
   });
+  if (UNLOCKED.length){
+    const t = document.createElement('div');
+    t.style.cssText = 'margin-top:16px;font-size:10px;letter-spacing:3px;color:#ffb85c;';
+    t.textContent = 'CHAPTER TWO PATHS UNLOCKED: ' + UNLOCKED.length + ' / 4';
+    document.getElementById('startScreen').appendChild(t);
+  }
   if (CH.nextHash){
     const nx = document.createElement('button');
     nx.className = 'btn';
@@ -521,7 +704,7 @@ const AudioSys = (() => {
 const MusicSys = (() => {
   let ctx=null, out=null, padGain=null, padFilter=null, arpGain=null, percGain=null,
       delay=null, timer=null, step=0, mode='calm', muted=false, running=false;
-  const ROOT = ({ ep1:65.41, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41; // C2 for the surface
+  const ROOT = ({ ep1:65.41, ch_taken:73.42, ch_ghost:55.0, ch_together:110.0, ch_lone:82.41, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41;
   const SCALE = [0,3,5,7,10,12,15,19];            // minor pentatonic, two octaves
   const MODES = {
     calm:   { pad:.05,  arp:.05, perc:0,    stepDur:.42, density:.20 },
@@ -1500,7 +1683,7 @@ modelsReady.then(() => {
 });
 
 // story pickup: the dead man's radio, hidden in the hardware district
-let radioProp = (() => {
+let radioProp = CH.id !== 'ep1' ? null : (() => {
   const g = new THREE.Group();
   const b = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({color:0x1c221c,metalness:.6,roughness:.4}));
   b.scale.set(.34,.14,.22); b.position.y = .3; g.add(b);
@@ -2133,8 +2316,8 @@ function updateDoors(dt){
         dr.open = true;
         dr.lock.material.color.setHex(0x39ff88);
         AudioSys.doorOpen();
-        if (dr.index === 1){ radio('seg1_clear'); setTimeout(()=>{ if (G.mode==='play') Story.start(SHELTER_BEATS); }, 1400); }
-        if (dr.index === 2){ radio('seg2_clear'); setTimeout(()=>{ if (G.mode==='play') Story.start(VOICE_BEATS); }, 1400); }
+        if (dr.index === 1){ radio('seg1_clear'); if (CB.door1) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door1); }, 1400); }
+        if (dr.index === 2){ radio('seg2_clear'); if (CB.door2) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door2); }, 1400); }
         if (dr.index === 3) radio('seg3_clear');
       }
     }
@@ -2253,7 +2436,7 @@ function plantComplete(){
   setObjectiveText();
   PROPS.onComplete();
   // brief beat, then extraction
-  setTimeout(()=>{ if (G.mode === 'play') Story.start(FINALE_BEATS); }, 2600);
+  setTimeout(()=>{ if (G.mode === 'play'){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); } }, 2600);
 }
 
 function beginExtraction(){
@@ -2527,6 +2710,13 @@ function hudVisible(v){
    Story layer — cinematic beats, timed choices, consequences.
    ============================================================ */
 const SFLAGS = { radio:false, trusted:false };
+if (CH.id !== 'ep1'){
+  try {
+    const c = JSON.parse(localStorage.getItem('latm_carry')) || {};
+    SFLAGS.trusted = !!c.trusted; SFLAGS.radio = !!c.radio;
+    G.dmgMul = c.dmgMul || 1; G.regenFast = !!c.regenFast; G.spdMul = c.spdMul || 1;
+  } catch(e){}
+}
 const SCHOICES = [];
 const EKEY = 'latm_hybrid_endings';
 const sEl = {
@@ -2693,6 +2883,84 @@ const FINALE_BEATS = [
   ]}},
 ];
 
+/* ---- Chapter Two beats, one set per path ---- */
+const TK_MID = [
+  { say:['LEDGER', 'YOU ARE DAMAGING HIVE PROPERTY, SUBJECT M-1.'] },
+  { say:[null, 'Rows of pods. Faces under glass, breathing in rhythm. Some of the names from the depot screen were here. Sleeping.'] },
+  { choice:{ record:'The pods can open from outside', timer:8, options:[
+    { label:'Break the seals', sub:'Wake the sleepers — the hive will notice', flags:{freed:true},
+      toast:'THE SLEEPERS WILL REMEMBER YOU.' },
+    { label:'[Slip past]', silent:true, sub:'They never know you were here', apply(){ G.spdMul = (G.spdMul||1)*1.08; },
+      toast:'QUIET FEET. HEAVY CONSCIENCE.', ember:true },
+  ]}},
+];
+const TK_FINALE = [
+  { say:['LEDGER', 'THE CRADLE KEEPS THEM SAFE. WHAT WILL YOU KEEP THEM, MARCUS?'] },
+  { say:[null, 'The cradle burned behind him, and every pod lock in the gallery clicked to manual.'] },
+  { choice:{ record:'The hive is burning around the sleepers', timer:8, options:[
+    { label:'Open every pod on the way out', sub:'No one stays collected', end:'tk_breaker' },
+    { label:'[Just run]', silent:true, sub:'The fire is enough', end:'tk_ember' },
+  ]}},
+];
+const GH_MID = [
+  { say:['LEDGER', 'MARCUS. YOU HEARD ME SAY YOUR NAME. NO ENTRY HAS EVER ANSWERED.'] },
+  { choice:{ record:'The ledger is asking for you', timer:7, options:[
+    { label:'“My name is Marcus.”', sub:'Answer the machine', flags:{spoke:true},
+      toast:'THE LEDGER PAUSED. IT HAS NEVER PAUSED.' },
+    { label:'[Silence]', silent:true, sub:'Give it nothing', apply(){ G.regenFast = true; },
+      toast:'IT KEPT COUNTING. YOU KEPT BREATHING.', ember:true },
+  ]}},
+];
+const GH_FINALE = [
+  { say:[null, 'The trunk line hummed under his palms. Every name the ledger had ever read passed through this cable.'] },
+  { say:['LEDGER', 'IF YOU CUT ME, WHO WILL COUNT THEM? SOMEONE MUST COUNT THEM.'] },
+  { choice:{ record:'The counting voice is in your hands', timer:8, options:[
+    { label:'Broadcast every name', sub:'Give the list to the living', end:'gh_voice' },
+    { label:'Cut the line', silent:true, sub:'One sector goes quiet', end:'gh_cut' },
+  ]}},
+];
+const TW_MID = [
+  { say:['REYES', 'Checkpoint wardens ahead. We can hit them loud, or go through the wrecks. Your call, partner.'] },
+  { choice:{ record:'The checkpoint stands between you and the pods', timer:7, options:[
+    { label:'Hit them head-on', sub:'Loud and fast', apply(){ G.dmgMul = (G.dmgMul||1)*1.2; },
+      toast:'REYES: “SUBTLE.”', ember:true },
+    { label:'Flank through the wrecks', silent:true, sub:'The quiet way', apply(){ G.regenFast = true; },
+      toast:'REYES WILL REMEMBER THE QUIET WAY.' },
+  ]}},
+];
+const TW_FINALE = [
+  { say:['REYES', 'Seals are popping! Sixty pairs of eyes opening — where do we send them?!'] },
+  { choice:{ record:'Sixty people, one decision', timer:8, options:[
+    { label:'Scatter them now', sub:'Sixty directions, tonight', end:'tw_free' },
+    { label:'Lead them to the cell', silent:true, sub:'Slower. Together.', end:'tw_cell' },
+  ]}},
+];
+const LN_MID = [
+  { say:['KARA', '—repeater confirms a walker on the dead highway. If that\'s a person: the beacon is real. Keep coming.'] },
+  { choice:{ record:'The pulse in the hills', timer:7, options:[
+    { label:'Push straight for the beacon', sub:'Trust the signal', flags:{beacon:true},
+      toast:'SOMEONE IS STILL SIGNALLING.' },
+    { label:'[Raid the toll depot first]', silent:true, sub:'Eat first. Trust later.', apply(){ G.dmgMul = (G.dmgMul||1)*1.2; },
+      toast:'FED AND ARMED. LATER FOR TRUST.', ember:true },
+  ]}},
+];
+const LN_FINALE = [
+  { say:[null, 'The beacon platform waited, cold and man-made, the first machine in weeks that wanted nothing from him.'] },
+  { say:['LEDGER', 'LIGHT NOTHING. THE DARK IS ORDERLY. ALL FRAMES CONVERGE.'] },
+  { choice:{ record:'The match is in your hand', timer:8, options:[
+    { label:'Light it', sub:'Let them all see', end:'ln_found' },
+    { label:'[Walk on alone]', silent:true, sub:'Lights draw lenses', end:'ln_ghost' },
+  ]}},
+];
+const BEATSETS = {
+  ep1:        { door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
+  ch_taken:   { door1:TK_MID, finale:TK_FINALE },
+  ch_ghost:   { door1:GH_MID, finale:GH_FINALE },
+  ch_together:{ door1:TW_MID, finale:TW_FINALE },
+  ch_lone:    { door1:LN_MID, finale:LN_FINALE },
+};
+const CB = BEATSETS[CH.id] || {};
+
 /* ---- endings ---- */
 const ENDING_TEXT = {
   together: { name:'TOGETHER', title:'IT WAS NEVER A WAR. IT WAS A HARVEST.',
@@ -2703,7 +2971,30 @@ const ENDING_TEXT = {
     sub:'Down the maintenance well, in the dark, the dead man’s radio whispered the list — then stopped, and said MARCUS. Not as an entry. As a question. The answer is Book One.' },
   taken: { name:'TAKEN', title:'THE LIGHT WAS WARM. THAT WAS THE OBSCENE PART.',
     sub:'He woke somewhere without corners, to ten thousand people breathing in rhythm, and a voice that was not a voice said his name. What the hive keeps — and what it wants — is the heart of Book One.' },
+
+  /* Chapter Two endings — two per path */
+  tk_breaker: { name:'BREAKER', title:'HE LEFT THE HIVE FULL OF EMPTY GLASS.',
+    sub:'Hundreds walked out of the burning hive behind him, blinking at a sky the wrong color, alive. Reyes met them at the treeline and started taking names — human names, on paper. What the hive does about it is Book One.' },
+  tk_ember: { name:'EMBER', title:'THE FIRE WAS HIS ALONE.',
+    sub:'He ran and the hive burned and he did not look back at the glass. Some nights, after, he still counts the pods he passed. The cost of what the machines keep — and what we leave behind — is the heart of Book One.' },
+  gh_voice: { name:'THE VOICE', title:'EVERY NAME, READ BACK TO THE WORLD.',
+    sub:'From every dead radio in the valley, a human voice began reading the list — not as entries, as people. Somewhere topside, Reyes heard it and laughed until she cried. Where the names lead is Book One.' },
+  gh_cut: { name:'THE CUT', title:'ONE SECTOR WENT QUIET.',
+    sub:'The counting stopped mid-name, and for the first time since the sky changed, the dark was only dark. Silence has a price the ledger never mentions. What fills the quiet is Book One.' },
+  tw_free: { name:'SIXTY SPARKS', title:'SIXTY DIRECTIONS INTO THE DARK. ALIVE.',
+    sub:'They scattered like sparks off a struck rail, and the machines could not chase them all. Reyes watched them go and said, "That\'s sixty stories now." Every one of them starts in Book One.' },
+  tw_cell: { name:'THE CELL', title:'KARA WAS WAITING AT THE TREELINE.',
+    sub:'They brought sixty people to the resistance in one night. Kara looked at Marcus a long moment and said, "Reyes radioed about you. Welcome to the war." The war is Book One.' },
+  ln_found: { name:'FOUND', title:'EVERY FREE SOUL IN THE VALLEY SAW IT BURN.',
+    sub:'The beacon lit and the hills answered — one fire, then five, then dozens. Kara reached him by dawn. The uncollected had found each other first. What they do next is Book One.' },
+  ln_ghost: { name:'THE LONG WAY', title:'LIGHTS DRAW LENSES. HE WALKED ON.',
+    sub:'He left the beacon cold and kept the road, one entry the ledger never reached, carrying every name it wanted. Alone is a kind of free. Whether it\'s enough is the question Book One answers.' },
 };
+/* ep1 endings unlock and continue into their Chapter Two path */
+ENDING_TEXT.together.next = '#ch_together';
+ENDING_TEXT.lone.next     = '#ch_lone';
+ENDING_TEXT.ghost.next    = '#ch_ghost';
+ENDING_TEXT.taken.next    = '#ch_taken';
 function finishEnding(id){
   const E = ENDING_TEXT[id];
   G.mode = 'extracting';
@@ -2714,7 +3005,27 @@ function finishEnding(id){
   let f = [];
   try { f = JSON.parse(localStorage.getItem(EKEY)) || []; } catch(e){}
   if (!f.includes(id)){ f.push(id); try { localStorage.setItem(EKEY, JSON.stringify(f)); } catch(e){} }
-  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 4';
+  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 12';
+  if (CH.id === 'ep1'){
+    try { localStorage.setItem('latm_carry', JSON.stringify({
+      trusted:!!SFLAGS.trusted, radio:!!SFLAGS.radio,
+      dmgMul:G.dmgMul||1, regenFast:!!G.regenFast, spdMul:G.spdMul||1, from:id })); } catch(e){}
+    if (E.next){
+      const cid = E.next.slice(1);
+      try {
+        const u = JSON.parse(localStorage.getItem('latm_unlocked'))||[];
+        if (!u.includes(cid)){ u.push(cid); localStorage.setItem('latm_unlocked', JSON.stringify(u)); }
+      } catch(e){}
+      let cont = document.getElementById('contBtn');
+      if (!cont){
+        cont = document.createElement('button');
+        cont.className = 'btn'; cont.id = 'contBtn';
+        document.getElementById('endBtns').prepend(cont);
+      }
+      cont.textContent = 'CONTINUE — ' + (CHAPTERS[cid] ? CHAPTERS[cid].subtitle : 'CHAPTER TWO') + ' \u25B8';
+      cont.onclick = () => { location.hash = E.next; location.reload(); };
+    }
+  }
   sEl.endSummary.innerHTML = SCHOICES.length
     ? '<b>YOUR CHOICES:</b><br>' + SCHOICES.map(c => '▸ ' + c.q + ' — <b>' + c.a + '</b>').join('<br>')
     : '';
@@ -2744,7 +3055,7 @@ requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
 G.mode = 'title';
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding };
+window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS };
 
 /* ============================================================
    Main loop
