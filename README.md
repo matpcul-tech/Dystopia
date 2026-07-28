@@ -1,50 +1,51 @@
-# DYSTOPIA: Life After The Machines — Episode One
+# DYSTOPIA — Episode One: The Waking
 
-A top-down stealth survival game set in the world of
-**Life After The Machines** by Matthew Culwell. Episode One: *The Waking*.
+A free playable 3D episode set in the world of
+**Life After The Machines** by Matthew Culwell — built on the same engine
+as [LATM: Hive Infiltration](https://github.com/matpcul-tech/Dystopiabook1),
+funneling players to Book One.
 
-The entire game lives in a single file: `index.html`. No build step, no
-dependencies — open it in a browser and play. Works with keyboard on desktop
-and a touch joystick on phones.
+**Episode One — The Waking**: Marcus wakes in the gravel under a sky the
+wrong color, follows a dead man's radio — and Reyes's voice — through the
+ruined streets and the hardware district, crosses the warden-guarded rail
+bridge, and reaches the depot refuge across the river. The gate is open.
+The cots are empty. The far wall is a screen, and the screen is a list of
+names. Pull the ledger, survive the net, get out. This is where Book One
+begins.
 
-## How it plays
+The episode plays through the book's opening in-engine: the "Awakening in
+Rust" cinematic runs before the level starts.
 
-You control Marcus directly, moving through three levels of the ruined city:
+## Play
 
-- **Act 1 — The Streets:** reach the pharmacy shelter. Patrol machines sweep
-  vision cones; a drone circles overhead. Cover blocks (hatched squares)
-  hide you. Find the dead man's **radio** and a **pistol**.
-- **Act 2 — The Crossing:** reach the far bank. A searchlight walks the
-  bridge in slow passes — cross between sweeps. Find **Reyes** and she
-  joins you, unlocking an ending.
-- **Act 3 — The Depot:** the refuge is a trap and the lights are advancing.
-  Three exits, three fates: the **gate** (escape — Together with Reyes,
-  Runner alone), the **hatch** (Ghost — needs the radio), or walk into the
-  **light** (Taken).
+Single file, no build step. Serve `index.html` from anywhere
+(GitHub Pages works as-is). Three.js is loaded from the jsdelivr CDN.
 
-**Systems:** INTEG (health) and DETECT meters in the HUD. Being seen fills
-DETECT; at 100% the machines triangulate and collect you. Contact with a
-machine costs health; at zero you flatline. Fail states offer a reboot from
-the act checkpoint. The pistol destroys a machine but spikes detection.
-Med kits and food restore health. Autosave lets you Continue from the title
-screen, and the ledger permanently tracks which of the four endings you've
-recovered.
+- **Desktop:** WASD move, mouse look (click for pointer lock), click/Space
+  fire, hold E to pull the ledger, M toggles music.
+- **Mobile:** left side virtual stick to move, right side drag to look,
+  FIRE button, hold PULL at the depot screen.
 
-**Controls:** WASD / arrow keys to move, Space or E to fire.
-On phones: drag on the left side for the joystick, tap FIRE on the right.
+## Structure
 
-## How to edit (no coding needed)
+The chapter is a pure data object (`CHAPTERS.ep1` in `index.html`):
+rooms, enemy placements, radio script, palette, objectives. The engine —
+shared with Dystopiabook1 — builds whatever the data describes. Adding
+another episode = adding a data block.
 
-Open `index.html`:
+- One weapon (pulse rifle, hitscan, infinite ammo, fire-rate cap)
+- Three enemies: Crawler (melee rush), Sentry (telegraphed ranged), and
+  Warden (heavy frame) with three-state AI and line-of-sight triggers
+- 100 HP with regen after 5s out of combat; checkpoints at segment doors
+- Wave defense at the depot while the ledger copies
+- All audio synthesized (WebAudio); textures procedural; enemy/rifle
+  GLB models in `models/`
 
-1. **Story text** — all prose lives in the `CARDS` object near the top.
-2. **Levels** — maps are ASCII art in `LEVELS`. `#` wall, `.` floor,
-   `C` cover, `P` start, `X` exit, `r` radio, `m` med kit, `g` pistol,
-   `f` food, `R` Reyes, `H` hatch, `B` gate, `L` the light.
-3. **Book link** — set `BOOK_URL` (marked `// EDIT ME`).
+## Author config
 
-## How to publish (GitHub Pages)
+Everything an author should tweak lives in the `CONFIG` block and the
+`CHAPTERS.ep1` data at the top of the `<script type="module">`:
 
-1. On GitHub: **Settings → Pages → Source: Deploy from a branch**, pick
-   `main` and `/ (root)`, save.
-2. The game goes live at `https://<your-username>.github.io/Dystopia/`.
+- `BOOK1_URL` — the Kindle store URL for Book One.
+- `radio` — all of Reyes's chatter lines, keyed by trigger.
+- `introLines` — the awakening text; `endTitle` / `endSub` — the end card.
