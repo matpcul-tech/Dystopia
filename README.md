@@ -71,6 +71,20 @@ made permanent, and you go in unarmed:
   leave it hollow — give the finale **2 endings**, for **14 endings**
   total across the tree.
 
+## No more one-way corridors
+
+Two structural changes to every chapter:
+
+- **Annex side-rooms** — optional rooms off the main path with glowing
+  loot caches: field caches (full vitals + faster recovery), power
+  cells (+damage), and intel fragments (calmer suspicion decay in the
+  Counting House). Explore or miss them.
+- **The escape run** — completing the objective no longer ends the
+  chapter. The objective flips to getting back out: you fight (or, in
+  the Counting House, sneak past alerted watchers) back through the
+  whole level while pursuit waves flood in behind you. The final story
+  choice happens at the gate you entered through.
+
 Graphics: bloom, filmic tone mapping, vignette + film grain post-fx
 (with an FPS watchdog that sheds effects on weak devices), GLB machine
 models, procedural textures, synthesized audio. Health regen, checkpoints
