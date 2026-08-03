@@ -71,6 +71,23 @@ made permanent, and you go in unarmed:
   leave it hollow — give the finale **2 endings**, for **14 endings**
   total across the tree.
 
+## Choices change the game, visibly
+
+- **Help Reyes in Episode One and she is THERE** — a companion who runs
+  the escape at your shoulder, firing visible tracer shots at anything
+  that engages you, and who fights the whole Convoy chapter beside you.
+  Leave her behind and you run alone.
+- **Loud choices spawn enemies** — hit the convoy checkpoint head-on
+  and the noise pulls crawlers in on the spot; abandon Reyes in Episode
+  One and the lenses send hunters to the bridge.
+- **Free the sleepers in the hive** and during the escape you see them
+  running past you to daylight — and the pursuit is halved, because the
+  hive divides its attention.
+- **Answer the ledger in the tunnels** and every machine in the chapter
+  visibly *hesitates* in rhythm — it is thinking about you.
+- A **perks HUD** (top right) shows what your choices did: DMG +35%,
+  MEDIC, SWIFT, HEAVY, REYES, RADIO, LIBERATOR, SPOKE TO IT.
+
 ## No more one-way corridors
 
 Two structural changes to every chapter:

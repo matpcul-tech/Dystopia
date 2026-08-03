@@ -29,6 +29,9 @@
   #detLabel{font-size:10px;letter-spacing:2px;opacity:.85;margin-bottom:3px;color:var(--red);}
   #detBar{height:10px;border:1px solid #7a1a24;background:rgba(20,0,4,.6);}
   #detFill{height:100%;width:0%;background:var(--red);box-shadow:0 0 8px var(--red);transition:width .12s;}
+  #perks{position:absolute;right:16px;top:14px;display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+  .pchip{font-size:9px;letter-spacing:2px;border:1px solid var(--grn-dim);color:var(--grn);
+    padding:3px 8px;background:rgba(2,10,5,.6);}
   #healthLabel{font-size:10px;letter-spacing:2px;opacity:.8;margin-bottom:3px;}
   #healthBar{height:10px;border:1px solid var(--grn-dim);background:rgba(0,20,8,.6);}
   #healthFill{height:100%;width:100%;background:var(--grn);box-shadow:0 0 8px var(--grn);transition:width .15s;}
@@ -174,6 +177,7 @@
     <div id="detLabel">DETECTION</div>
     <div id="detBar"><div id="detFill"></div></div>
   </div>
+  <div id="perks"></div>
   <div id="objective"></div>
   <div id="radio"></div>
   <div id="prompt"></div>
@@ -1584,6 +1588,7 @@ function applyLoot(t){
   if (t === 'med'){ G.regenFast = true; G.hp = 100; sToast('FIELD CACHE — FULL VITALS, FASTER RECOVERY.'); }
   else if (t === 'cell'){ G.dmgMul = (G.dmgMul||1) + .15; sToast('POWER CELLS — DAMAGE UP.', true); }
   else { G.detCalm = true; sToast('INTEL FRAGMENT — THE LEDGER HAS BLIND SPOTS. THIS WAS ONE.'); }
+  renderPerks();
 }
 
 // pillars
@@ -2613,6 +2618,7 @@ function updateDoors(dt){
       SFLAGS.radio = true;
       AudioSys.checkpoint();
       sToast("RADIO RECOVERED — THE DEAD MAN STILL BROADCASTS.");
+      renderPerks();
     }
   }
   // annex loot pickup
@@ -2657,7 +2663,7 @@ function startAlarm(){
 function updateWave(dt){
   if (!G.alarm || (G.planted && !G.escape)) return;
   G.waveT -= dt;
-  if (G.waveT <= 0 && G.waveSpawned < WAVE_TOTAL && activeDroneCount() < MAX_ACTIVE){
+  if (G.waveT <= 0 && G.waveSpawned < (G.waveCap ?? WAVE_TOTAL) && activeDroneCount() < MAX_ACTIVE){
     G.waveT = 3;
     const [x,z] = WAVE_SPAWNS[G.waveSpawned % WAVE_SPAWNS.length];
     const kinds = CH.waveKinds || ['crawler'];
@@ -2710,7 +2716,19 @@ function plantComplete(){
   setObjectiveText();
   PROPS.onComplete();
   // brief beat, then extraction
-  setTimeout(()=>{ if (G.mode === 'play'){ G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText(); } }, 2600);
+  setTimeout(()=>{ if (G.mode === 'play'){
+    G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
+    if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
+    if (CH.id === 'ch_taken' && SFLAGS.freed){
+      G.waveCap = Math.ceil((CH.waveTotal||12)/2);
+      for (let i = 0; i < 6; i++){
+        const c = makeCivvy({ jacket:0x2c2c28 });
+        c.position.set(-6 + i*2.4, 0, -104 - (i%3)*4);
+        scene.add(c); FLEE.push(c);
+      }
+      sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
+    }
+  } }, 2600);
 }
 
 function beginExtraction(){
@@ -2954,6 +2972,8 @@ function finishIntro(skipAll){
   else if (!pointerLocked) renderer.domElement.requestPointerLock();
   if (!CH.stealth && (skipAll || CH.startArmed)) pickupRifle();
   if (CH.stealth) radio('pickup');
+  if (CH.id === 'ch_together') spawnCompanion();
+  renderPerks();
   setObjectiveText();
 }
 el.skipBtn.addEventListener('click', e => {
@@ -3054,6 +3074,7 @@ const Story = (() => {
       if (o.flags) Object.assign(SFLAGS, o.flags);
       if (o.apply) o.apply();
       if (o.toast) sToast(o.toast, o.ember);
+      renderPerks();
       AudioSys.doorOpen();
       if (o.end){ finishEnding(o.end === 'RUNCHECK' ? (SFLAGS.trusted ? 'together' : 'lone') : o.end); return; }
       next();
@@ -3143,8 +3164,8 @@ const VOICE_BEATS = [
   { choice:{ record:'The voice on the radio', timer:7, options:[
     { label:'“Hold on. I’m coming.”', sub:'Slower together', flags:{trusted:true},
       toast:'REYES WILL REMEMBER THAT.' },
-    { label:'[Keep moving]', silent:true, sub:'Faster alone', apply(){ G.spdMul = (G.spdMul||1) * 1.08; },
-      toast:'FASTER ALONE. THE LENSES NOTICE FAST THINGS.', ember:true },
+    { label:'[Keep moving]', silent:true, sub:'Faster alone', apply(){ G.spdMul = (G.spdMul||1) * 1.08; spawnExtra('crawler', -1.5, -86, 3); spawnExtra('crawler', 1.5, -92, 3); },
+      toast:'FASTER ALONE. THE LENSES SENT HUNTERS TO THE BRIDGE.', ember:true },
   ]}},
 ];
 
@@ -3197,8 +3218,8 @@ const GH_FINALE = [
 const TW_MID = [
   { say:['REYES', 'Checkpoint wardens ahead. We can hit them loud, or go through the wrecks. Your call, partner.'] },
   { choice:{ record:'The checkpoint stands between you and the pods', timer:7, options:[
-    { label:'Hit them head-on', sub:'Loud and fast', apply(){ G.dmgMul = (G.dmgMul||1)*1.2; },
-      toast:'REYES: “SUBTLE.”', ember:true },
+    { label:'Hit them head-on', sub:'Loud and fast', apply(){ G.dmgMul = (G.dmgMul||1)*1.2; spawnExtra('crawler', -2, -56, 2); spawnExtra('crawler', 2, -60, 2); },
+      toast:'REYES: “SUBTLE.” THE NOISE IS PULLING CRAWLERS IN.', ember:true },
     { label:'Flank through the wrecks', silent:true, sub:'The quiet way', apply(){ G.regenFast = true; },
       toast:'REYES WILL REMEMBER THE QUIET WAY.' },
   ]}},
@@ -3432,6 +3453,100 @@ function updateWatchers(dt){
   };
 }
 
+
+/* ============================================================
+   Visible consequences — Reyes in the field, fleeing sleepers,
+   choice-spawned hunters, and the perks HUD.
+   ============================================================ */
+function spawnExtra(kind, x, z, seg){
+  const d = makeDrone(kind, x, z, seg);
+  d.spawned = true;
+  setDroneState(d, 'attack');
+  scene.add(d.mesh);
+  return d;
+}
+function makeCivvy(colors){
+  const g = new THREE.Group();
+  const mJ = new THREE.MeshStandardMaterial({ color: (colors && colors.jacket) || 0x4a423a, roughness:.85 });
+  const mP = new THREE.MeshStandardMaterial({ color: 0x2a2f2a, roughness:.9 });
+  const mS = new THREE.MeshStandardMaterial({ color: 0xb9a894, roughness:.7 });
+  const mk = (m,sx,sy,sz,x,y,z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), m); b.position.set(x,y,z); g.add(b); return b; };
+  mk(mP,.22,.7,.26, 0,.35,0);
+  mk(mJ,.56,.75,.34, 0,1.05,0);
+  mk(mJ,.16,.62,.2, -.42,1.0,0); mk(mJ,.16,.62,.2, .42,1.0,0);
+  mk(mS,.28,.3,.28, 0,1.62,0);
+  return g;
+}
+let COMP = null;
+const TRACERS = [], FLEE = [];
+function spawnCompanion(){
+  if (COMP) return;
+  const m = makeCivvy({ jacket:0x4a5a42 });
+  m.position.set(yawObj.position.x + 1.4, 0, yawObj.position.z + 1.2);
+  scene.add(m);
+  COMP = { mesh:m, fireT:1.2 };
+  renderPerks();
+}
+function updateAllies(dt){
+  if (COMP){
+    const m = COMP.mesh, p = yawObj.position;
+    const bx = p.x + Math.sin(G.yaw)*1.2 + Math.cos(G.yaw)*1.0;
+    const bz = p.z + Math.cos(G.yaw)*1.2 - Math.sin(G.yaw)*1.0;
+    m.position.x += (bx - m.position.x) * Math.min(1, dt*3);
+    m.position.z += (bz - m.position.z) * Math.min(1, dt*3);
+    m.position.y += Math.sin(G.time*9)*.001;
+    m.rotation.y = G.yaw;
+    COMP.fireT -= dt;
+    if (COMP.fireT <= 0){
+      COMP.fireT = 1.6;
+      let best = null, bd = 13;
+      for (const d of drones){
+        if (!d.alive || d.state === 'idle') continue;   // she covers you, she doesn't hunt
+        const dd = Math.hypot(d.mesh.position.x - m.position.x, d.mesh.position.z - m.position.z);
+        if (dd < bd && losClear2D(m.position.x, m.position.z, d.mesh.position.x, d.mesh.position.z)){ bd = dd; best = d; }
+      }
+      if (best){
+        damageDrone(best, 9);
+        AudioSys.shot();
+        const from = new THREE.Vector3(m.position.x, 1.3, m.position.z);
+        const to = best.mesh.position.clone().setY(1.4);
+        const tr = new THREE.Mesh(new THREE.BoxGeometry(.03,.03, from.distanceTo(to)),
+          new THREE.MeshBasicMaterial({ color:0x8fffb5 }));
+        tr.position.copy(from).lerp(to, .5);
+        tr.lookAt(to);
+        scene.add(tr);
+        TRACERS.push({ mesh:tr, t:.12 });
+      }
+    }
+  }
+  for (let i = TRACERS.length-1; i >= 0; i--){
+    TRACERS[i].t -= dt;
+    if (TRACERS[i].t <= 0){ scene.remove(TRACERS[i].mesh); TRACERS.splice(i,1); }
+  }
+  for (let i = FLEE.length-1; i >= 0; i--){
+    const c = FLEE[i];
+    c.position.z += dt * 3.2;
+    c.position.y = Math.abs(Math.sin(G.time*8 + i))*.05;
+    c.rotation.y = 0;
+    if (c.position.z > 2){ scene.remove(c); FLEE.splice(i,1); }
+  }
+}
+function renderPerks(){
+  const box = document.getElementById('perks');
+  if (!box) return;
+  const chips = [];
+  if ((G.dmgMul||1) > 1) chips.push('DMG +' + Math.round(((G.dmgMul)-1)*100) + '%');
+  if (G.regenFast) chips.push('MEDIC');
+  if ((G.spdMul||1) > 1) chips.push('SWIFT');
+  if ((G.spdMul||1) < 1) chips.push('HEAVY');
+  if (G.detCalm) chips.push('INTEL');
+  if (SFLAGS.trusted) chips.push('REYES');
+  if (SFLAGS.radio) chips.push('RADIO');
+  if (SFLAGS.freed) chips.push('LIBERATOR');
+  if (SFLAGS.spoke) chips.push('SPOKE TO IT');
+  box.innerHTML = chips.map(c => '<div class="pchip">' + c + '</div>').join('');
+}
+
 /* ============================================================
    Boot / title / replay
    ============================================================ */
@@ -3474,7 +3589,13 @@ function loop(){
   if (G.mode === 'play'){
     updatePlayer(dt);
     tryFire(dt);
-    if (CH.stealth) updateWatchers(dt); else updateDrones(dt);
+    if (CH.stealth) updateWatchers(dt);
+    else {
+      let ddt = dt;
+      if (CH.id === 'ch_ghost' && SFLAGS.spoke && Math.sin(G.time*1.1) > .55) ddt = dt * .12;  // it hesitates
+      updateDrones(ddt);
+    }
+    updateAllies(dt);
     updateProjectiles(dt);
     updateDoors(dt);
     updateWave(dt);
