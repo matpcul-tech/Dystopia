@@ -2729,10 +2729,12 @@ function plantComplete(){
     if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
     if (CH.id === 'ch_taken' && SFLAGS.freed){
       G.waveCap = Math.ceil((CH.waveTotal||12)/2);
-      for (let i = 0; i < 6; i++){
+      // sleepers strung out along the whole escape route, so the player
+      // keeps passing them on the way to daylight
+      for (let i = 0; i < 10; i++){
         const c = makeCivvy({ jacket:[0x3a3a32,0x4a3a30,0x33402f,0x46464b,0x54443a,0x3c3348][i%6],
           hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6] });
-        c.position.set(-6 + i*2.4, 0, -104 - (i%3)*4);
+        c.position.set((i%2 ? 1 : -1) * (1.5 + (i%4)), 0, -100 + i*6);
         scene.add(c); FLEE.push(c);
       }
       sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
@@ -3597,7 +3599,7 @@ function updateAllies(dt){
   }
   for (let i = FLEE.length-1; i >= 0; i--){
     const c = FLEE[i];
-    c.position.z += dt * 3.4;
+    c.position.z += dt * 3.8;
     c.rotation.y = 0;
     if (c.userData.tick) c.userData.tick(dt, true, 1.35);
     if (c.position.z > 2){ scene.remove(c); FLEE.splice(i,1); }
