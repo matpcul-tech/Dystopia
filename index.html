@@ -158,6 +158,9 @@
     padding:10px 16px;opacity:0;transform:translateX(-12px);transition:all .45s;max-width:76vw;}
   #sToast.show{opacity:1;transform:translateX(0);}
   #sToast.ember{border-left-color:var(--red);}
+  #castStage{position:absolute;left:50%;bottom:calc(9vh + 168px);transform:translateX(-50%);
+    width:min(360px,64vw);height:202px;opacity:0;transition:opacity .35s;pointer-events:none;}
+  #castStage canvas{width:100%!important;height:100%!important;}
   #endName{font-size:12px;letter-spacing:5px;color:var(--red);margin-bottom:10px;}
   #endSummary{margin-top:18px;font-size:11px;letter-spacing:1px;color:#cfe2d4;text-align:left;
     max-width:480px;line-height:1.9;}
@@ -196,6 +199,7 @@
 
 <div class="sbar" id="sbarTop"></div><div class="sbar" id="sbarBot"></div>
 <div id="storyWrap">
+  <div id="castStage"></div>
   <div id="storyDlg"><div id="sSpeaker"></div><div id="sText"></div><div id="sHint">TAP / SPACE</div></div>
   <div id="sChoice"><div id="sTimer"><div id="sTimerFill"></div></div><div id="sOpts"></div></div>
 </div>
@@ -250,6 +254,8 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
+<script src="people.js"></script>
+
 <script type="importmap">
 { "imports": {
   "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -259,6 +265,8 @@ if ('serviceWorker' in navigator) {
 
 <script type="module">
 import * as THREE from 'three';
+
+window.THREE = THREE; // people.js is a classic script that reads global THREE at call time
 
 /* ============================================================
    CONFIG — edit these without touching game code.
@@ -3062,8 +3070,10 @@ const Story = (() => {
     sEl.text.textContent = text;
     sEl.text.className = who ? '' : 'narr';
     sayT = Math.max(3.4, text.length * .06);
+    if (Cast) Cast.speak(who);
   }
   function showChoice(c){
+    if (Cast) Cast.silence();
     sEl.dlg.style.display = 'none';
     sEl.opts.innerHTML = '';
     const opts = c.options;
@@ -3076,6 +3086,7 @@ const Story = (() => {
       if (o.apply) o.apply();
       if (o.toast) sToast(o.toast, o.ember);
       renderPerks();
+      if (Cast && !o.silent) Cast.nod('MARCUS');
       AudioSys.doorOpen();
       if (o.end){ finishEnding(o.end === 'RUNCHECK' ? (SFLAGS.trusted ? 'together' : 'lone') : o.end); return; }
       next();
@@ -3094,6 +3105,7 @@ const Story = (() => {
   }
   function finish(){
     active = false;
+    if (Cast) Cast.silence();
     sEl.wrap.style.display = 'none';
     sEl.dlg.style.display = 'none';
     sEl.choice.style.display = 'none';
@@ -3608,6 +3620,54 @@ function renderPerks(){
 }
 
 /* ============================================================
+   Recurring cast (people.js) — fixed seeds, defined ONCE.
+   A transparent LATMPeople stage shows the current speaker
+   behind the dialogue UI during story beats. createStage runs
+   its own loop, so the game loop does not call LATMPeople.update.
+   ============================================================ */
+const Cast = (() => {
+  if (!window.LATMPeople) return null;
+  const div = document.getElementById('castStage');
+  if (!div) return null;
+  const stage = LATMPeople.createStage(div, { transparent: true, ground: false, fog: false });
+  stage.camera.position.set(0, 1.52, 1.85);
+  stage.camera.lookAt(0, 1.32, 0);
+  const CAST_DEFS = {
+    MARCUS: { seed:'marcus', hood:false, mask:false, coat:0x3f4a45, pack:true,  height:1.8,  hair:0x2b2118, limp:false },
+    REYES:  { seed:'reyes',  hood:false, mask:false, coat:0x2e3a2c, pack:false, height:1.68, hair:0x171009, wrap:0x7a3322, limp:true },
+    KARA:   { seed:'kara',   hood:true,  mask:false, coat:0x555b52, pack:true,  height:1.72, wrap:0x5d6b4a, limp:false },
+    LEDGER: { seed:'ledger', role:'machine', glow:0xff3b30, height:1.95 },
+  };
+  const members = {};
+  for (const name of Object.keys(CAST_DEFS)){
+    const c = LATMPeople.createCharacter(CAST_DEFS[name]);
+    c.visible = false;
+    c.userData.faceToward(0, 5);   // face the stage camera
+    stage.scene.add(c);
+    members[name] = c;
+  }
+  let active = null;
+  return {
+    members, stage,
+    speak(who){
+      const c = members[who];
+      if (active && active !== c){ active.userData.setTalking(false); active.visible = false; }
+      active = c || null;
+      div.style.opacity = c ? 1 : 0;
+      if (c){ c.visible = true; c.userData.setTalking(true); }
+    },
+    silence(){
+      if (active) active.userData.setTalking(false);
+      div.style.opacity = 0;
+    },
+    nod(who){
+      const c = members[who || 'MARCUS'];
+      if (c) c.userData.playEmote('nod');
+    },
+  };
+})();
+
+/* ============================================================
    Boot / title / replay
    ============================================================ */
 el.startBtn.addEventListener('click', () => {
@@ -3625,7 +3685,7 @@ requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
 G.mode = 'title';
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP };
+window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast };
 
 /* ============================================================
    Main loop
