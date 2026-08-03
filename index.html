@@ -2722,7 +2722,8 @@ function plantComplete(){
     if (CH.id === 'ch_taken' && SFLAGS.freed){
       G.waveCap = Math.ceil((CH.waveTotal||12)/2);
       for (let i = 0; i < 6; i++){
-        const c = makeCivvy({ jacket:0x2c2c28 });
+        const c = makeCivvy({ jacket:[0x3a3a32,0x4a3a30,0x33402f,0x46464b,0x54443a,0x3c3348][i%6],
+          hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6] });
         c.position.set(-6 + i*2.4, 0, -104 - (i%3)*4);
         scene.add(c); FLEE.push(c);
       }
@@ -3465,23 +3466,80 @@ function spawnExtra(kind, x, z, seg){
   scene.add(d.mesh);
   return d;
 }
-function makeCivvy(colors){
+function makeCivvy(o){
+  o = o || {};
+  const M = (c, r=.85) => new THREE.MeshStandardMaterial({ color:c, roughness:r });
+  const mJ = M(o.jacket ?? 0x4a423a), mP = M(o.pants ?? 0x2a2f2a, .9),
+        mS = M(o.skin ?? 0xb9a894, .6), mH = M(o.hair ?? 0x241d16),
+        mB = M(0x1d1a15, .95), mD = M(0x151512);
   const g = new THREE.Group();
-  const mJ = new THREE.MeshStandardMaterial({ color: (colors && colors.jacket) || 0x4a423a, roughness:.85 });
-  const mP = new THREE.MeshStandardMaterial({ color: 0x2a2f2a, roughness:.9 });
-  const mS = new THREE.MeshStandardMaterial({ color: 0xb9a894, roughness:.7 });
-  const mk = (m,sx,sy,sz,x,y,z) => { const b = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), m); b.position.set(x,y,z); g.add(b); return b; };
-  mk(mP,.22,.7,.26, 0,.35,0);
-  mk(mJ,.56,.75,.34, 0,1.05,0);
-  mk(mJ,.16,.62,.2, -.42,1.0,0); mk(mJ,.16,.62,.2, .42,1.0,0);
-  mk(mS,.28,.3,.28, 0,1.62,0);
+  const box = (mat,sx,sy,sz,x,y,z,parent) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz), mat);
+    m.position.set(x,y,z); (parent||g).add(m); return m;
+  };
+  /* legs: hip-pivot groups with thigh, shin, boot */
+  const mkLeg = side => {
+    const leg = new THREE.Group(); leg.position.set(side*.11, .95, 0); g.add(leg);
+    box(mP,.15,.5,.17,  0,-.25,0,   leg);
+    box(mP,.13,.44,.15, 0,-.7,0,    leg);
+    box(mB,.16,.11,.26, 0,-.93,.04, leg);
+    return leg;
+  };
+  const legL = mkLeg(-1), legR = mkLeg(1);
+  /* torso: hips, belt, jacket, collar */
+  box(mP,.34,.2,.22,  0,1.0,0);
+  box(mD,.36,.06,.23, 0,1.11,0);
+  box(mJ,.4,.5,.26,   0,1.37,0);
+  box(mJ,.44,.09,.29, 0,1.61,0);
+  /* arms: shoulder-pivot groups with sleeve + forearm + hand */
+  const mkArm = side => {
+    const arm = new THREE.Group(); arm.position.set(side*.27, 1.56, 0); g.add(arm);
+    box(mJ,.13,.34,.15, 0,-.16,0,   arm);
+    box(mS,.11,.3,.12,  0,-.47,.02, arm);
+    box(mS,.1,.09,.11,  0,-.63,.03, arm);
+    return arm;
+  };
+  const armL = mkArm(-1), armR = mkArm(1);
+  /* head: face, hair cap + back, optional ponytail and scarf */
+  const head = new THREE.Group(); head.position.set(0,1.72,0); g.add(head);
+  box(mS,.2,.24,.2,   0,.12,.02,  head);
+  box(mH,.22,.1,.23,  0,.26,-.01, head);
+  box(mH,.22,.2,.08,  0,.14,-.12, head);
+  if (o.ponytail) box(mH,.08,.3,.08, 0,.02,-.19, head);
+  if (o.scarf) box(M(o.scarf),.24,.09,.23, 0,-.04,.01, head);
+  /* armed characters cradle the pulse rifle */
+  if (o.armed){
+    const r = buildRifle();
+    r.scale.setScalar(.85);
+    r.position.set(.06,1.32,.24);
+    r.rotation.set(0,-.45,-.08);
+    g.add(r);
+    armL.rotation.x = -1.0; armL.rotation.z = .25;
+    armR.rotation.x = -.85; armR.rotation.z = -.2;
+  }
+  g.userData = { legL, legR, armL, armR, phase: Math.random()*6.28, armed: !!o.armed };
+  g.userData.tick = (dt, moving, runMul) => {
+    const u = g.userData, mul = runMul || 1;
+    if (moving){
+      u.phase += dt * 7 * mul;
+      const s = Math.sin(u.phase) * .55 * mul;
+      u.legL.rotation.x = s; u.legR.rotation.x = -s;
+      if (!u.armed){ u.armL.rotation.x = -s*.8; u.armR.rotation.x = s*.8; }
+    } else {
+      u.legL.rotation.x *= .8; u.legR.rotation.x *= .8;
+      if (!u.armed){
+        u.armL.rotation.x = Math.sin(G.time*1.4)*.06;
+        u.armR.rotation.x = Math.sin(G.time*1.4+1)*.06;
+      }
+    }
+  };
   return g;
 }
 let COMP = null;
 const TRACERS = [], FLEE = [];
 function spawnCompanion(){
   if (COMP) return;
-  const m = makeCivvy({ jacket:0x4a5a42 });
+  const m = makeCivvy({ jacket:0x2e3a2c, pants:0x20241f, ponytail:true, armed:true, scarf:0x7a3322, hair:0x171009, skin:0x9a8a76 });
   m.position.set(yawObj.position.x + 1.4, 0, yawObj.position.z + 1.2);
   scene.add(m);
   COMP = { mesh:m, fireT:1.2 };
@@ -3494,8 +3552,10 @@ function updateAllies(dt){
     const bz = p.z + Math.cos(G.yaw)*1.2 - Math.sin(G.yaw)*1.0;
     m.position.x += (bx - m.position.x) * Math.min(1, dt*3);
     m.position.z += (bz - m.position.z) * Math.min(1, dt*3);
-    m.position.y += Math.sin(G.time*9)*.001;
     m.rotation.y = G.yaw;
+    const moved = Math.hypot(m.position.x - (COMP.px ?? m.position.x), m.position.z - (COMP.pz ?? m.position.z));
+    COMP.px = m.position.x; COMP.pz = m.position.z;
+    if (m.userData.tick) m.userData.tick(dt, moved > dt * .5);
     COMP.fireT -= dt;
     if (COMP.fireT <= 0){
       COMP.fireT = 1.6;
@@ -3525,9 +3585,9 @@ function updateAllies(dt){
   }
   for (let i = FLEE.length-1; i >= 0; i--){
     const c = FLEE[i];
-    c.position.z += dt * 3.2;
-    c.position.y = Math.abs(Math.sin(G.time*8 + i))*.05;
+    c.position.z += dt * 3.4;
     c.rotation.y = 0;
+    if (c.userData.tick) c.userData.tick(dt, true, 1.35);
     if (c.position.z > 2){ scene.remove(c); FLEE.splice(i,1); }
   }
 }
@@ -3565,7 +3625,7 @@ requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
 G.mode = 'title';
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS };
+window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP };
 
 /* ============================================================
    Main loop
