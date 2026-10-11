@@ -772,12 +772,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.12;
+renderer.toneMappingExposure = 1.05;
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(CH.palette.bg);
-scene.fog = new THREE.FogExp2(CH.palette.fog, 0.03);
+scene.fog = new THREE.FogExp2(CH.palette.fog, 0.016);
 
 const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 120);
 // Yaw/pitch rig: yawObj carries position + yaw, pitchObj carries pitch + camera.
@@ -785,8 +785,8 @@ const yawObj = new THREE.Object3D();
 const pitchObj = new THREE.Object3D();
 yawObj.add(pitchObj); pitchObj.add(camera); scene.add(yawObj);
 
-scene.add(new THREE.HemisphereLight(CH.palette.hemi, 0x11150f, 2.1));
-const dirLight = new THREE.DirectionalLight(0xf3e6d2, 1.35);
+scene.add(new THREE.HemisphereLight(CH.palette.hemi, 0x1a120c, 0.42));
+const dirLight = new THREE.DirectionalLight(0xf3e6d2, 0.55);
 dirLight.position.set(8, 16, 6);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.set(1024, 1024);
@@ -800,7 +800,7 @@ dirLight.shadow.bias = -0.0008;
 scene.add(dirLight);
 scene.add(dirLight.target);
 // player headlamp. Carries most of the close-range lighting
-const lamp = new THREE.PointLight(CH.palette.lamp, 26, 26, 1.55);
+const lamp = new THREE.PointLight(CH.palette.lamp, 11, 14, 1.7);
 lamp.position.set(0, 0.1, 0);
 yawObj.add(lamp);
 // muzzle flash (intensity pulsed on fire, decays in updateFX)
@@ -812,11 +812,14 @@ const coreLight = new THREE.PointLight(CH.palette.coreLight, 34, 30, 1.7);
 coreLight.position.set(CH.objectivePos[0], CH.objectivePos[1] + 1, CH.objectivePos[2]);
 scene.add(coreLight);
 
-/* ============================================================
-   Cinematic post-processing: bloom + vignette + film grain.
-   Loaded dynamically. If the addons CDN fails or the device
-   is too slow (fps watchdog), the game renders plain instead.
-   ============================================================ */
+(async () => {
+  try {
+    const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+  } catch (e) { /* reflections unavailable */ }
+})();
 const postFX = { enabled:false };
 (async () => {
   try {
@@ -838,9 +841,11 @@ const postFX = { enabled:false };
         void main(){
           vec3 col = texture2D(tDiffuse, vUv).rgb;
           float d = distance(vUv, vec2(.5));
-          col *= 1.0 - smoothstep(.42, .95, d) * .42;                          // vignette
-          col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .008;      // film grain
-          col = mix(vec3(dot(col, vec3(.299,.587,.114))), col, 1.07);          // saturation
+          col *= 1.0 - smoothstep(.55, 1.15, d) * .55;
+          col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .012;
+          col = pow(max(col, 0.0), vec3(.92));
+          col = mix(vec3(dot(col, vec3(.299,.587,.114))), col, 1.18);
+          col *= vec3(1.04, .98, .92);
           gl_FragColor = vec4(col, 1.);
         }`,
     });
@@ -1164,50 +1169,66 @@ function grime(g, s, n, dark){
   }
 }
 const wallTex = makeTex((g,s)=>{
-  const grd = g.createLinearGradient(0,0,0,s);
-  grd.addColorStop(0,CH.palette.wallA); grd.addColorStop(.5,CH.palette.wallB); grd.addColorStop(1,CH.palette.wallC);
-  g.fillStyle = grd; g.fillRect(0,0,s,s);
-  // panel seams
-  g.strokeStyle = 'rgba(0,0,0,.6)'; g.lineWidth = 5;
-  for (let x=0;x<=s;x+=s/2){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,s); g.stroke(); }
-  for (let y=0;y<=s;y+=s/2){ g.beginPath(); g.moveTo(0,y); g.lineTo(s,y); g.stroke(); }
-  // panel bevels
-  g.strokeStyle = 'rgba(190,230,205,.09)'; g.lineWidth = 2;
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2) g.strokeRect(x+7,y+7,s/2-14,s/2-14);
-  // rivets
-  g.fillStyle = 'rgba(210,235,220,.28)';
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2)
-    [[18,18],[s/2-18,18],[18,s/2-18],[s/2-18,s/2-18]].forEach(([dx,dy])=>{
-      g.beginPath(); g.arc(x+dx,y+dy,3.4,0,7); g.fill();
+  g.fillStyle = CH.palette.wallC; g.fillRect(0,0,s,s);
+  const cols = 2, rows = 3, pw = s/cols, ph = s/rows;
+  for (let cx=0; cx<cols; cx++) for (let cy=0; cy<rows; cy++){
+    const x = cx*pw, y = cy*ph;
+    g.fillStyle = CH.palette.wallB;
+    g.fillRect(x+5, y+5, pw-10, ph-10);
+    g.fillStyle = CH.palette.wallA;
+    g.fillRect(x+16, y+16, pw-32, ph-32);
+    g.strokeStyle = 'rgba(255,236,210,.16)'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(x+8, y+ph-8); g.lineTo(x+8, y+8); g.lineTo(x+pw-8, y+8); g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,.62)';
+    g.beginPath(); g.moveTo(x+pw-8, y+8); g.lineTo(x+pw-8, y+ph-8); g.lineTo(x+8, y+ph-8); g.stroke();
+    g.fillStyle = 'rgba(214,176,112,.7)';
+    [[24,24],[pw-24,24],[24,ph-24],[pw-24,ph-24]].forEach(([dx,dy])=>{
+      g.beginPath(); g.arc(x+dx, y+dy, 4, 0, 7); g.fill();
+      g.strokeStyle = 'rgba(40,24,8,.8)'; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(x+dx-2.5, y+dy); g.lineTo(x+dx+2.5, y+dy); g.stroke();
     });
-  // rust/drip streaks
-  for (let i=0;i<26;i++){
-    const x = Math.random()*s, w = Math.random()*8+2, y0 = Math.random()*s*.5;
-    const d = g.createLinearGradient(0,y0,0,y0+s*.6);
-    d.addColorStop(0,'rgba(20,14,8,.3)'); d.addColorStop(1,'rgba(0,0,0,0)');
-    g.fillStyle = d; g.fillRect(x,y0,w,s*.6);
+    if ((cx+cy) % 3 === 0){
+      g.fillStyle = 'rgba(180,48,32,.55)';
+      g.fillRect(x+28, y+ph*0.42, pw-56, 7);
+      g.fillStyle = 'rgba(20,16,12,.7)';
+      g.fillRect(x+28, y+ph*0.42+7, pw-56, 7);
+    }
   }
-  grime(g,s,900,true); grime(g,s,180,false);
+  g.strokeStyle = 'rgba(255,244,220,.06)'; g.lineWidth = 1;
+  for (let i=0;i<48;i++){
+    const x = Math.random()*s, y = Math.random()*s;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.random()*90-24, y+(Math.random()*10-5)); g.stroke();
+  }
+  for (let i=0;i<14;i++){
+    const x = Math.random()*s, w = Math.random()*6+1, y0 = Math.random()*s*.4;
+    const d = g.createLinearGradient(0,y0,0,y0+s*.55);
+    d.addColorStop(0,'rgba(18,10,6,.45)'); d.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle = d; g.fillRect(x, y0, w, s*.55);
+  }
+  grime(g,s,420,true);
 });
 const floorTex = makeTex((g,s)=>{
   g.fillStyle = CH.palette.floor; g.fillRect(0,0,s,s);
-  // deck plates with diagonal tread
-  for (let x=0;x<s;x+=s/2) for (let y=0;y<s;y+=s/2){
-    g.strokeStyle='rgba(0,0,0,.65)'; g.lineWidth=5; g.strokeRect(x+2,y+2,s/2-4,s/2-4);
-    g.strokeStyle='rgba(150,180,160,.07)'; g.lineWidth=3;
-    for (let t=-s/2;t<s/2;t+=22){
-      g.beginPath(); g.moveTo(x+Math.max(0,t), y+Math.max(0,-t));
-      g.lineTo(x+Math.min(s/2,t+s/2), y+Math.min(s/2,s/2-t)); g.stroke();
+  const n = 4, cell = s/n;
+  for (let cx=0; cx<n; cx++) for (let cy=0; cy<n; cy++){
+    const x = cx*cell, y = cy*cell;
+    g.fillStyle = (cx+cy)%2 ? 'rgba(255,255,255,.025)' : 'rgba(0,0,0,.18)';
+    g.fillRect(x+3, y+3, cell-6, cell-6);
+    g.strokeStyle = 'rgba(0,0,0,.7)'; g.lineWidth = 3;
+    g.strokeRect(x+2, y+2, cell-4, cell-4);
+    g.strokeStyle = 'rgba(232,214,180,.13)'; g.lineWidth = 2;
+    for (let t=8; t<cell-8; t+=11){
+      g.beginPath();
+      g.moveTo(x+8, y+t); g.lineTo(x+cell-8, y+t+6); g.stroke();
     }
   }
-  // oil stains
-  for (let i=0;i<10;i++){
-    const x=Math.random()*s, y=Math.random()*s, r=Math.random()*50+18;
+  for (let i=0;i<8;i++){
+    const x=Math.random()*s, y=Math.random()*s, r=Math.random()*46+16;
     const d=g.createRadialGradient(x,y,2,x,y,r);
-    d.addColorStop(0,'rgba(0,0,0,.4)'); d.addColorStop(1,'rgba(0,0,0,0)');
+    d.addColorStop(0,'rgba(8,6,4,.55)'); d.addColorStop(1,'rgba(0,0,0,0)');
     g.fillStyle=d; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
   }
-  grime(g,s,1100,true);
+  grime(g,s,700,true);
 });
 const ceilTex = makeTex((g,s)=>{
   g.fillStyle = CH.palette.ceil; g.fillRect(0,0,s,s);
@@ -1231,11 +1252,11 @@ const crateTex = makeTex((g,s)=>{
 function surfMat(tex, rx, ry, extra={}){
   const map = tex.clone(); map.needsUpdate = true; map.repeat.set(rx, ry);
   return new THREE.MeshStandardMaterial({
-    map, bumpMap: map, bumpScale: .05, roughness: .82, metalness: .5, ...extra });
+    map, bumpMap: map, bumpScale: .16, roughness: .58, metalness: .28, ...extra });
 }
 
 const matStrip = new THREE.MeshBasicMaterial({ color:CH.palette.strip });
-const matDoor  = surfMat(wallTex, 1.2, 1.4, { color:0x9fb3a6, metalness:.7 });
+const matDoor  = surfMat(wallTex, 1.2, 1.4, { color:0x8a7d6c, metalness:.62, roughness:.4 });
 
 const colliders = [];   // {x1,x2,z1,z2, door?}  AABBs for movement + LOS
 const wallMeshes = [];  // meshes used for raycast occlusion / bullet stops
@@ -1359,7 +1380,7 @@ PILLARS.forEach(([x,z,s])=> addBox(x-s, x+s, z-s, z+s, WALL_H, null));
 
 // emissive light strips along walls (green; pulse red in alarm state)
 const strips = [];
-const fixtureMat = new THREE.MeshStandardMaterial({ color:0x333c30, roughness:.5, metalness:.5 });
+const fixtureMat = new THREE.MeshStandardMaterial({ color:0x2a261f, roughness:.45, metalness:.62 });
 ROOMS.forEach(r=>{
   for (let z = r.z2-3; z > r.z1+1; z -= 6){
     [r.x1+.07, r.x2-.07].forEach(x=>{
@@ -1370,9 +1391,15 @@ ROOMS.forEach(r=>{
     });
   }
 });
+ROOMS.forEach(r=>{
+  const span = Math.max(r.x2-r.x1, r.z2-r.z1);
+  const pl = new THREE.PointLight(0xffe2b8, 9, Math.max(16, span*0.9), 2);
+  pl.position.set((r.x1+r.x2)/2, 2.85, (r.z1+r.z2)/2);
+  scene.add(pl);
+});
 
 // structural ribs: wall posts + ceiling beam every 6m
-const ribMat = new THREE.MeshStandardMaterial({ color:0x39423a, roughness:.55, metalness:.5 });
+const ribMat = new THREE.MeshStandardMaterial({ color:0x241f1a, roughness:.5, metalness:.48 });
 const unitBox = new THREE.BoxGeometry(1,1,1);
 ROOMS.forEach(r=>{
   for (let z = r.z2-4; z > r.z1+2; z -= 6){
@@ -1387,10 +1414,19 @@ ROOMS.forEach(r=>{
     scene.add(beam);
   }
 });
+const trimMat = new THREE.MeshStandardMaterial({ color:0x14110e, roughness:.62, metalness:.4 });
+ROOMS.forEach(r=>{
+  const len = r.z2-r.z1, zc = (r.z1+r.z2)/2;
+  [[r.x1+.1],[r.x2-.1]].forEach(([x])=>{
+    const t = new THREE.Mesh(unitBox, trimMat);
+    t.position.set(x, .11, zc); t.scale.set(.16, .22, len);
+    t.receiveShadow = true; scene.add(t);
+  });
+});
 
 // conduit pipes running the length of each room
 const pipeGeo = new THREE.CylinderGeometry(.07,.07,1,8);
-const pipeMat = new THREE.MeshStandardMaterial({ color:0x33403a, roughness:.45, metalness:.55 });
+const pipeMat = new THREE.MeshStandardMaterial({ color:0x3d3428, roughness:.32, metalness:.72 });
 ROOMS.forEach(r=>{
   const len = r.z2-r.z1, zc = (r.z1+r.z2)/2;
   [[r.x1+.24,3.4],[r.x1+.24,3.18],[r.x2-.24,3.3]].forEach(([x,y])=>{
