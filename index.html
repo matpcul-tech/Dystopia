@@ -4,11 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DYSTOPIA: The Waking</title>
+<link rel="icon" href="data:,">
 <meta name="description" content="The Waking, a playable episode of Dystopia: Life After The Machines.">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Outfit:wght@300;400;500&display=swap">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Outfit:wght@300;400;500&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="vig"></div>
 <div id="hud">
   <div id="crosshair"></div>
   <div id="healthWrap">
@@ -81,7 +87,7 @@
         <div class="miniEye"></div>
         <div class="cBottom">MATTHEW CULWELL</div>
       </div>
-      <img id="coverImg" alt="Dystopia: Life After The Machines, book one">
+      <img id="coverImg" alt="Dystopia: Life After The Machines, Book One cover" width="700" height="1120">
     </div>
     <div id="endSub"></div>
     <div id="endSummary"></div>
