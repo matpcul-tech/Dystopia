@@ -109,6 +109,12 @@ rest, Lagos, Vera, the converted hunter, and the simulation reveal),
 ending on the Book Two hook. Losing endings offer **TRY AGAIN: THE
 LABORATORY YARD**, which reloads straight into the boss fight.
 
+## Cinematics: the Dystopia Shorts episodes
+
+Each Dystopia Shorts episode adapts one chapter of Book One and plays fullscreen as the cinematic intro of the game chapter that covers it (Episode 1 before Episode One gameplay, Episode 2 at the start of Chapter Four). It plays once per browser session, so REPLAY and retries go straight to the game. Skip with the SKIP button, a tap, or Esc. SOUND ON / SOUND OFF toggles mute (M on desktop). If the browser blocks autoplay, a TAP TO PLAY button appears. Landscape screens get the 9:16 video pillarboxed. A missing or broken file never blocks the game. **CINEMATICS** on the title screen rewatches every episode you have seen.
+
+Adding an episode: put `cinematics/epNN.mp4` (H.264 720x1280, AAC, `+faststart`, no end card) and `cinematics/epNN_poster.jpg` in the repo, then add an entry to `episodes.json`. `chapter` is the game chapter covering that book chapter (`ep1`: 1, `ch_conduits`: 2 to 5, `ch_harvest`: 6 to 7, `ch_steel`: 8 to 14). `at` is when it plays: `start`, `door1`, `door2`, `door3`, or `core`.
+
 ## Choices change the game, visibly
 
 - **Help Reyes in Episode One and she is THERE**: a companion who runs
