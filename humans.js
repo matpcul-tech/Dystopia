@@ -540,7 +540,18 @@
   }
 
   /* ---------- the head assembly ---------- */
-  function emis(m, sleeper){ if (sleeper){ m.emissive = new T.Color(0x3a2208); m.emissiveIntensity = .5; } return m; }
+  // sleepers sit in amber fluid: it absorbs the blue end, so their albedo is tinted and
+  // dimmed (a flashlight at arm's length must not wash them out), and the fluid glow lifts them
+  function sleeperKnee(sh){
+    // soft knee on the lit colour: the fluid scatters a close flashlight instead of letting it burn the skin white
+    sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
+      'outgoingLight = outgoingLight / (1.0 + max(max(outgoingLight.r, outgoingLight.g), outgoingLight.b) * .8);\n#include <opaque_fragment>');
+  }
+  function emis(m, sleeper){
+    if (sleeper){ m.color = new T.Color(0x8a6640); m.emissive = new T.Color(0x3a2208); m.emissiveIntensity = .5;
+      m.onBeforeCompile = sleeperKnee; m.customProgramCacheKey = function(){ return 'sleeperKnee'; }; }
+    return m;
+  }
   function buildHead(def, lod, sleeper){
     var grp = new T.Group(), sh = headShape(def);
     var geo = headGeo(def, lod, null);
@@ -1164,8 +1175,10 @@
     });
     var hwMesh = new T.Mesh(hw.geometry(false), new T.MeshStandardMaterial({ vertexColors: true, roughness: .5, metalness: .6 }));
     hwMesh.receiveShadow = true;
-    var glassMesh = new T.Mesh(glass.geometry(false), new T.MeshStandardMaterial({ color: 0xcfeaf2, roughness: .06, metalness: .1,
-      transparent: true, opacity: .13, depthWrite: false, side: T.DoubleSide }));
+    var glassMesh = new T.Mesh(glass.geometry(false), new T.MeshStandardMaterial({ color: 0x000000, roughness: .08, metalness: .1,
+      transparent: true, opacity: .16, depthWrite: false, side: T.DoubleSide }));
+    // black albedo: glass reflects, it does not scatter (a pale albedo turned the tube white under the flashlight)
+    glassMesh.material.onBeforeCompile = sleeperKnee; glassMesh.material.customProgramCacheKey = function(){ return 'sleeperKnee'; };
     glassMesh.renderOrder = 3;
     var fgeo = new T.BufferGeometry();
     fgeo.setAttribute('position', new T.Float32BufferAttribute(fpos, 3));
