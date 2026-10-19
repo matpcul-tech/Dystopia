@@ -233,6 +233,12 @@ hardware, one glass mesh, one fluid shader mesh, one GPU-animated bubble
 cloud, one name plate atlas. Sleepers beyond 26 m are hidden and only near
 ones animate their limbs.
 
+**Lighting.** The headlamp and flashlight are tuned for dark metal, so every
+human material has a soft highlight shoulder: anything lit above 0.7 rolls
+off smoothly instead of burning to white when a person stands at arm's
+length. Sleepers are also tinted by the amber fluid, and the tube glass has a
+black albedo so it only reflects.
+
 | Tier | Speaker portrait | People in the world | Tube sleepers |
 |------|------------------|---------------------|---------------|
 | low  | medium detail head (512 px face) | low detail: painted eyes, 256 px face | low detail, 9 bubbles per tube |
