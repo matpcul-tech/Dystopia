@@ -543,13 +543,18 @@
   // sleepers sit in amber fluid: it absorbs the blue end, so their albedo is tinted and
   // dimmed (a flashlight at arm's length must not wash them out), and the fluid glow lifts them
   function sleeperKnee(sh){
-    // soft knee on the lit colour: the fluid scatters a close flashlight instead of letting it burn the skin white
+    // soft shoulder on the lit colour, above 0.7 only: the game's headlamp and spotlight are tuned for dark
+    // metal, so skin and pale cloth at arm's length burned to white. Below the knee nothing changes,
+    // so the dialogue portraits and normal distances look the same.
     sh.fragmentShader = sh.fragmentShader.replace('#include <opaque_fragment>',
-      'outgoingLight = outgoingLight / (1.0 + max(max(outgoingLight.r, outgoingLight.g), outgoingLight.b) * .8);\n#include <opaque_fragment>');
+      '{ float kM = max(max(outgoingLight.r, outgoingLight.g), outgoingLight.b);\n' +
+      '  if (kM > .7){ float kE = kM - .7; outgoingLight *= (.7 + kE / (1.0 + kE * 3.0)) / kM; } }\n#include <opaque_fragment>');
   }
+  function knee(m){ if (m && m.isMeshStandardMaterial && !m.onBeforeCompile.__knee){ m.onBeforeCompile = sleeperKnee; m.customProgramCacheKey = function(){ return 'humanKnee'; }; } return m; }
+  sleeperKnee.__knee = true;
   function emis(m, sleeper){
     if (sleeper){ m.color = new T.Color(0x8a6640); m.emissive = new T.Color(0x3a2208); m.emissiveIntensity = .5;
-      m.onBeforeCompile = sleeperKnee; m.customProgramCacheKey = function(){ return 'sleeperKnee'; }; }
+      knee(m); }
     return m;
   }
   function buildHead(def, lod, sleeper){
@@ -946,6 +951,7 @@
       bn('head').add(headR.group);
     }
     if (opts.castShadow){ B.mesh.castShadow = true; if (headR) headR.head.castShadow = true; }
+    if (!machine) inner.traverse(function(o){ if (o.material) knee(o.material); });
     var REST = {};
     function setRest(n, x, y, z){ REST[n] = [x, y, z]; bn(n).rotation.set(x, y, z); }
     setRest('uaL', .04, 0, .1); setRest('uaR', .04, 0, -.1);
@@ -1178,7 +1184,7 @@
     var glassMesh = new T.Mesh(glass.geometry(false), new T.MeshStandardMaterial({ color: 0x000000, roughness: .08, metalness: .1,
       transparent: true, opacity: .16, depthWrite: false, side: T.DoubleSide }));
     // black albedo: glass reflects, it does not scatter (a pale albedo turned the tube white under the flashlight)
-    glassMesh.material.onBeforeCompile = sleeperKnee; glassMesh.material.customProgramCacheKey = function(){ return 'sleeperKnee'; };
+    knee(glassMesh.material);
     glassMesh.renderOrder = 3;
     var fgeo = new T.BufferGeometry();
     fgeo.setAttribute('position', new T.Float32BufferAttribute(fpos, 3));
