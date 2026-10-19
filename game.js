@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 
-window.THREE = THREE; // people.js is a classic script that reads global THREE at call time
+window.THREE = THREE; // humans.js is a classic script that reads global THREE at call time
 
 /* ============================================================
    CONFIG. Edit these without touching game code.
@@ -1145,7 +1145,6 @@ async function loadModels(){
       ['sentry',  'models/sentry.glb',  .90,  0,     0,     { eye:[0,.02,.45], muzzle:[0,-.30,.42] }],
       ['warden',  'models/warden.glb', 1.30, -0.643, -0.104,{ eye:[0,.14,.66], muzzle:[0,-.30,.60] }],
       ['rifle',   'models/rifle.glb',  1.08,  0,     0,     {}],
-      ['pod',     'models/pod.glb',    1.25,  0,     -0.024,{}],
     ];
     await Promise.all(defs.map(([kind, url, k, oy, oz, pts]) => new Promise(res => {
       loader.load(url, g => {
@@ -2371,6 +2370,7 @@ wallMeshes.forEach(m => { m.castShadow = true; m.receiveShadow = true; if (m.use
 // chapter set-piece (hive core / ledger console). Built after shared geometry
 const CORE_POS = new THREE.Vector3(...CH.objectivePos);
 let PROPS = null;
+let TUBES = null;   // suspension tubes + sleepers (humans.js), animated every frame
 
 // pickup rifle on floor in start room
 // shared unit geometries for all built models (scaled per part)
@@ -2560,7 +2560,13 @@ function buildPropsCh2(){
   const figureMat = new THREE.MeshStandardMaterial({ color:0x0a0d0e, roughness:.9, metalness:0 });
   const baseMat   = new THREE.MeshStandardMaterial({ color:0x39444a, roughness:.5, metalness:.6 });
   const usePod = !!MODELS.pod;
-  CH.cylinders.forEach(([x,z,angela])=>{
+  if (window.WakingHumans && CH.cylinders.length){
+    // suspension tubes: amber fluid, bubbles, cables and a sleeper in every one (humans.js)
+    TUBES = WakingHumans.buildTubes(CH.cylinders, { quality: Q.level, fluid: 0xd98a2b });
+    scene.add(TUBES.group);
+    CH.cylinders.forEach(([x,z]) => colliders.push({x1:x-.6, x2:x+.6, z1:z-.6, z2:z+.6}));
+  }
+  else CH.cylinders.forEach(([x,z,angela])=>{
     if (usePod){
       const pod = MODELS.pod.template.clone();
       pod.position.set(x, 0, z);
@@ -3513,8 +3519,12 @@ function plantComplete(){
       // sleepers strung out along the whole escape route, so the player
       // keeps passing them on the way to daylight
       for (let i = 0; i < 10; i++){
+        // freed sleepers: the thin gray tube garment, barefoot
+        const face = window.WakingHumans ? WakingHumans.sleeperFaces[i % WakingHumans.sleeperFaces.length] : {};
         const c = makeCivvy({ jacket:[0x3a3a32,0x4a3a30,0x33402f,0x46464b,0x54443a,0x3c3348][i%6],
-          hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6] });
+          hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6],
+          preset: window.WakingHumans ? Object.assign({}, face, { id: face.id + 'run', shirt:0x8d9092, pants:0x878a8d, jacket:null, boots:null, belt:0x7a7d80 }) : null,
+          lod: Q.level === 'high' ? 'low' : 'tiny' });
         c.position.set((i%2 ? 1 : -1) * (1.5 + (i%4)), 0, -100 + i*6);
         scene.add(c); FLEE.push(c);
       }
@@ -3922,7 +3932,7 @@ const Story = (() => {
     sEl.text.textContent = text;
     sEl.text.className = who ? '' : 'narr';
     sayT = Math.max(3.4, text.length * .06);
-    if (Cast) Cast.speak(who);
+    if (Cast) Cast.speak(who, text);
   }
   function showChoice(c){
     if (Cast) Cast.silence();
@@ -4566,8 +4576,20 @@ function spawnExtra(kind, x, z, seg){
   scene.add(d.mesh);
   return d;
 }
+// in-world people: realistic procedural humans (humans.js), with the
+// old box figure kept only as a fallback if humans.js failed to load
 function makeCivvy(o){
   o = o || {};
+  if (window.WakingHumans){
+    let rifle = null;
+    if (o.armed){ rifle = buildRifle(); rifle.scale.setScalar(.85); }
+    const def = o.preset || { id: o.id || 'civ', sex: o.sex || 'm', jacket: o.jacket ?? null, shirt: o.shirt ?? 0x55534c,
+      pants: o.pants ?? 0x2a2f2a, skin: o.skin ?? 0xb9a894, hair: o.hair ?? 0x241d16, hairStyle: o.hairStyle || (o.ponytail ? 'ponytail' : 'short'),
+      scarf: o.scarf || null, boots: o.boots === undefined ? 0x1e1a15 : o.boots, belt: o.belt ?? 0x1d1a15 };
+    const lod = o.lod || (Q.level === 'high' ? 'med' : 'low');
+    const h = WakingHumans.create(def, { lod, armed: !!o.armed, rifle, castShadow: !!Q.p.shadows });
+    return h;
+  }
   const M = (c, r=.85) => new THREE.MeshStandardMaterial({ color:c, roughness:r });
   const mJ = M(o.jacket ?? 0x4a423a), mP = M(o.pants ?? 0x2a2f2a, .9),
         mS = M(o.skin ?? 0xb9a894, .6), mH = M(o.hair ?? 0x241d16),
@@ -4639,7 +4661,7 @@ let COMP = null;
 const TRACERS = [], FLEE = [];
 function spawnCompanion(){
   if (COMP) return;
-  const m = makeCivvy({ jacket:0x2e3a2c, pants:0x20241f, ponytail:true, armed:true, scarf:0x7a3322, hair:0x171009, skin:0x9a8a76 });
+  const m = makeCivvy({ preset:'REYES', jacket:0x2e3a2c, pants:0x20241f, ponytail:true, armed:true, scarf:0x7a3322, hair:0x171009, skin:0x9a8a76 });
   m.position.set(yawObj.position.x + 1.4, 0, yawObj.position.z + 1.2);
   scene.add(m);
   COMP = { mesh:m, fireT:1.2 };
@@ -4708,55 +4730,124 @@ function renderPerks(){
 }
 
 /* ============================================================
-   Recurring cast (people.js). Fixed seeds, defined ONCE.
-   A transparent LATMPeople stage shows the current speaker
-   behind the dialogue UI during story beats. CreateStage runs
-   its own loop, so the game loop does not call LATMPeople.update.
+   Recurring cast: realistic procedural humans (humans.js), matched
+   to the series bible. The speaking character is drawn as a lit
+   portrait bust behind the dialogue box. It renders with the MAIN
+   renderer into a small offscreen target and is composited over the
+   frame only while someone is speaking: no second WebGL context, and
+   no cost at all while nobody talks.
    ============================================================ */
 const Cast = (() => {
-  if (!window.LATMPeople) return null;
+  if (!window.WakingHumans) return null;
   const div = document.getElementById('castStage');
   if (!div) return null;
-  const stage = LATMPeople.createStage(div, { transparent: true, ground: false, fog: false });
-  stage.camera.position.set(0, 1.52, 1.85);
-  stage.camera.lookAt(0, 1.32, 0);
-  const CAST_DEFS = {
-    MARCUS: { seed:'marcus', hood:false, mask:false, coat:0x3f4a45, pack:true,  height:1.8,  hair:0x2b2118, limp:false },
-    REYES:  { seed:'reyes',  hood:false, mask:false, coat:0x2e3a2c, pack:false, height:1.68, hair:0x171009, wrap:0x7a3322, limp:true },
-    KARA:   { seed:'kara',   hood:true,  mask:false, coat:0x555b52, pack:true,  height:1.72, wrap:0x5d6b4a, limp:false },
-    LEDGER: { seed:'ledger', role:'machine', glow:0xff3b30, height:1.95 },
-    THOMAS: { seed:'thomas', hood:false, mask:false, coat:0x4b4438, pack:true,  height:1.76, hair:0x8a8580, limp:false },
-    ELENA:  { seed:'elena',  hood:false, mask:false, coat:0x3d4652, pack:false, height:1.64, hair:0x1a1410, limp:false },
-    DAVID:  { seed:'david',  hood:true,  mask:false, coat:0x4a3f30, pack:true,  height:1.78, limp:false },
-    'OMEGA-7': { seed:'omega7', role:'machine', glow:0xcfe8ff, height:2.0 },
-    VERA:   { seed:'vera',   hood:false, mask:false, coat:0xd8d2c4, pack:false, height:1.7, hair:0xdedad2, skin:0x5a3d2a, wrap:0xc9b991, limp:false },
-    HUNTER: { seed:'hunter', role:'machine', glow:0xff2a2a, height:2.1 },
-  };
+  const lod = Q.level === 'low' ? 'med' : 'high';
+  const pscene = new THREE.Scene();
+  pscene.add(new THREE.HemisphereLight(0xc4ccd6, 0x2a2420, .75));
+  const key = new THREE.DirectionalLight(0xfff0e0, 3.0); key.position.set(1.1, 1.9, 2.6); pscene.add(key);
+  const fill = new THREE.DirectionalLight(0xbfd0e6, .5); fill.position.set(-2, 1.2, 1.6); pscene.add(fill);
+  const rim = new THREE.DirectionalLight(new THREE.Color(MGLOW).lerp(new THREE.Color(0xbfdcff), .5), 2.4);
+  rim.position.set(-1.4, 2.2, -1.8); pscene.add(rim);
+  const pcam = new THREE.PerspectiveCamera(24, 1.7, .05, 20);
+  const rt = new THREE.WebGLRenderTarget(4, 4, { type: THREE.HalfFloatType, samples: Q.level === 'high' ? 4 : 0 });
+  const comp = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    transparent: true, depthTest: false, depthWrite: false,
+    uniforms: { tMap: { value: rt.texture }, uA: { value: 0 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: [
+      'uniform sampler2D tMap; uniform float uA; varying vec2 vUv;',
+      'void main(){',
+      '  vec4 c = texture2D(tMap, vUv);',
+      '  vec2 d = (vUv - vec2(.5, .55)) * vec2(1.0, 1.25);',
+      '  float vig = smoothstep(.78, .18, length(d));',
+      '  vec3 bg = vec3(.018, .02, .026);',
+      '  float edge = smoothstep(0.0, .14, vUv.y) * smoothstep(0.0, .1, vUv.x) * smoothstep(1.0, .9, vUv.x) * smoothstep(1.0, .9, vUv.y);',
+      '  vec3 col = mix(bg, c.rgb, c.a);',
+      '  float a = max(.62 * vig, c.a * smoothstep(0.0, .1, vUv.y)) * edge * uA;',
+      '  gl_FragColor = vec4(col, a);',
+      '  #include <tonemapping_fragment>',
+      '  #include <colorspace_fragment>',
+      '}'].join('\n')
+  }));
+  comp.frustumCulled = false;
+  const compScene = new THREE.Scene(); compScene.add(comp);
+  const compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const EXPR = { MARCUS:'grim', KARA:'stern', THOMAS:'stern', DAVID:'warm', ELENA:'worried', VERA:'warm', REYES:'stern' };
   const members = {};
-  for (const name of Object.keys(CAST_DEFS)){
-    const c = LATMPeople.createCharacter(CAST_DEFS[name]);
-    c.visible = false;
-    c.userData.faceToward(0, 5);   // face the stage camera
-    stage.scene.add(c);
-    members[name] = c;
+  function member(who){
+    if (members[who] !== undefined) return members[who];
+    let c = null;
+    if (WakingHumans.presets[who]){
+      c = WakingHumans.create(who, { lod });
+      c.rotation.y = who === 'MARCUS' ? .22 : -.22;   // a slight three-quarter turn
+      c.visible = false;
+      pscene.add(c);
+    }
+    return (members[who] = c);
   }
-  let active = null;
+  let active = null, alpha = 0, talkT = 0;
+  const rect = { x:0, y:0, w:0, h:0 };
   return {
-    members, stage,
-    speak(who){
-      const c = members[who];
-      if (active && active !== c){ active.userData.setTalking(false); active.visible = false; }
+    members,
+    speak(who, text){
+      const c = who ? member(who) : null;
+      if (active && active !== c){ active.userData.setTalking(false); active.visible = false; alpha = 0; }
       active = c || null;
-      div.style.opacity = c ? 1 : 0;
-      if (c){ c.visible = true; c.userData.setTalking(true); }
+      if (!c) return;
+      c.visible = true;
+      const ex = EXPR[who];
+      if (ex) c.userData.setExpression(text && /!$/.test(text) && ex !== 'warm' ? 'stern' : (text && /\?$/.test(text) && ex !== 'warm' ? 'worried' : ex));
+      c.userData.setTalking(true);
+      talkT = Math.min(6.5, Math.max(.9, (text || '').length * .05));
     },
     silence(){
       if (active) active.userData.setTalking(false);
-      div.style.opacity = 0;
+      active = null;
     },
     nod(who){
       const c = members[who || 'MARCUS'];
       if (c) c.userData.playEmote('nod');
+    },
+    render(dt){
+      const target = active ? 1 : 0;
+      alpha += (target - alpha) * Math.min(1, dt * 7);
+      if (alpha < .01 && !active){
+        alpha = 0;
+        for (const k in members) if (members[k]) members[k].visible = false;
+        return;
+      }
+      const c = active || Object.values(members).find(m => m && m.visible);
+      if (!c) return;
+      if (talkT > 0){ talkT -= dt; if (talkT <= 0) c.userData.setTalking(false); }
+      c.userData.update(Math.min(dt, .05));
+      const r = div.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) return;
+      const pr = Math.min(renderer.getPixelRatio(), Q.level === 'high' ? 2 : 1.5);
+      const w = Math.round(r.width * pr), h = Math.round(r.height * pr);
+      if (rt.width !== w || rt.height !== h) rt.setSize(w, h);
+      const hgt = c.userData.def.height || 1.75;
+      pcam.aspect = r.width / r.height;
+      pcam.fov = pcam.aspect < 1.3 ? 25 : 21;
+      pcam.position.set(0, hgt * .9, 1.12);
+      pcam.lookAt(0, hgt * .875, 0);
+      pcam.updateProjectionMatrix();
+      const oldTarget = renderer.getRenderTarget(), oldAuto = renderer.autoClear;
+      const oldClear = renderer.getClearColor(new THREE.Color()), oldAlpha = renderer.getClearAlpha();
+      renderer.setRenderTarget(rt);
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear(true, true, false);
+      renderer.render(pscene, pcam);
+      renderer.setRenderTarget(null);
+      renderer.setClearColor(oldClear, oldAlpha);
+      comp.material.uniforms.uA.value = alpha;
+      renderer.autoClear = false;
+      const vw = renderer.domElement.clientWidth || window.innerWidth, vh = renderer.domElement.clientHeight || window.innerHeight;
+      rect.x = r.left; rect.y = vh - r.bottom; rect.w = r.width; rect.h = r.height;
+      renderer.setViewport(rect.x, rect.y, rect.w, rect.h);
+      renderer.render(compScene, compCam);
+      renderer.setViewport(0, 0, vw, vh);
+      renderer.autoClear = oldAuto;
+      renderer.setRenderTarget(oldTarget);
     },
   };
 })();
@@ -4984,9 +5075,9 @@ const Boss = (() => {
   });
   const ring = new THREE.Mesh(new THREE.RingGeometry(.85,1,48), new THREE.MeshBasicMaterial({ color:0xff3020, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending }));
   ring.rotation.x = -Math.PI/2; ring.position.y = .05; scene.add(ring);
-  const KARA = makeCivvy({ jacket:0x4a5232, pants:0x23261f, ponytail:true, armed:true, hair:0x14100c, skin:0x8a6f58, scarf:0x5d6b4a });
+  const KARA = makeCivvy({ preset:'KARA', jacket:0x4a5232, pants:0x23261f, ponytail:true, armed:true, hair:0x14100c, skin:0x8a6f58, scarf:0x5d6b4a });
   KARA.position.set(-7.4, 0, -134.6); scene.add(KARA);
-  const THOM = makeCivvy({ jacket:0x4b4438, pants:0x2c2a26, hair:0x8a8580, skin:0xb09a84 });
+  const THOM = makeCivvy({ preset:'THOMAS', jacket:0x4b4438, pants:0x2c2a26, hair:0x8a8580, skin:0xb09a84 });
   THOM.position.set(2.8, 0, -141.4); scene.add(THOM);
   const chair = grp(scene, CORE_POS.x - 1.6, 0, CORE_POS.z - .4);
   bx(chair, dark, .7,.5,.7, 0,.25,0); bx(chair, armorD, .62,.12,.62, 0,.55,0); bx(chair, armorD, .62,.95,.12, 0,1.05,-.28, -.12);
@@ -5449,7 +5540,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, sToast, ENDING_TEXT };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT };
 
 /* ============================================================
    Main loop
@@ -5509,7 +5600,9 @@ function loop(){
   if (G.mode === 'play' && !(window.__LATM && window.__LATM.capture)) governor(nowT);
   updateFX(dt);
   if (G.mode === 'title' || G.mode === 'end' || G.mode === 'cinema') return;   // opaque screens cover the level
+  if (TUBES) TUBES.animate(dt, G.time, yawObj.position, scene.fog, renderer.domElement.height);
   renderFrame(scene, camera);
+  if (Cast) Cast.render(dt);
 }
 loop();
 
