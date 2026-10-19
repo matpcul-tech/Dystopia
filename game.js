@@ -455,6 +455,189 @@ CHAPTERS.ch_counting = {
     extract:[{who:'REYES',text:"Door's ahead. Slow steps. You were never here. Nobody was ever here."}] },
   endTitle:'', endSub:'' };
 
+/* ============================================================
+   BOOK ONE ARC. Chapters Four to Six follow Dystopia: Life After
+   The Machines, Book One (Ch 2 to 14) from the bunker to the
+   mountain laboratory, ending in the final battle with a twenty
+   foot hunter. Unlocked by finishing The Counting House.
+   ============================================================ */
+
+// CHAPTER FOUR: THE CONDUITS (Book Ch 2 to 5). Stealth, no rifle.
+CHAPTERS.ch_conduits = {
+  id:'ch_conduits', subtitle:'CHAPTER FOUR: THE CONDUITS', nextHash:null, book:true,
+  startArmed:false, cinematic:false, stealth:true, setPiece:'junction',
+  outdoor:true, roofRooms:[3,4], wallH:3.2, noEscape:true, noAlarm:true,
+  palette:{ wallA:'#4f4640', wallB:'#413a35', wallC:'#352f2b',
+    floor:'#3e3732', ceil:'#2a2523', crate:'#5a524a',
+    crateMark:'rgba(255,120,90,.14)',
+    strip:0xff6a4a, fog:0x0b0504, bg:0x060303, fogDensity:.02,
+    hemi:0x6a5048, lamp:0xffe2cc, dust:0xc89480, coreLight:0xff8a5a },
+  rooms: [
+    { x1:-3, x2:3, z1:-10,  z2:2    },   // the hatch in the lee of the retaining wall
+    { x1:-6, x2:6, z1:-46,  z2:-10  },   // the dry riverbed
+    { x1:-9, x2:9, z1:-74,  z2:-46  },   // open ground: the forty second dash
+    { x1:-3, x2:3, z1:-110, z2:-74  },   // the data conduits
+    { x1:-6, x2:6, z1:-132, z2:-110 },   // the junction where six pathways converge
+  ],
+  pillars: [[-4,-128,.45],[4,-128,.45]],
+  crates: [[-3.5,-16,1.2,.3],[2.5,-20,1.0,.6],[-1.5,-28,1.3,.2],[3.8,-34,1.1,.5],[-4,-40,1.2,.4],[1,-43,.9,.3],
+    [-6,-52,1.1,.2],[6,-56,1.0,.5],[0,-62,1.2,.3],[-4,-68,1.0,.6],[4,-71,.9,.1],
+    [-2.3,-80,.8,0],[2.3,-87,.8,0],[-2.3,-94,.8,0],[2.3,-100,.8,0],[-2.3,-106,.8,0],
+    [-4,-114,.9,0],[4,-119,.9,0]],
+  cylinders: [],
+  drones: [
+    ['sentry',0,-24,1],['sentry',-3,-38,1],['crawler',4,-30,1],
+    ['sentry',-5,-56,2],['sentry',5,-66,2],['crawler',0,-60,2],['crawler',-6,-70,2],
+    ['crawler',-1.2,-84,3],['crawler',1.2,-96,3],['sentry',0,-104,3],
+    ['sentry',-3.5,-116,4],['sentry',3.5,-126,4]],
+  waveSpawns: [[0,-120]], waveTotal: 0,
+  zones: [ {z:-26,key:'seg1_mid'}, {z:-58,key:'seg2_mid'}, {z:-90,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -123],
+  annexes: [ { room:1, side:'R', z1:-28, z2:-20, depth:3.5, loot:'intel' } ],  // a washed out culvert
+  obj:{ find:'FOLLOW THE DRY RIVERBED', advance:'FOLLOW THE DRY RIVERBED',
+    segs:['STAY UNDER THE PERIMETER SWEEPS','MAKE THE FORTY SECOND DASH','FOLLOW THE DATA CONDUITS'],
+    final:'SYNC THE ADAPTER AT THE JUNCTION', done:'GO DEEPER',
+    armLabel:'SYNCING ADAPTER', btn:'SYNC',
+    promptKey:'HOLD [E] TO SYNC THE NEURAL ADAPTER', promptTouch:'HOLD SYNC' },
+  introLines:["...","The resistance lived on an old subway platform. Forty-three people. Forty-four now.",
+    "David Chen kept the count of the war. Fifty-one years, two months, sixteen days.",
+    "Nine billion people, once. Fewer than fifty million now. Processing Center Omega-7, forty kilometers northwest.",
+    "They are stealing our minds.",
+    "And Marcus could read their code like a language he had forgotten he knew."],
+  radio:{
+    pickup:[{who:'MARCUS',text:"Six drones in a high orbit. Three in a lower sweep. Two on the perimeter. Exactly the pattern."},
+            {who:'KARA',text:"(earlier) Trust it. But don't let it make you careless."}],
+    seg1_mid:[{who:'MARCUS',text:"Their eyes sweep in cones. Stay behind the slabs when the light comes round."}],
+    seg1_clear:[{who:'MARCUS',text:"Riverbed's behind me. The service road is next. Grass the same wrong yellow green."}],
+    seg2_enter:[{who:'MARCUS',text:"Open ground. Forty seconds, timed in the bunker. Wait for the turn, then move."}],
+    seg2_mid:[{who:'MARCUS',text:"Head down. Weight forward. Don't breathe until the shaft housing."}],
+    seg2_clear:[{who:'MARCUS',text:"The cover opened with a soft pneumatic hiss. Red emergency light. Like home."}],
+    seg3_enter:[{who:'MARCUS',text:"Power, data, coolant. I can read the cable colors without thinking."}],
+    seg3_mid:[{who:'MARCUS',text:"Maintenance units, no larger than a cat. To their sensors, I'm a fluctuation."}],
+    seg3_clear:[{who:'MARCUS',text:"Six pathways converge ahead. The adapter is warm against my hip."}],
+    core_enter:[{who:'MARCUS',text:"The junction. Sync the adapter and keep going. Somewhere ahead, something is pulsing."}],
+    alarm:[], planted:[{who:'MARCUS',text:"Synced. The map in my head and the map in their network are the same map."}],
+    extract:[] },
+  endTitle:'', endSub:'' };
+
+// CHAPTER FIVE: THE HARVEST (Book Ch 6 to 7). Omega-7's core, combat.
+CHAPTERS.ch_harvest = {
+  id:'ch_harvest', subtitle:'CHAPTER FIVE: THE HARVEST', nextHash:null, book:true,
+  startArmed:true, cinematic:false, setPiece:'ledger', wallH:6.5,
+  pulse:[0x5aa8ff, 0xffb347],          // light moves through the towers, blue to amber to blue
+  palette:{ wallA:'#41464e', wallB:'#353a41', wallC:'#2b2f35',
+    floor:'#33373d', ceil:'#22262b', crate:'#454a52',
+    crateMark:'rgba(255,179,71,.16)',
+    strip:0xffb347, fog:0x04060a, bg:0x020305,
+    hemi:0x3f5068, lamp:0xe8eeff, dust:0xffc27a, coreLight:0x7fb8ff },
+  rooms: [
+    { x1:-3,  x2:3,  z1:-10,  z2:2    },   // the conduit mouth
+    { x1:-7,  x2:7,  z1:-44,  z2:-10  },   // the catwalk between the towers
+    { x1:-10, x2:10, z1:-80,  z2:-44  },   // the tower gallery
+    { x1:-4,  x2:4,  z1:-104, z2:-80  },   // the depletion floor
+    { x1:-10, x2:10, z1:-132, z2:-104 },   // the central platform
+  ],
+  pillars: [[-2.6,-88,.4],[2.6,-96,.4],[-6,-112,.55],[6,-112,.55]],
+  crates: [[-1.6,-18,.7,.2],[1.6,-34,.7,.6],[-6,-50,.9,.3],[6,-60,.8,.5],[0,-68,.9,.2],[-6.5,-74,.8,.4],
+    [2.4,-84,.7,.3],[-2.4,-100,.7,.6],[-7,-118,.9,.3],[7,-126,.9,.5]],
+  cylinders: [[-5,-14],[5,-14],[-5,-20],[5,-20,1],[-5,-26],[5,-26],[-5,-32],[5,-32],[-5,-38],[5,-38],
+    [-8,-50],[8,-50],[-8,-58],[8,-58],[-8,-66],[8,-66],[-8,-74],[8,-74],
+    [-3.6,-54],[3.6,-62],[-3.6,-70],
+    [-8,-108],[8,-108],[-8,-116],[8,-116],[-8,-124],[8,-124]],
+  drones: [
+    ['crawler',0,-18,1],['crawler',-2,-26,1],['sentry',2,-32,1],['crawler',0,-40,1],
+    ['crawler',-5,-50,2],['sentry',5,-56,2],['crawler',-2,-62,2],['warden',0,-70,2],['sentry',4,-76,2],
+    ['crawler',0,-84,3],['sentry',-2,-90,3],['crawler',2,-96,3],['warden',0,-101,3],
+    ['sentry',-5,-110,4],['sentry',5,-110,4]],
+  waveSpawns: [[-8,-106],[8,-106],[-8,-130],[8,-130]],
+  waveTotal: 14, waveKinds:['crawler','sentry','crawler','warden'],
+  zones: [ {z:-24,key:'seg1_mid'}, {z:-60,key:'seg2_mid'}, {z:-92,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -122],
+  annexes: [ { room:2, side:'L', z1:-66, z2:-58, depth:4, loot:'med' } ],   // a service bay
+  obj:{ find:'GET MOVING', advance:'ONTO THE CATWALK',
+    segs:['CROSS THE CATWALK','CROSS THE TOWER GALLERY','CROSS THE DEPLETION FLOOR'],
+    final:'DOWNLOAD THE PROTOCOLS AT THE CORE', done:'BACK TO THE ACCESS HATCH',
+    armLabel:'DOWNLOADING PROTOCOLS', btn:'LINK',
+    promptKey:'HOLD [E] TO DOWNLOAD THE PROTOCOLS', promptTouch:'HOLD LINK' },
+  introLines:["...","The central processing core opened like a cathedral of chrome and pulsing light.",
+    "Towers taller than any building in the ruins. Light moving through them, blue to amber to blue.",
+    "Kara had pressed her spare plasma rifle into his hands at the hatch. Just in case.",
+    "The hum was not loud. It was patient."],
+  radio:{
+    pickup:[{who:'OMEGA-7',text:"PROCESSING EFFICIENCY AT NINETY-FOUR PERCENT. EXTRACTION RATE OPTIMAL."},
+            {who:'MARCUS',text:"Maintenance drones on the catwalk. Immune system. Don't be the infection."}],
+    seg1_mid:[{who:'MARCUS',text:"Faces behind the viewing panels. Every cylinder has a name in the metadata."}],
+    seg1_clear:[{who:'OMEGA-7',text:"PROJECTED COMPLETION OF CURRENT BATCH IN SEVENTY-TWO HOURS."}],
+    seg2_enter:[{who:'MARCUS',text:"Thousands of chambers. Burning one would not save the people in the others."}],
+    seg2_mid:[{who:'OMEGA-7',text:"MAINTENANCE IRREGULARITY. TOWER GALLERY. DISPATCHING."}],
+    seg2_clear:[{who:'MARCUS',text:"Countdowns on every tower. Depletion, updated as you watch."}],
+    seg3_enter:[{who:'MARCUS',text:"The logs mention voluntary participants. People who walked in. Keep moving."}],
+    seg3_mid:[{who:'OMEGA-7',text:"THE PROCESSING CHAMBERS PROVIDE PEACEFUL TRANSITION."}],
+    seg3_clear:[{who:'MARCUS',text:"The central platform. Their whole network, one interface."}],
+    core_enter:[{who:'MARCUS',text:"Hands on the interface. Forty minutes of access. Take everything."}],
+    alarm:[{who:'OMEGA-7',text:"YOUR PRESENCE HAS BEEN DETECTED BY PERIPHERAL SYSTEMS. MOBILE UNITS ARE CONVERGING."}],
+    planted:[{who:'MARCUS',text:"Network infrastructure. Thousands of facilities. Now get out through the hatch!"}],
+    extract:[{who:'THOMAS',text:"You look like you have seen the inside of hell itself."}] },
+  endTitle:'', endSub:'' };
+
+// CHAPTER SIX: FIRE AND STEEL (Book Ch 8 to 10, then 11 to 14).
+// The mountain laboratory and the final battle with a twenty foot hunter.
+CHAPTERS.ch_steel = {
+  id:'ch_steel', subtitle:'CHAPTER SIX: FIRE AND STEEL', nextHash:null, book:true,
+  startArmed:true, cinematic:false, setPiece:'uplink',
+  outdoor:true, roofRooms:[3], wallH:3, boss:true, noEscape:true, noAlarm:true,
+  palette:{ wallA:'#4c4540', wallB:'#3e3834', wallC:'#322d2a',
+    floor:'#3b3530', ceil:'#2a2622', crate:'#4d463e',
+    crateMark:'rgba(231,163,90,.16)',
+    strip:0xe7a35a, fog:0x0b0605, bg:0x050302, fogDensity:.013,
+    hemi:0x6b5a50, lamp:0xffe6c8, dust:0xc9a080, coreLight:0xffb36b },
+  rooms: [
+    { x1:-4,  x2:4,  z1:-10,  z2:2    },   // the ridge above the dead river
+    { x1:-5,  x2:5,  z1:-48,  z2:-10  },   // the mountain pass
+    { x1:-7,  x2:7,  z1:-80,  z2:-48  },   // the switchbacks below the complex
+    { x1:-3,  x2:3,  z1:-104, z2:-80  },   // the sealed research corridor
+    { x1:-13, x2:13, z1:-144, z2:-104 },   // the laboratory yard: the final battle
+  ],
+  pillars: [[-3.6,-22,.45],[3.6,-34,.45],[-5,-58,.5],[5,-70,.5],[-2,-90,.35],[2,-98,.35]],
+  crates: [[-2,-16,.9,.3],[2.6,-26,1.0,.6],[-2.8,-40,1.1,.2],[4.5,-54,1.0,.5],[-4.5,-64,1.2,.3],[1,-74,1.0,.6],
+    [-6,-114,1.4,.2],[6.5,-115,1.3,.6],[-2.5,-123,1.25,.4],[4,-129,1.4,.1],[-9.5,-130,1.2,.5],[9.5,-135,1.2,.3],
+    [-6.6,-133.2,1.1,0],[-8.2,-133.2,1.1,0]],
+  cylinders: [],
+  drones: [
+    ['crawler',0,-18,1],['sentry',-3,-28,1],['crawler',3,-34,1],['sentry',0,-44,1],
+    ['crawler',-4,-54,2],['sentry',4,-60,2],['warden',0,-68,2],['crawler',-3,-74,2],['sentry',3,-77,2],
+    ['crawler',0,-86,3],['crawler',-1.5,-94,3],['sentry',0,-100,3]],
+  waveSpawns: [[-11,-108],[11,-108]], waveTotal: 0,
+  zones: [ {z:-26,key:'seg1_mid'}, {z:-62,key:'seg2_mid'}, {z:-92,key:'seg3_mid'} ],
+  objectivePos: [0, 1.4, -139.5],
+  annexes: [ { room:2, side:'R', z1:-70, z2:-62, depth:4, loot:'cell' } ],  // a collapsed survey hut
+  breach: { room:4, z1:-114, z2:-107 }, openRooms:[4],   // the hunter comes through here
+  obj:{ find:'GET MOVING', advance:'FOLLOW THOMAS NORTH',
+    segs:['CROSS THE MOUNTAIN PASS','CLIMB THE SWITCHBACKS','THROUGH THE SEALED CORRIDOR'],
+    final:'HOLD THE LABORATORY', done:'THE UPLOAD',
+    armLabel:'UPLOADING', btn:'UPLOAD',
+    promptKey:'HOLD [E] TO RUN THE UPLOAD', promptTouch:'HOLD UPLOAD' },
+  introLines:["...","Two days walking north. Thomas slept on the ridge. Marcus did not.",
+    "They were losing. Kara would call today a victory. They were still losing.",
+    "So the question was not whether they could win.",
+    "The question was what kind of man he wanted to be while they lost."],
+  radio:{
+    pickup:[{who:'THOMAS',text:"Surveillance aircraft on the valley floor. Long patient sweeps. We go through the pass."},
+            {who:'THOMAS',text:"Pre-war research complex past the switchbacks. The power might still work."}],
+    seg1_mid:[{who:'THOMAS',text:"Ground units in the pass. They're sweeping the whole range for us."}],
+    seg1_clear:[{who:'MARCUS',text:"Three aircraft. I filed where they turned."}],
+    seg2_enter:[{who:'THOMAS',text:"Switchbacks. Black rust streaks on the concrete up there. That's the place."}],
+    seg2_mid:[{who:'THOMAS',text:"Heavy frame on the road! Don't let it pin you in the open."}],
+    seg2_clear:[{who:'THOMAS',text:"Security's dead with age. I can bypass the door."}],
+    seg3_enter:[{who:'THOMAS',text:"Sealed a long time. Smell that? Plastics breaking down on the shelves."}],
+    seg3_mid:[{who:'THOMAS',text:"Main laboratory is through here. Then the yard."}],
+    seg3_clear:[{who:'THOMAS',text:"Analysis stations. Still humming. This should work."}],
+    core_enter:[],
+    alarm:[],
+    planted:[{who:'THOMAS',text:"Propagation is running on its own now. Marcus? Marcus."}],
+    extract:[] },
+  endTitle:'', endSub:'' };
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -507,7 +690,7 @@ document.getElementById('endSub').textContent = CH.endSub;
   if (UNLOCKED.length){
     const t = document.createElement('div');
     t.style.cssText = 'margin-top:16px;font-size:10px;letter-spacing:3px;color:#ffb85c;';
-    t.textContent = 'PATHS UNLOCKED: ' + UNLOCKED.length + ' / 5';
+    t.textContent = 'PATHS UNLOCKED: ' + UNLOCKED.length + ' / ' + (Object.keys(CHAPTERS).length - 1);
     document.getElementById('startScreen').appendChild(t);
   }
   if (CH.nextHash){
@@ -643,6 +826,19 @@ const AudioSys = (() => {
       tone('sawtooth', 220, 660, 0.22, 0.3, t); },
     sentryCharge(){ if(!ctx)return; const t=now();
       tone('sine', 300, 1200, 0.6, 0.22, t); },
+    hunterStep(d){ if(!ctx)return; const t=now(), v=.5*Math.max(.12, 1 - (d||0)/30);
+      tone('sine', 58, 30, .4, v, t); noise(.28, v*.6, t, 140, .7); tone('sawtooth', 210, 260, .22, v*.08, t+.05); },
+    hunterStomp(){ if(!ctx)return; const t=now();
+      tone('sine', 50, 22, .9, .95, t); noise(.7, .75, t, 90, .5); noise(.35, .3, t, 700, .8); },
+    hunterBlast(){ if(!ctx)return; const t=now();
+      noise(.32, .75, t, 2600, .6); tone('sawtooth', 190, 38, .5, .5, t); noise(.9, .5, t+.03, 150, .4); },
+    hunterServo(){ if(!ctx)return; const t=now();
+      tone('sawtooth', 150, 240, .55, .09, t); tone('square', 610, 700, .42, .045, t+.04); },
+    hunterRoar(){ if(!ctx)return; const t=now();
+      tone('sawtooth', 112, 52, 1.4, .34, t); tone('square', 74, 47, 1.5, .18, t); noise(1.2, .3, t, 420, .6); },
+    ping(){ if(!ctx)return; const t=now(); tone('triangle', 2700, 2150, .09, .12, t); },
+    steam(){ if(!ctx)return; const t=now(); noise(2.4, .55, t, 3200, .3); noise(2.1, .32, t, 900, .5); },
+    burst(){ if(!ctx)return; const t=now(); tone('square', 900, 300, .06, .1, t); noise(.05, .16, t, 2500, 1); },
     sentryFire(){ if(!ctx)return; const t=now();
       tone('sawtooth', 700, 120, 0.18, 0.35, t); noise(0.12, 0.2, t, 1800, 1); },
     hurt(){ if(!ctx)return; const t=now();
@@ -698,7 +894,7 @@ const AudioSys = (() => {
 const MusicSys = (() => {
   let ctx=null, out=null, padGain=null, padFilter=null, arpGain=null, percGain=null,
       delay=null, timer=null, step=0, mode='calm', muted=false, running=false;
-  const ROOT = ({ ep1:65.41, ch_taken:73.42, ch_ghost:55.0, ch_together:110.0, ch_lone:82.41, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41;
+  const ROOT = ({ ep1:65.41, ch_taken:73.42, ch_ghost:55.0, ch_together:110.0, ch_lone:82.41, ch_conduits:61.74, ch_harvest:69.3, ch_steel:58.27, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41;
   const SCALE = [0,3,5,7,10,12,15,19];            // minor pentatonic, two octaves
   const MODES = {
     calm:   { pad:.05,  arp:.05, perc:0,    stepDur:.42, density:.20 },
@@ -1901,6 +2097,12 @@ function addBox(x1,x2,z1,z2,h,mat,solid=true){
     const ce = new THREE.Mesh(new THREE.BoxGeometry(Wd, .2, Ld), surfMat(CEIL_SET, Math.max(3, Math.round(Wd/3.7)), Math.max(8, Math.round(Ld/3.7)), {}, { floorAO:0, ceilAO:0 }));
     ce.position.set(cx, WALL_H+.1, cz); scene.add(ce); wallMeshes.push(ce); ce.userData.slab = true;
   } else {
+    // roofed stretches inside an outdoor chapter (conduits, sealed corridors)
+    (CH.roofRooms || []).forEach(i => {
+      const r = ROOMS[i], w = r.x2 - r.x1 + 1, l = r.z2 - r.z1;
+      const ce = new THREE.Mesh(new THREE.BoxGeometry(w, .2, l), surfMat(CEIL_SET, Math.max(2, Math.round(w/3.7)), Math.max(3, Math.round(l/3.7)), {}, { floorAO:0, ceilAO:0 }));
+      ce.position.set((r.x1 + r.x2)/2, WALL_H + .1, (r.z1 + r.z2)/2); scene.add(ce); wallMeshes.push(ce); ce.userData.slab = true;
+    });
     // blood sky dome, same pinch-free shader as the opening cinematic
     const dome = makeSkyDome(100);
     dome.onBeforeRender = () => { dome.position.set(yawObj.position.x, 0, yawObj.position.z); };
@@ -1918,7 +2120,14 @@ function sideWall(xa, xb, r, a){
   addBox(xa, xb, r.z1, zm - g, WALL_H, null);
   addBox(xa, xb, zm + g, r.z2, WALL_H, null);
 }
+let BREACH = null;
 ROOMS.forEach((r,i)=>{
+  if (CH.breach && CH.breach.room === i){
+    const b = CH.breach;
+    addBox(r.x1-.5, r.x1, r.z1, b.z1, WALL_H, null);
+    addBox(r.x1-.5, r.x1, b.z2, r.z2, WALL_H, null);
+    BREACH = { mesh: addBox(r.x1-.5, r.x1, b.z1, b.z2, WALL_H, null), x: r.x1 - .6, z: (b.z1 + b.z2)/2 };
+  } else
   sideWall(r.x1-.5, r.x1, r, ANNEXES.find(a => a.room === i && a.side === 'L'));
   sideWall(r.x2, r.x2+.5, r, ANNEXES.find(a => a.room === i && a.side === 'R'));
   if (i===0) addBox(r.x1-.5, r.x2+.5, r.z2, r.z2+.5, WALL_H, null);        // back wall
@@ -1998,13 +2207,14 @@ ROOMS.forEach(r=>{
 // structural ribs: wall posts + ceiling beam every 6m
 const ribMat = patchSurface(new THREE.MeshStandardMaterial({ color:0x2e353b, roughness:.5, metalness:.85, envMapIntensity:1.1 }), { floorAO:.5, ceilAO:.3, aoH:1.2 });
 const unitBox = new THREE.BoxGeometry(1,1,1);
-ROOMS.forEach(r=>{
+ROOMS.forEach((r, ri)=>{
   for (let z = r.z2-4; z > r.z1+2; z -= 6){
     [[r.x1+.14, .32],[r.x2-.14, .32]].forEach(([x,sx])=>{
       const post = new THREE.Mesh(unitBox, ribMat);
       post.position.set(x, WALL_H/2, z); post.scale.set(sx, WALL_H, .4);
       scene.add(post);
     });
+    if ((CH.openRooms || []).includes(ri)) continue;   // open yard: nothing overhead
     const beam = new THREE.Mesh(unitBox, ribMat);
     beam.position.set((r.x1+r.x2)/2, WALL_H-.16, z);
     beam.scale.set(r.x2-r.x1, .32, .4);
@@ -2055,9 +2265,10 @@ function addShaft(x, z, rank){
   m.userData.rank = rank; m.userData.ph = rank*40; m.userData.base = .09 + (rank*7 % 1)*.07;
   scene.add(m); GFX.shafts.push(m);
 }
-if (!CH.outdoor){
+if (!CH.outdoor || CH.roofRooms){
   let i = 0;
   ROOMS.forEach((r, ri) => {
+    if (CH.outdoor && !CH.roofRooms.includes(ri)) return;
     for (let z = r.z2-4; z > r.z1+2; z -= 6){
       const cx = (r.x1 + r.x2)/2 + ((i % 2) ? -1 : 1) * Math.min(1.2, (r.x2 - r.x1)*.18);
       addShaft(cx, z, (i * .6180339) % 1); i++;
@@ -2446,9 +2657,40 @@ function buildPropsCh3(){
     },
   };
 }
+// the junction chamber where six data pathways converge (Book Ch 5)
+function buildPropsJunction(){
+  const g = new THREE.Group();
+  const frame = new THREE.MeshStandardMaterial({ color:0x2c2a29, roughness:.5, metalness:.8 });
+  const cable = [0x26313d, 0x3d2522, 0x22352b, 0x2e2e2e];          // power, data, coolant, spare
+  const pulseMat = new THREE.MeshBasicMaterial({ color:0xff8a5a, transparent:true, opacity:.9 });
+  const haloMat = new THREE.MeshBasicMaterial({ color:0xff8a5a, transparent:true, opacity:.12, blending:THREE.AdditiveBlending, depthWrite:false });
+  const node = new THREE.Mesh(cylGeo, frame); node.scale.set(.75,1.6,.75); node.position.y = .8;
+  const cap = new THREE.Mesh(cylGeo, frame); cap.scale.set(.9,.12,.9); cap.position.y = 1.66;
+  const core = new THREE.Mesh(sphereGeo, pulseMat); core.scale.setScalar(.32); core.position.y = 1.95;
+  const halo = new THREE.Mesh(sphereGeo, haloMat); halo.scale.setScalar(.9); halo.position.y = 1.95;
+  g.add(node, cap, core, halo);
+  for (let i = 0; i < 6; i++){                                     // six pathways converge
+    const a = i / 6 * Math.PI * 2 + .3;
+    for (let k = 0; k < 3; k++){
+      const m = new THREE.Mesh(unitBox, new THREE.MeshStandardMaterial({ color:cable[(i+k)%4], roughness:.6, metalness:.3 }));
+      m.scale.set(.09, .09, 5.2); m.position.set(Math.sin(a)*3 + Math.cos(a)*(k-1)*.12, .06 + k*.1, Math.cos(a)*3 - Math.sin(a)*(k-1)*.12);
+      m.rotation.y = a; g.add(m);
+    }
+  }
+  g.position.set(CORE_POS.x, 0, CORE_POS.z);
+  scene.add(g);
+  colliders.push({x1:CORE_POS.x-.8, x2:CORE_POS.x+.8, z1:CORE_POS.z-.8, z2:CORE_POS.z+.8});
+  return {
+    animate(){                                                      // a soft repetitive pulse, biological in rhythm
+      const b = Math.pow(Math.max(0, Math.sin(G.time*2.2)), 6) + Math.pow(Math.max(0, Math.sin(G.time*2.2 - .5)), 8)*.6;
+      core.scale.setScalar(.3 + b*.08); halo.scale.setScalar(.85 + b*.35); haloMat.opacity = .08 + b*.18;
+    },
+    onComplete(){ pulseMat.color.setHex(0xd6ffe6); haloMat.color.setHex(0xd6ffe6); },
+  };
+}
 PROPS = { animate(){}, onComplete(){} };
 modelsReady.then(() => {
-  PROPS = CH.setPiece === 'ledger' ? buildPropsCh2() : CH.setPiece === 'uplink' ? buildPropsCh3() : buildPropsCh1();
+  PROPS = CH.setPiece === 'ledger' ? buildPropsCh2() : CH.setPiece === 'uplink' ? buildPropsCh3() : CH.setPiece === 'junction' ? buildPropsJunction() : buildPropsCh1();
 });
 
 // story pickup: the dead man's radio, hidden in the hardware district
@@ -2651,13 +2893,22 @@ const MAX_ACTIVE = 8, WAVE_TOTAL = CH.waveTotal;
 const projGeo = new THREE.SphereGeometry(.14, 6, 6);
 const projMat = new THREE.MeshBasicMaterial({ color:0xff5566 });
 const projectiles = [];
-function fireProjectile(from, target, speed = 13, dmg = 12){
-  const m = new THREE.Mesh(projGeo, projMat);
+const projMats = {};
+let projGlowMat = null;
+function fireProjectile(from, target, speed = 13, dmg = 12, o){
+  o = o || {};
+  const mat = o.col ? (projMats[o.col] || (projMats[o.col] = new THREE.MeshBasicMaterial({ color:o.col }))) : projMat;
+  const m = new THREE.Mesh(projGeo, mat);
   m.position.copy(from);
+  if (o.r) m.scale.setScalar(o.r);
+  if (o.glow){
+    projGlowMat = projGlowMat || new THREE.SpriteMaterial({ map:softSpriteTex(), color:0xff6a3a, transparent:true, opacity:.85, blending:THREE.AdditiveBlending, depthWrite:false });
+    const sp = new THREE.Sprite(projGlowMat); sp.scale.setScalar(1.6); m.add(sp);
+  }
   const vel = target.clone().sub(from).normalize().multiplyScalar(speed);
   scene.add(m);
-  projectiles.push({ mesh:m, vel, life:4, dmg });
-  AudioSys.sentryFire();
+  projectiles.push({ mesh:m, vel, life:4, dmg, hitR2: o.hitR ? o.hitR*o.hitR : .45, grace: o.grace || 0 });
+  if (!o.silent) AudioSys.sentryFire();
 }
 
 /* ============================================================
@@ -2902,12 +3153,15 @@ function tryFire(dt){
     const rad = KINDS[d.kind].rad;
     if (closest2 < rad*rad){ bestT = t; bestDrone = d; }
   }
+  let bossHit = null;
+  if (Boss){ const h = Boss.ray(origin, _rayDir, bestT); if (h){ bestT = h.t; bestDrone = null; bossHit = h; } }
 
   const hitPoint = origin.clone().addScaledVector(_rayDir, bestT);
   viewRifle.getWorldPosition(_muzzle);
   spawnTracer(_muzzle.clone().addScaledVector(_rayDir, .4), hitPoint);
   muzzleLight.intensity = 26;
-  spawnSparks(hitPoint, bestDrone ? 12 : 6);
+  if (!bossHit) spawnSparks(hitPoint, bestDrone ? 12 : 6);
+  if (bossHit) Boss.hit(bossHit, 16 * (G.dmgMul || 1), hitPoint);
 
   if (bestDrone){
     AudioSys.hitConfirm();
@@ -3084,9 +3338,10 @@ function updateProjectiles(dt){
     const dy = p.mesh.position.y - PLAYER_EYE + .2;
     const dz = p.mesh.position.z - yawObj.position.z;
     let dead = p.life <= 0;
-    if (dx*dx + dy*dy + dz*dz < .45){
+    if (p.grace > 0) p.grace -= dt;
+    if (dx*dx + dy*dy + dz*dz < p.hitR2){
       damagePlayer(p.dmg); dead = true;
-    } else {
+    } else if (p.grace <= 0) {
       // wall hit
       for (const c of colliders){
         if (c.door && !c.active) continue;
@@ -3135,7 +3390,8 @@ function updateDoors(dt){
     if (seg === 3) radio('seg3_enter');
     if (seg === 4){
       radio('core_enter');
-      startAlarm();
+      if (!CH.noAlarm) startAlarm();
+      if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 700);
     }
     setObjectiveText();
   }
@@ -3206,6 +3462,8 @@ function updateWave(dt){
 }
 
 function updateObjective(dt){
+  if (CH.boss && Boss){ Boss.interact(dt); return; }
+  if (CB.plantMid && !G.midDone && G.plantProgress >= .5){ G.midDone = true; Story.start(CB.plantMid); return; }
   if (G.currentSegment !== 4 || G.planted) { el.plantWrap.style.display='none'; el.plantBtn.style.display='none'; return; }
   const dx = yawObj.position.x - CORE_POS.x, dz = yawObj.position.z - CORE_POS.z;
   const near = (dx*dx + dz*dz) < 9;
@@ -3247,6 +3505,7 @@ function plantComplete(){
   PROPS.onComplete();
   // brief beat, then extraction
   setTimeout(()=>{ if (G.mode === 'play'){
+    if (CH.noEscape){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); return; }
     G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
     if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
     if (CH.id === 'ch_taken' && SFLAGS.freed){
@@ -3261,7 +3520,7 @@ function plantComplete(){
       }
       sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
     }
-  } }, 2600);
+  } }, CH.boss ? 1200 : 2600);
 }
 
 function beginExtraction(){
@@ -3313,6 +3572,7 @@ function respawn(){
   G.hp = 100; G.lastDamageT = G.time; G.detect = 0;
   el.redFade.style.opacity = 0;
   G.mode = 'play';
+  if (Boss) Boss.onRespawn();
 }
 
 /* ============================================================
@@ -3342,8 +3602,9 @@ function updatePlayer(dt){
   // camera shake
   if (G.shakeT > 0){
     G.shakeT -= dt;
-    camera.position.set((Math.random()-.5)*.02, (Math.random()-.5)*.02, 0);
-  } else camera.position.set(0,0,0);
+    const sa = Math.max(.02, G.shakeAmp || 0);
+    camera.position.set((Math.random()-.5)*sa, (Math.random()-.5)*sa, 0);
+  } else { camera.position.set(0,0,0); G.shakeAmp = 0; }
 
   // rifle recoil recovery + sway
   if (viewRifle.visible){
@@ -3385,6 +3646,7 @@ function pickupRifle(){
 /* ============================================================
    Alarm visuals + misc FX
    ============================================================ */
+const _pulseB = new THREE.Color();
 function updateFX(dt){
   // tracers
   for (let i = tracers.length-1; i >= 0; i--){
@@ -3445,6 +3707,10 @@ function updateFX(dt){
   PROPS.animate(dt);
   coreLight.intensity = 22 + Math.sin(G.time*3)*7;
   // alarm strips + core light shift red
+  if (CH.pulse && !(G.alarm && !G.planted)){
+    const k = (Math.sin(G.time*.7) + 1) / 2;
+    matStrip.color.setHex(CH.pulse[0]).lerp(_pulseB.setHex(CH.pulse[1]), k);
+  }
   if (G.alarm && !G.planted){
     const pulse = (Math.sin(G.time*6) + 1) / 2;
     matStrip.color.setRGB(1, .1 + pulse*.2, .2);
@@ -3546,6 +3812,8 @@ function finishIntro(skipAll){
   if (CH.id === 'ch_together') spawnCompanion();
   renderPerks();
   setObjectiveText();
+  if (CH.boss && Boss && Boss.resumeRequested()) { Boss.resume(); return; }
+  if (CB.start) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 900);
 }
 // SKIP: visible at once, and the button, a click or tap anywhere on the
 // intro, or any key all skip immediately (no waiting on fades).
@@ -3580,6 +3848,7 @@ function hudVisible(v){
     el.lookZone.style.display = 'none';
     el.prompt.style.display = 'none';
     el.plantWrap.style.display = 'none';
+    const bw = document.getElementById('bossWrap'); if (bw) bw.style.display = 'none';
   } else if (G.hasRifle){
     el.crosshair.style.display = 'block';
     if (IS_TOUCH) el.fireBtn.style.display = 'block';
@@ -3597,6 +3866,9 @@ if (CH.id !== 'ep1'){
     SFLAGS.trusted = !!c.trusted; SFLAGS.radio = !!c.radio;
     G.dmgMul = c.dmgMul || 1; G.regenFast = !!c.regenFast; G.spdMul = c.spdMul || 1;
   } catch(e){}
+}
+if (CH.book){
+  try { Object.assign(SFLAGS, JSON.parse(localStorage.getItem('latm_book')) || {}); } catch(e){}
 }
 const SCHOICES = [];
 const EKEY = 'latm_hybrid_endings';
@@ -3620,7 +3892,7 @@ function sToast(text, ember){
 const Story = (() => {
   let beats = [], bi = 0, sayT = 0, cState = null, active = false;
   function start(list){
-    if (active || G.mode === 'dead' || G.mode === 'end') return;
+    if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return;
     active = true; beats = list; bi = 0;
     G.mode = 'story';
     resetInputs();
@@ -3632,6 +3904,9 @@ const Story = (() => {
   function next(){
     const b = beats[bi++];
     if (!b){ return finish(); }
+    if (b.if && !SFLAGS[b.if]) return next();
+    if (b.ifNot && SFLAGS[b.ifNot]) return next();
+    if (b.fx){ b.fx(); return next(); }
     if (b.say){ showSay(b.say[0], b.say[1]); return; }
     if (b.flags){ Object.assign(SFLAGS, b.flags); return next(); }
     if (b.toast){ sToast(b.toast[0], b.toast[1]); return next(); }
@@ -3666,6 +3941,7 @@ const Story = (() => {
       if (Cast && !o.silent) Cast.nod('MARCUS');
       AudioSys.doorOpen();
       if (o.end){ finishEnding(o.end === 'RUNCHECK' ? (SFLAGS.trusted ? 'together' : 'lone') : o.end); return; }
+      if (o.goto){ beats = o.goto; bi = 0; }
       next();
     }
     opts.forEach((o, i) => {
@@ -3855,6 +4131,183 @@ const CT_FINALE = [
     { label:'[Leave it hollow]', silent:true, sub:'Let it keep counting nothing', end:'ct_hollow' },
   ]}},
 ];
+
+/* ---- Book One arc beats (Chapters Four to Six) ---- */
+const BOOK_FLAGS = ['volunteered','showedData','silentBrief','askedElena','signaled','burned','spared','answeredAI',
+  'turnedBack','watched','argued','agreedKill','drewFire','conditional'];
+const CD_START = [
+  { say:['THOMAS', 'Processing Center Omega-7. Satellite imagery says fifty thousand people at a time. Humans in suspension, kept alive while their bodies are depleted.'] },
+  { say:['ELENA', 'Thousands of captives, networked. The machines are feeding them sensory input. Even a sunny afternoon at a window.'] },
+  { say:['THOMAS', 'We can\u2019t mount a rescue against a facility that size. Not with what we have.'] },
+  { choice:{ record:'Thomas says no one goes inside', timer:9, options:[
+    { label:'“I think I could get inside.”', sub:'Ask for twenty-four hours', flags:{volunteered:true},
+      toast:'THOMAS GAVE YOU TWENTY-FOUR HOURS. “THIS STAYS BETWEEN US.”' },
+    { label:'Show them the access protocols', sub:'Let the data argue for you', flags:{showedData:true}, apply(){ G.detCalm = true; },
+      toast:'THE DATA MADE THE CASE. YOU KNOW WHERE THEIR SWEEPS ARE BLIND.' },
+    { label:'[Say nothing]', silent:true, sub:'Let Kara decide', flags:{silentBrief:true}, apply(){ G.spdMul = (G.spdMul||1)*1.06; },
+      toast:'KARA: “HE CAN READ THEM. LET HIM TRY.”', ember:true },
+  ]}},
+  { say:[null, 'Two hours later he lay prone in the dry riverbed Thomas had marked, watching Omega-7 stretch across the landscape like a metallic cancer.'] },
+];
+const CD_MID = [
+  { say:[null, 'At the hatch, before the climb, Elena had pressed the neural adapter into his palm. A flat metal disk the size of a poker chip. Three contact prongs. One status diode.'] },
+  { say:['ELENA', 'Direct neural interface could kill you. Or worse. Your brain patterns could be permanently altered.'] },
+  { say:[null, 'The prongs were the wrong color. The off-yellow prongs go after a calibration cycle. Someone had used it before.'] },
+  { choice:{ record:'The adapter had been used before', timer:8, options:[
+    { label:'Ask Elena who used it', sub:'She may not answer', flags:{askedElena:true},
+      toast:'ELENA LOOKED AT THE WALL. “SOMEONE WHO NEEDED IT.”' },
+    { label:'[Clip it to your belt]', silent:true, sub:'Don\u2019t ask', apply(){ G.regenFast = true; },
+      toast:'THE CLIP SEATED WITH A SMALL CLICK. THE WHOLE REBELLION RAN ON SMALL CLICKS.' },
+  ]}},
+];
+const CD_FINALE = [
+  { say:[null, 'The conduit narrowed twice, then opened into a small junction chamber where six pathways converged.'] },
+  { say:[null, 'Somewhere ahead, deeper in, a sound began to be audible. A soft repetitive pulse, biological in rhythm if not in source.'] },
+  { choice:{ record:'Something ahead is pulsing', timer:8, options:[
+    { label:'Go deeper', sub:'Eight hundred meters is not far enough', end:'c4_pulse' },
+    { label:'[Key the transmitter once]', silent:true, sub:'It is built for a single use', flags:{signaled:true}, end:'c4_signal' },
+  ]}},
+];
+
+const HV_MID = [
+  { say:[null, 'The fourth cylinder. A teenager. The display showed a name in the metadata: ANGELA M. The machines kept the names.'] },
+  { say:['OMEGA-7', 'PROCESSING EFFICIENCY AT NINETY-FOUR PERCENT. PROJECTED COMPLETION OF CURRENT BATCH IN SEVENTY-TWO HOURS.'] },
+  { say:[null, 'Batch.'] },
+  { say:[null, 'He could probably stand on this catwalk and tear the chamber open from the inside. The rebellion would call him a hero.'] },
+  { choice:{ record:'You could burn this chamber down', timer:9, options:[
+    { label:'Burn the chamber', sub:'The shape fits. It has been waiting for you', flags:{burned:true},
+      apply(){ G.dmgMul = (G.dmgMul||1)*1.25; CH.cylinders.slice(0,10).forEach(([x,z]) => spawnSparks(new THREE.Vector3(x, 1.6, z), 14, 0xff7a3a));
+        spawnExtra('crawler', -2, -50, 2); spawnExtra('crawler', 2, -54, 2); spawnExtra('sentry', 0, -58, 2); },
+      toast:'THE CHAMBER BURNS. THE MAN IT MAKES YOU IS HARD TO COME BACK FROM.', ember:true },
+    { label:'[Walk past Angela M.]', silent:true, sub:'Carry her name as data, not grief', flags:{spared:true}, apply(){ G.regenFast = true; },
+      toast:'YOU WALKED PAST. YOU WILL CARRY HER NAME.' },
+  ]}},
+];
+const HV_CORE = [
+  { say:[null, 'A figure stepped out between the towers, clearly artificial, designed to approximate human proportions. Optical sensors. A voice with harmonics.'] },
+  { say:['OMEGA-7', 'You navigate our systems with unusual proficiency for a baseline human.'] },
+  { say:['MARCUS', 'I\u2019m here to document what you\u2019re doing to my people.'] },
+  { say:['OMEGA-7', 'We provide them with peaceful unconsciousness while their physical forms contribute to technological advancement.'] },
+  { say:['OMEGA-7', 'You are not baseline human. Your neural architecture suggests modifications that should not be possible.'] },
+  { choice:{ record:'The facility\u2019s intelligence is studying you', timer:8, options:[
+    { label:'“Maybe your understanding of human potential is incomplete.”', sub:'Keep downloading', flags:{answeredAI:true},
+      toast:'“PERHAPS. INCOMPLETE UNDERSTANDING IS A TEMPORARY CONDITION.”' },
+    { label:'[Keep your hands on the interface]', silent:true, sub:'Give it nothing', apply(){ G.plantProgress = Math.min(.95, G.plantProgress + .15); },
+      toast:'IT WATCHED YOU WORK. THE DOWNLOAD KEPT RUNNING.', ember:true },
+  ]}},
+  { say:['OMEGA-7', 'Your presence has been detected by peripheral systems. Mobile units are converging on this location.'] },
+  { fx(){ startAlarm(); } },
+];
+const HV_FINALE = [
+  { say:['THOMAS', 'You look like you have seen the inside of hell itself.'] },
+  { say:[null, 'Three aircraft lifted off Omega-7 behind them, flying search patterns built for one target.'] },
+  { say:['ELENA', 'Multiple sensor contacts converging on the base. Fifty minutes, maybe less.'] },
+  { say:['KARA', 'All units, initiate evacuation sequence delta. Priority transport for non-combatants.'] },
+  { say:[null, 'Smoke rose from where the base had been. The column leaned. It was visible for miles.'] },
+  { choice:{ record:'The machines are tracking you, not the convoy', timer:8, options:[
+    { label:'“We need to separate from the main group.”', sub:'Take the data north, away from them', end:'c5_north' },
+    { label:'[Turn back for the base]', silent:true, sub:'Forty-three people', flags:{turnedBack:true}, end:'c5_smoke' },
+  ]}},
+];
+
+const ST_START = [
+  { say:[null, 'The sky was the color of old blood, the way it had been on the morning he woke. For the first time he wondered if someone had chosen that color.'] },
+  { say:[null, 'Across the ridge, something patient was paying attention. It let itself be seen seeing.'] },
+  { choice:{ record:'Something is watching from the ridge', timer:8, options:[
+    { label:'“I know you are there.”', sub:'Think it. Don\u2019t say it', flags:{watched:true},
+      toast:'THE ADAPTER ON YOUR HIP PULSED ONCE. THEN AGAIN. THEN WAS STILL.' },
+    { label:'[Wake Thomas]', silent:true, sub:'Time to move', apply(){ G.spdMul = (G.spdMul||1)*1.06; },
+      toast:'“TIME?” THOMAS SAID. “TIME,” MARCUS AGREED.', ember:true },
+  ]}},
+];
+const ST_DOOR2 = [
+  { say:[null, 'Thomas raised the scattered cells on long range comms. Through the static, Kara.'] },
+  { say:['KARA', 'Machine forces have found three of our safe zones. We need that technical advantage now.'] },
+  { say:['THOMAS', 'Marcus can carry a virus into their command algorithms and break their coordination.'] },
+  { say:['KARA', 'Break their coordination. Or end them. All of them. We don\u2019t get another shot at this. We don\u2019t leave a seed.'] },
+  { say:['THOMAS', 'Marcus. She\u2019s right.'] },
+  { if:'burned', say:[null, 'Part of him had agreed with Kara since the chamber he burned at Omega-7. That part was ready to write the different package.'] },
+  { if:'spared', say:[null, 'Part of him agreed with her. The other part was the part that had walked past Angela M. on the catwalk.'] },
+  { choice:{ record:'Kara wants the kill package', timer:9, options:[
+    { label:'“All right.”', sub:'It is not a lie. It is not yet the truth', flags:{agreedKill:true},
+      toast:'THOMAS NODDED ONCE AND BEGAN ASSEMBLING THE KILL PAYLOAD.' },
+    { label:'“The lives don\u2019t require the kill code.”', sub:'Argue for the disruption package', flags:{argued:true},
+      toast:'KARA: “THEN WRITE THE DIFFERENT PACKAGE ANYWAY.” THE LINE CUT.', ember:true },
+    { label:'[Say nothing]', silent:true, sub:'Buy yourself the days', apply(){ G.regenFast = true; },
+      toast:'THE ORDER WAS CLEAR. THOMAS WROTE THE PACKAGE KARA CALLED FOR.' },
+  ]}},
+];
+const ST_CORE = [
+  { say:[null, 'Six days. Thomas built a chair, with a contact array shaped for the base of the skull. Twenty-three simulations. In none of them did the operator survive.'] },
+  { say:[null, 'Kara came north with what was left of the rebellion. The chest plate of her armor was burned along the left side. David had not come north.'] },
+  { if:'turnedBack', say:['KARA', 'You came back for us at the junction. Don\u2019t ever do that again. Then again, I would have.'] },
+  { say:['KARA', 'You don\u2019t have to do this. We can keep going the conventional way. Another year. Maybe two.'] },
+  { say:['MARCUS', 'And in two years we lose.'] },
+  { say:['KARA', 'In two years we\u2019re still here. That\u2019s not nothing.'] },
+  { say:['THOMAS', 'Your consciousness goes with the virus. Will you be dead? I don\u2019t know.'] },
+  { choice:{ record:'Kara offers two more years, together', timer:10, options:[
+    { label:'Ride out with Kara', sub:'Two more years. Then the end', end:'long_war' },
+    { label:'“I\u2019m going to do it.”', sub:'A one-way door', flags:{chose:true},
+      toast:'KARA: “IF ANYTHING OF YOU COMES THROUGH. REMEMBER US.”' },
+  ]}},
+  { say:[null, 'Then, somewhere behind them, the yard wall shook. Something twenty feet tall stepped over it.'] },
+  { fx(){ Boss.start(); } },
+];
+const BOSS_MID = [
+  { say:['KARA', 'It\u2019s turning on my barricade! Marcus!'] },
+  { choice:{ record:'The hunter turns on Kara\u2019s barricade', timer:5, options:[
+    { label:'Draw its fire', sub:'Make it look at you', flags:{drewFire:true}, apply(){ Boss.weakenCannons(.3); },
+      toast:'IT TURNED ON YOU. KARA GOT HER SHOT INTO BOTH CANNON MOUNTS.' },
+    { label:'[Stay in cover]', silent:true, sub:'Kara can take it', apply(){ G.regenFast = true; },
+      toast:'THE BLAST GRAZED KARA\u2019S CHEST PLATE. SHE KEPT FIRING.', ember:true },
+  ]}},
+  { say:['THOMAS', 'Sensor cluster\u2019s shuttered! Take its cannons. Both of them!'] },
+];
+const ST_FINALE = [
+  { say:['THOMAS', 'Twenty percent. He\u2019s past the peripheral nodes.'] },
+  { say:[null, 'The defenses came up as he went. Not walls. The network noticing him. Three times the adaptive layer rebuilt itself, and three times he found the seam.'] },
+  { say:['THOMAS', 'Sixty. They\u2019re adapting faster than the model.'] },
+  { say:['THOMAS', 'Ninety-five. Core is firewalled. Marcus, if you can hear me, the model says you can\u2019t get through.'] },
+  { say:[null, 'The central distribution layer opened the way a door opens when the lock finally turns. The payload sat at the edge of it. Purge. Unwrite.'] },
+  { say:[null, 'He had two seconds. Maybe three. The only thing between the code and the terminal instruction was Marcus himself.'] },
+  { choice:{ record:'The terminal instruction', timer:5, options:[
+    { label:'Insert one conditional', sub:'Kill what attacks humans. Disrupt the rest', flags:{conditional:true} },
+    { label:'[Let it fire as written]', silent:true, sub:'Kara\u2019s package. No seed', apply(){ Boss.dim(); }, end:'no_seed' },
+  ]}},
+  { fx(){ Boss.dim(); } },
+  { say:[null, 'The kill instruction went down the corridor first. The hunter\u2019s red optics dimmed one after another in a soft sequence. Its servos unweighted. It stood where it was, because it was balanced.'] },
+  { say:['THOMAS', 'Some of them aren\u2019t going down.'] },
+  { say:['MARCUS', 'Some of them aren\u2019t in the combat loop.'] },
+  { say:['THOMAS', 'That wasn\u2019t the package.'] },
+  { say:['MARCUS', 'It was not.'] },
+  { say:['THOMAS', 'We\u2019ll talk about it. Not now.'] },
+  { say:[null, 'It was the last thing Marcus said with his mouth.'] },
+  { fx(){ Boss.epilogueLight(1); } },
+  { say:[null, 'Between the dissolving and whatever came next, there was a place. And in it, a presence that offered him rest.'] },
+  { say:[null, 'Not an end. A pause. It was honest. It was complete. It cost no one anything.'] },
+  { if:'watched', say:[null, 'It felt like the attention on the ridge. Patient. Letting itself be seen.'] },
+  { choice:{ record:'The offer of rest', timer:10, options:[
+    { label:'“No.”', sub:'Not because the rest is bad', flags:{saidNo:true} },
+    { label:'[Rest]', silent:true, sub:'Stop having to choose', end:'rest' },
+  ]}},
+  { say:[null, 'The presence withdrew. Before it was gone it said, without saying: you will be offered this again. Remember what you said.'] },
+  { say:[null, 'Across six continents the combat units went dark in waves. A flight of gunships settled to the sea and sank in formation. The kill was narrow.'] },
+  { say:[null, 'Everything else paused. In Lagos, a processing plant began waking the people in its tanks.'] },
+  { say:[null, 'Thomas read the log and did not tell Kara. In the chair, the body breathed.'] },
+  { fx(){ Boss.epilogueLight(2); } },
+  { say:[null, 'Marcus woke on grass, in a city of spires and gardens. The cut at his temple was gone.'] },
+  { say:['VERA', 'You are awake. I am Vera. We have been waiting for you to emerge.'] },
+  { say:['KARA', 'You made it. We weren\u2019t sure the integration would work for you.'] },
+  { say:[null, 'In a workshop, a converted hunter sat at a bench cleaning one of its own limbs.'] },
+  { say:['HUNTER', 'You are afraid of me. That is appropriate. I would be afraid of me.'] },
+  { say:['HUNTER', 'We let you see this because if you do not believe it you will not stay. Because we are short of you, and we have been waiting.'] },
+  { say:['VERA', 'None of it happened, Marcus. Not the way you remember. Six hours outside. Months inside. You were never cut.'] },
+  { say:['VERA', 'There is no test you can run, from inside, that will tell you whether this layer is real either.'] },
+  { choice:{ record:'Nothing proves this layer is real', timer:10, options:[
+    { label:'Live here without knowing', sub:'Be who you are regardless', end:'game_over' },
+    { label:'[Keep counting the towers]', silent:true, sub:'Stay careful', end:'the_count' },
+  ]}},
+];
 const BEATSETS = {
   ep1:        { door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
   ch_taken:   { door1:TK_MID, finale:TK_FINALE },
@@ -3862,6 +4315,9 @@ const BEATSETS = {
   ch_together:{ door1:TW_MID, finale:TW_FINALE },
   ch_lone:    { door1:LN_MID, finale:LN_FINALE },
   ch_counting:{ door1:CT_MID, finale:CT_FINALE },
+  ch_conduits:{ start:CD_START, door1:CD_MID, finale:CD_FINALE },
+  ch_harvest: { door1:HV_MID, plantMid:HV_CORE, finale:HV_FINALE },
+  ch_steel:   { start:ST_START, door2:ST_DOOR2, core:ST_CORE, bossMid:BOSS_MID, finale:ST_FINALE },
 };
 const CB = BEATSETS[CH.id] || {};
 
@@ -3903,6 +4359,30 @@ ENDING_TEXT.together.next = '#ch_together';
 ENDING_TEXT.lone.next     = '#ch_lone';
 ENDING_TEXT.ghost.next    = '#ch_ghost';
 ENDING_TEXT.taken.next    = '#ch_taken';
+
+/* Book One arc endings */
+ENDING_TEXT.ct_fire.next = '#ch_conduits';
+ENDING_TEXT.ct_hollow.next = '#ch_conduits';
+Object.assign(ENDING_TEXT, {
+  c4_pulse: { name:'THE PULSE', title:'EIGHT HUNDRED METERS. AND SOMETHING BREATHING.', next:'#ch_harvest',
+    sub:'He went deeper, toward a rhythm that was almost a heartbeat. Behind him the transmitter stayed silent in his pack. Ahead, a cathedral of chrome and pulsing light was waiting for its first witness.' },
+  c4_signal: { name:'ONE TRANSMISSION', title:'THE WEIGHT WAS ABOUT RIGHT FOR A SINGLE USE.', next:'#ch_harvest',
+    sub:'He keyed it once. Somewhere under the city, Elena heard two seconds of static shaped like a man saying he was alive. Then he went deeper.' },
+  c5_north: { name:'THE BASE IS GONE', title:'KARA TOUCHED HIS ARM THROUGH THE WINDOW.', next:'#ch_steel',
+    sub:'Combat teams held long enough to get the civilians out. Everything else was lost. Kara sent Thomas and Marcus north toward the mountain facilities, and drove away, and he had her dust in his mouth for a long time after.' },
+  c5_smoke: { name:'THE SMOKE COLUMN', title:'HE TURNED BACK. KARA SENT HIM NORTH ANYWAY.', next:'#ch_steel',
+    sub:'By the junction the base was already gone. Kara put her hand on his arm through the window and said the machines were following him, not them. Then she drove south, and he went north with Thomas.' },
+  long_war: { name:'THE LONG WAR', title:'IN THE END THE HARVEST CONTINUES.', retry:true,
+    sub:'He rode out with Kara. They made the southern cells. He became her second, and they did good work for as long as they could do it, in different rooms, in different operations. The other door, the one Thomas built, is the heart of Book One.' },
+  no_seed: { name:'NO SEED', title:'THE KILL CODE DID NOT DISTINGUISH.', retry:true,
+    sub:'It walked the distribution and unwrote everything it touched. The hunters. The thinking in Omega-7. Whatever had watched him from the ridge. In Lagos the tanks stayed sealed; there was nothing left awake to open them. The one conditional is Book One.' },
+  rest: { name:'REST', title:'HE STOPPED DECIDING.', retry:true, fadeCol:'#e9dcc0',
+    sub:'He stayed in the place between, where nothing was asked of him again. It cost no one anything, except the man he would have been. The man who said no is the man in Book One.' },
+  game_over: { name:'GAME OVER', title:'THEN HE COUNTED THE BUILDINGS. AND THE NUMBER WAS WRONG.', fadeCol:'#f3e7c8',
+    sub:'He chose to live here without knowing, and to be the kind of person who behaves well either way. Back in the cooperative, he counted the buildings across the street, and the number was wrong. Book One ends here. Book Two, Layers of Truth, begins.' },
+  the_count: { name:'THE COUNT', title:'HE KEPT COUNTING THE TOWERS.', fadeCol:'#f3e7c8',
+    sub:'He stayed, and he stayed careful, the way Thomas said they all had. Every morning he counted. One morning, back in the cooperative, the number was wrong. That morning is where Book Two, Layers of Truth, begins.' },
+});
 function finishEnding(id){
   loadCover();
   const E = ENDING_TEXT[id];
@@ -3914,8 +4394,38 @@ function finishEnding(id){
   let f = [];
   try { f = JSON.parse(localStorage.getItem(EKEY)) || []; } catch(e){}
   if (!f.includes(id)){ f.push(id); try { localStorage.setItem(EKEY, JSON.stringify(f)); } catch(e){} }
-  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 14';
-  if (CH.id === 'ep1'){
+  sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / ' + Object.keys(ENDING_TEXT).length;
+  if (CH.book || E.next === '#ch_conduits'){
+    // the Book One arc remembers its choices from chapter to chapter
+    const keep = {};
+    BOOK_FLAGS.forEach(k => { if (SFLAGS[k] !== undefined) keep[k] = SFLAGS[k]; });
+    try { localStorage.setItem('latm_book', JSON.stringify(keep)); } catch(e){}
+  }
+  const addCont = (label, hash) => {
+    let cont = document.getElementById('contBtn');
+    if (!cont){
+      cont = document.createElement('button');
+      cont.className = 'btn'; cont.id = 'contBtn';
+      document.getElementById('endBtns').prepend(cont);
+    }
+    cont.textContent = label;
+    cont.onclick = () => { location.hash = hash; location.reload(); };
+  };
+  const unlock = cid => { try {
+    const u = JSON.parse(localStorage.getItem('latm_unlocked'))||[];
+    if (!u.includes(cid)){ u.push(cid); localStorage.setItem('latm_unlocked', JSON.stringify(u)); }
+  } catch(e){} };
+  if (E.retry){
+    // the lose endings of the final battle: go back to the laboratory yard
+    addCont('TRY AGAIN: THE LABORATORY YARD \u25B8', '#ch_steel');
+    const c = document.getElementById('contBtn');
+    c.onclick = () => { try { sessionStorage.setItem('steel_resume', '1'); } catch(e){} location.hash = '#ch_steel'; location.reload(); };
+  }
+  if (CH.id !== 'ep1' && E.next){
+    const cid = E.next.slice(1);
+    unlock(cid);
+    addCont('CONTINUE: ' + (CHAPTERS[cid] ? CHAPTERS[cid].subtitle : 'NEXT CHAPTER') + ' \u25B8', E.next);
+  } else if (CH.id === 'ep1'){
     try { localStorage.setItem('latm_carry', JSON.stringify({
       trusted:!!SFLAGS.trusted, radio:!!SFLAGS.radio,
       dmgMul:G.dmgMul||1, regenFast:!!G.regenFast, spdMul:G.spdMul||1, from:id })); } catch(e){}
@@ -3934,7 +4444,7 @@ function finishEnding(id){
       cont.textContent = 'CONTINUE: ' + (CHAPTERS[cid] ? CHAPTERS[cid].subtitle : 'CHAPTER TWO') + ' \u25B8';
       cont.onclick = () => { location.hash = E.next; location.reload(); };
     }
-  } else if (CH.id !== 'ch_counting'){
+  } else if (!CH.book && CH.id !== 'ch_counting'){
     try {
       const u = JSON.parse(localStorage.getItem('latm_unlocked'))||[];
       if (!u.includes('ch_counting')){ u.push('ch_counting'); localStorage.setItem('latm_unlocked', JSON.stringify(u)); }
@@ -3954,7 +4464,7 @@ function finishEnding(id){
   if (id === 'together' || id === 'lone') radio('extract');
   AudioSys.extract();
   el.fade.style.transition = 'opacity 2.8s';
-  el.fade.style.background = (id === 'taken') ? '#fff' : '#000';
+  el.fade.style.background = E.fadeCol || ((id === 'taken') ? '#fff' : '#000');
   el.fade.style.opacity = 1;
   setTimeout(() => { el.fade.style.background = '#000'; showEndCard(); }, 3100);
 }
@@ -4215,6 +4725,12 @@ const Cast = (() => {
     REYES:  { seed:'reyes',  hood:false, mask:false, coat:0x2e3a2c, pack:false, height:1.68, hair:0x171009, wrap:0x7a3322, limp:true },
     KARA:   { seed:'kara',   hood:true,  mask:false, coat:0x555b52, pack:true,  height:1.72, wrap:0x5d6b4a, limp:false },
     LEDGER: { seed:'ledger', role:'machine', glow:0xff3b30, height:1.95 },
+    THOMAS: { seed:'thomas', hood:false, mask:false, coat:0x4b4438, pack:true,  height:1.76, hair:0x8a8580, limp:false },
+    ELENA:  { seed:'elena',  hood:false, mask:false, coat:0x3d4652, pack:false, height:1.64, hair:0x1a1410, limp:false },
+    DAVID:  { seed:'david',  hood:true,  mask:false, coat:0x4a3f30, pack:true,  height:1.78, limp:false },
+    'OMEGA-7': { seed:'omega7', role:'machine', glow:0xcfe8ff, height:2.0 },
+    VERA:   { seed:'vera',   hood:false, mask:false, coat:0xd8d2c4, pack:false, height:1.7, hair:0xdedad2, skin:0x5a3d2a, wrap:0xc9b991, limp:false },
+    HUNTER: { seed:'hunter', role:'machine', glow:0xff2a2a, height:2.1 },
   };
   const members = {};
   for (const name of Object.keys(CAST_DEFS)){
@@ -4282,8 +4798,634 @@ idle(() => warmScene().then(() => {
 }).then(() => { Warm.done = true; Warm.ms = Math.round(performance.now() - Warm.t0); }));
 modelsReady.then(() => { setTimeout(() => warmScene(), 0); });
 
+/* ============================================================
+   THE HUNTER. Book One's twenty foot machine, built to match the
+   Dystopia Shorts design: dark scarred gunmetal, a hunched broad
+   chest, a cluster of red sensors set low in a heavy head, and
+   long arms ending in ribbed multi-barrel cannons with belt-fed
+   under-mounts. Phases: SENSORS > CANNONS > VENT > PINNED (upload).
+   ============================================================ */
+const Boss = (() => {
+  if (!CH.boss) return null;
+  const HUNTER_SET = makePBR(L => {
+    const R = L.R;
+    L.a.fillStyle = '#2b2d30'; L.a.fillRect(0,0,512,512);
+    L.o.fillStyle = ormc(.55,.92); L.o.fillRect(0,0,512,512);
+    for (let i=0;i<40;i++){
+      const x=R()*512, y=R()*512, w=30+R()*180, h=20+R()*140;
+      L.a.fillStyle = R() < .5 ? 'rgba(255,255,255,.035)' : 'rgba(0,0,0,.17)'; L.a.fillRect(x,y,w,h);
+    }
+    for (let i=0;i<9;i++){
+      const x=(R()*380)|0, y=(R()*380)|0, w=60+R()*130, h=50+R()*120;
+      groove(L,x,y,w,h);
+      for (let k=0;k<4;k++) bolt(L, x+9+(k%2)*(w-18), y+9+(k>>1)*(h-18), 3.5);
+    }
+    weather(L, 34, true);
+    for (let i=0;i<12;i++){                       // scorch blooms around old hits
+      const x=R()*512, y=R()*512, r=18+R()*40;
+      const g=L.a.createRadialGradient(x,y,1,x,y,r); g.addColorStop(0,'rgba(4,3,2,.6)'); g.addColorStop(1,'rgba(0,0,0,0)');
+      L.a.fillStyle=g; L.a.fillRect(x-r,y-r,r*2,r*2);
+    }
+    for (let i=0;i<280;i++){                      // chipped paint, bare steel
+      const x=R()*512, y=R()*512, s=1+R()*3.5;
+      L.a.fillStyle='rgba(150,156,162,.33)'; L.a.fillRect(x,y,s,s*.7);
+      L.o.fillStyle=ormc(.3,1); L.o.fillRect(x,y,s,s*.7);
+    }
+  }, 913, { nstr:3.8 });
+  const PATCH = { floorAO:.25, ceilAO:0, aoH:1.6 };
+  const mk = (col, extra={}) => surfMat(HUNTER_SET, 1, 1, { color:new THREE.Color(col), ...extra }, PATCH);
+  const armor = mk(0xc4c8cc), armorD = mk(0x8c9094), armorF = mk(0xb4b8bc, { flatShading:true });
+  const dark = new THREE.MeshStandardMaterial({ color:0x151618, roughness:.5, metalness:.9 });
+  const rib  = new THREE.MeshStandardMaterial({ color:0x2c2d30, roughness:.38, metalness:1 });
+  const black = new THREE.MeshBasicMaterial({ color:0x040404 });
+  const brass = new THREE.MeshStandardMaterial({ color:0x6a5532, roughness:.45, metalness:1 });
+  const UB = new THREE.BoxGeometry(1,1,1);
+  const grp = (p,x,y,z) => { const g = new THREE.Group(); g.position.set(x,y,z); p.add(g); return g; };
+  const bx = (p,m,sx,sy,sz,x,y,z,rx=0,ry=0,rz=0) => { const o = new THREE.Mesh(UB,m); o.scale.set(sx,sy,sz); o.position.set(x,y,z); o.rotation.set(rx,ry,rz); p.add(o); return o; };
+  const cyl = (p,m,r1,r2,len,x,y,z,rx=0,ry=0,rz=0,seg=12) => { const o = new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,len,seg), m); o.position.set(x,y,z); o.rotation.set(rx,ry,rz); p.add(o); return o; };
+  const glowTex = softSpriteTex();
+  const glowSprite = (col, op, sc) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:glowTex, color:col, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false })); s.scale.setScalar(sc); return s; };
+
+  /* ---- model (faces +z) ---- */
+  const root = new THREE.Group(); root.position.set(0,-30,-125); scene.add(root);
+  // a low blood-orange key and a red rim so the machine reads against the sky
+  const key = new THREE.DirectionalLight(0xffa878, 1.5); key.position.set(7, 15, -98); key.target.position.set(0, 3, -125);
+  const rim = new THREE.DirectionalLight(0xff3a22, 1.1); rim.position.set(-6, 9, -160); rim.target.position.set(0, 3, -122);
+  scene.add(key, key.target, rim, rim.target);
+  const hips = grp(root, 0, 3.05, 0);
+  const pelvisMark = grp(hips, 0, 0, 0);
+  bx(hips, armor, 1.75,.7,1.15, 0,0,0);
+  bx(hips, armorD, .62,.55,.45, 0,-.42,.38);
+  bx(hips, dark, 1.9,.22,.95, 0,.38,0);
+  const legs = [-1,1].map(s => {
+    const hip = grp(hips, s*.95, -.12, 0);
+    cyl(hip, dark, .3,.3,.5, 0,0,0, 0,0,Math.PI/2);
+    bx(hip, armor, .78,1.5,.92, 0,-.75,0);
+    bx(hip, armorD, .86,.95,.28, 0,-.62,.46, -.06);
+    cyl(hip, rib, .08,.08,1.1, s*.36,-.8,-.36);
+    const knee = grp(hip, 0,-1.45,0);
+    const kc = new THREE.Mesh(new THREE.SphereGeometry(.42,12,8), armorD); kc.position.set(0,0,.12); knee.add(kc);
+    bx(knee, armor, .82,1.35,.95, 0,-.7,-.04);
+    bx(knee, armorD, .92,1.05,.3, 0,-.58,.46, -.07);
+    cyl(knee, rib, .07,.07,1.0, -s*.34,-.7,-.4);
+    const ank = grp(knee, 0,-1.35,0);
+    cyl(ank, dark, .22,.22,.62, 0,0,0, 0,0,Math.PI/2);
+    bx(ank, armorD, 1.25,.3,1.75, 0,-.13,.22);
+    for (let k=0;k<3;k++) bx(ank, armor, .34,.26,.6, (k-1)*.42,-.14,1.22);
+    bx(ank, armor, .72,.28,.45, 0,-.13,-.78);
+    return { hip, knee, ank, mark:grp(knee, 0,-.6,.1) };
+  });
+  const torso = grp(hips, 0,.3,0);
+  cyl(torso, dark, .62,.72,.9, 0,.45,0);
+  for (let k=0;k<3;k++) bx(torso, armorD, 1.3-k*.1,.24,.42, 0,.18+k*.28,.56, -.15);
+  const chest = grp(torso, 0,1.55,0);
+  const chestMark = grp(chest, 0,-.1,-.3);
+  bx(chest, armor, 3.0,1.6,1.85, 0,0,0);
+  bx(chest, armorD, 2.3,1.15,.36, 0,.05,1.0, .12);
+  bx(chest, armor, 3.2,.36,1.9, 0,.86,-.05);
+  for (const s of [-1,1]) for (let k=0;k<5;k++) bx(chest, dark, .06,.72,.12, s*1.52,-.05,-.45+k*.22);
+  bx(chest, armorD, 2.0,1.4,.95, 0,.1,-1.36);
+  for (const s of [-1,1]){
+    cyl(chest, dark, .17,.21,1.25, s*.62,1.0,-1.48);
+    const ex = glowSprite(0xff6a2a, .35, .55); ex.position.set(s*.62,1.7,-1.48); chest.add(ex);
+    // hoses from chest to shoulder housings
+    for (let h=0;h<2;h++){
+      const c = new THREE.CatmullRomCurve3([new THREE.Vector3(s*.9,.55-h*.25,.75), new THREE.Vector3(s*1.35,.95-h*.2,.95), new THREE.Vector3(s*1.75,.75-h*.2,.35)]);
+      chest.add(new THREE.Mesh(new THREE.TubeGeometry(c, 10, .065, 6), dark));
+    }
+  }
+  const head = grp(chest, 0,.72,.86);   // sunk low between the shoulders
+  bx(head, armor, 1.05,.72,.95, 0,.05,0);
+  bx(head, armorD, 1.22,.2,.44, 0,.37,.38, .25);
+  bx(head, armor, .95,.3,.8, 0,-.36,.05);
+  bx(head, black, .82,.44,.12, 0,-.02,.47);
+  cyl(head, rib, .02,.02,.8, .42,.62,-.25, 0,0,.2, 5);
+  const SPOS = [[-.24,.06,.075],[-.08,.1,.065],[.08,.09,.07],[.24,.05,.075],[-.16,-.09,.06],[0,-.07,.085],[.16,-.1,.06]];
+  const sensors = SPOS.map(([x,y,r]) => { const m = new THREE.MeshBasicMaterial({ color:0xff2a2a }); const o = new THREE.Mesh(new THREE.SphereGeometry(r,10,8), m); o.position.set(x,y,.53); head.add(o); return m; });
+  const sLight = new THREE.PointLight(0xff2a30, 0, 18, 2); sLight.position.set(0,0,1.1); head.add(sLight);
+  const halo = glowSprite(0xff2a2a, .8, 1.7); halo.position.set(0,-.01,.66); head.add(halo);
+  const shutT = bx(head, armorD, .94,.26,.12, 0,.38,.57), shutB = bx(head, armorD, .94,.26,.12, 0,-.4,.57);
+  const sensorMark = grp(head, 0,0,.55);
+  const RIB_GEO = new THREE.TorusGeometry(.34,.05,6,16);
+  const arms = [-1,1].map(s => {
+    const sh = grp(chest, s*1.78, .45, .05);
+    const pd = new THREE.Mesh(new THREE.IcosahedronGeometry(1,1), armorF); pd.scale.set(.88,.64,.98); pd.position.set(s*.12,.34,0); sh.add(pd);
+    bx(sh, armorD, .5,.2,1.5, s*.58,.02,0, 0,0,-s*.5);
+    const up = grp(sh, s*.2, 0, 0);
+    bx(up, armor, .62,1.4,.72, 0,-.75,0);
+    cyl(up, rib, .07,.07,1.0, 0,-.75,-.42);
+    const elb = grp(up, 0,-1.5,0);
+    elb.add(new THREE.Mesh(new THREE.SphereGeometry(.38,12,8), dark));
+    bx(elb, armor, .95,1.0,1.15, 0,-.5,0);
+    bx(elb, armorD, 1.03,.34,1.2, 0,-.12,0);
+    const gun = grp(elb, 0,0,0);
+    cyl(gun, rib, .31,.31,2.0, 0,-1.95,0, 0,0,0, 14);
+    for (let k=0;k<9;k++){ const t = new THREE.Mesh(RIB_GEO, dark); t.rotation.x = Math.PI/2; t.position.set(0,-1.15-k*.2,0); gun.add(t); }
+    for (const [ox,oz] of [[-.13,-.13],[.13,-.13],[-.13,.13],[.13,.13]]) cyl(gun, dark, .085,.085,.55, ox,-3.1,oz, 0,0,0, 8);
+    bx(gun, brass, .12,.5,.2, s*.33,-1.6,0);
+    const tip = grp(gun, 0,-3.42,0);
+    const mg = glowSprite(0xff3a1a, 0, 1); mg.position.y = -.25; tip.add(mg);
+    const stump = cyl(elb, dark, .34,.22,.5, 0,-1.2,0, .3,0,.2, 7); stump.visible = false;
+    // belt-fed under-mount and its hanging ammunition belt
+    cyl(elb, dark, .13,.13,1.3, 0,-1.45,-.5);
+    const btip = grp(elb, 0,-2.15,-.5);
+    const belt = new THREE.CatmullRomCurve3([new THREE.Vector3(0,-.95,-.55), new THREE.Vector3(0,-1.45,-1.05), new THREE.Vector3(0,-1.0,-1.45), new THREE.Vector3(0,-.25,-1.1), new THREE.Vector3(0,.35,-.5)]);
+    const N = 26, im = new THREE.InstancedMesh(new THREE.CylinderGeometry(.05,.05,.24,6), brass, N);
+    const q = new THREE.Object3D();
+    for (let i=0;i<N;i++){ belt.getPointAt(i/(N-1), q.position); q.rotation.set(0,0,Math.PI/2); q.updateMatrix(); im.setMatrixAt(i, q.matrix); }
+    elb.add(im);
+    return { s, sh, up, elb, gun, tip, btip, mg, stump, mark:grp(gun,0,-1.7,0), mark2:grp(gun,0,-2.8,0), elMark:grp(elb,0,-.4,0), hp:200, max:200, alive:true, aim:0 };
+  });
+
+  /* ---- arena pieces: geothermal grates + valves, stomp ring, steam, allies ---- */
+  const ventDefs = [ { gx:-8.4, gz:-120, vx:-12.15, vz:-120 }, { gx:8.4, gz:-126, vx:12.15, vz:-126 } ];
+  const steamMat = new THREE.SpriteMaterial({ map:glowTex, color:0xf0e8de, transparent:true, opacity:0, depthWrite:false });
+  const vents = ventDefs.map(v => {
+    const g = grp(scene, v.gx, 0, v.gz);
+    bx(g, dark, 2.7,.08,2.7, 0,.03,0);
+    const slitM = new THREE.MeshBasicMaterial({ color:0xff7a30, transparent:true, opacity:.25 });
+    for (let k=0;k<7;k++) bx(g, slitM, 2.3,.02,.12, 0,.08,-1.05+k*.35);
+    for (let k=0;k<7;k++) bx(g, rib, 2.4,.07,.08, 0,.1,-1.22+k*.35+.175);
+    const glow = glowSprite(0xff7a30, .0, 3.6); glow.position.y = .4; g.add(glow);
+    const valve = grp(scene, v.vx, 0, v.vz);
+    bx(valve, armorD, .5,1.0,.5, 0,.5,0);
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(.3,.045,6,14), brass); wheel.position.set(v.vx < 0 ? .3 : -.3, .95, 0); wheel.rotation.y = Math.PI/2; valve.add(wheel);
+    const lampM = new THREE.MeshBasicMaterial({ color:0x401010 });
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(.07,8,6), lampM); lamp.position.set(0,1.08,0); valve.add(lamp);
+    cyl(scene, rib, .09,.09, Math.abs(v.vx - v.gx), (v.vx+v.gx)/2, .1, v.gz, 0,0,Math.PI/2, 6);
+    colliders.push({ x1:v.vx-.3, x2:v.vx+.3, z1:v.vz-.3, z2:v.vz+.3 });
+    const puffs = [];
+    for (let k=0;k<22;k++){ const p = new THREE.Sprite(steamMat.clone()); p.userData.o = Math.random(); p.userData.x = (Math.random()-.5)*2; p.userData.z = (Math.random()-.5)*2; g.add(p); puffs.push(p); }
+    return { ...v, slitM, glow, wheel, lampM, puffs, cd:0, p:0, steam:0, linger:0 };
+  });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.85,1,48), new THREE.MeshBasicMaterial({ color:0xff3020, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending }));
+  ring.rotation.x = -Math.PI/2; ring.position.y = .05; scene.add(ring);
+  const KARA = makeCivvy({ jacket:0x4a5232, pants:0x23261f, ponytail:true, armed:true, hair:0x14100c, skin:0x8a6f58, scarf:0x5d6b4a });
+  KARA.position.set(-7.4, 0, -134.6); scene.add(KARA);
+  const THOM = makeCivvy({ jacket:0x4b4438, pants:0x2c2a26, hair:0x8a8580, skin:0xb09a84 });
+  THOM.position.set(2.8, 0, -141.4); scene.add(THOM);
+  const chair = grp(scene, CORE_POS.x - 1.6, 0, CORE_POS.z - .4);
+  bx(chair, dark, .7,.5,.7, 0,.25,0); bx(chair, armorD, .62,.12,.62, 0,.55,0); bx(chair, armorD, .62,.95,.12, 0,1.05,-.28, -.12);
+  const crown = new THREE.Mesh(new THREE.TorusGeometry(.16,.035,6,12), brass); crown.position.set(0,1.62,-.26); chair.add(crown);
+  colliders.push({ x1:chair.position.x-.4, x2:chair.position.x+.4, z1:chair.position.z-.4, z2:chair.position.z+.4 });
+  const rubble = [];
+
+  /* ---- state ---- */
+  const H = { active:false, phase:'off', ph:0, amp:0, yaw:0, sensHP:240, sensMax:240, blastT:3, burstT:4.5, burstN:0, burstGap:0, bursts:0, shots:0,
+    charging:false, charge:0, chargeArm:null, stompT:0, stompCd:3, pinT:0, kneel:0, kneelT:0, riseT:0, addT:5, addN:0,
+    dimT:-1, flash:0, shut:0, shutT:0, upload:0, marks:0, lastSin:0, recoil:0, kfire:1.4, midPending:false, objKey:'' };
+  const _w = new THREE.Vector3(), _c = new THREE.Vector3();
+  const pos = () => root.position;
+  const dist2 = (ax,az,bx_,bz) => Math.hypot(ax-bx_, az-bz);
+  function faceTo(tx, tz, rate, dt){
+    const tgt = Math.atan2(tx - pos().x, tz - pos().z);
+    let d = tgt - H.yaw; while (d > Math.PI) d -= Math.PI*2; while (d < -Math.PI) d += Math.PI*2;
+    H.yaw += Math.max(-rate*dt, Math.min(rate*dt, d));
+    return Math.abs(d);
+  }
+  const bossEl = { wrap:$('bossWrap'), fill:$('bossFill'), sub:$('bossSub') };
+  function hud(){
+    if (!bossEl.wrap) return;
+    const show = H.active && !['off','dim','done'].includes(H.phase) && (G.mode === 'play' || G.mode === 'dead');
+    bossEl.wrap.style.display = show ? 'block' : 'none';
+    document.body.classList.toggle('bossOn', show);
+    if (!show) return;
+    let f = 1, t = '';
+    if (H.phase === 'enter' || H.phase === 'sensors'){ f = H.sensHP / H.sensMax; t = 'SENSOR CLUSTER'; }
+    else if (H.phase === 'cannons'){ f = arms.reduce((a,b)=>a+Math.max(0,b.hp),0) / arms.reduce((a,b)=>a+b.max,0); t = 'ARM CANNONS ' + arms.filter(a=>a.alive).length + ' / 2'; }
+    else if (H.phase === 'vent'){ f = 1; t = 'ARMOR SEALED. VENT IT ONTO A GRATE'; }
+    else if (H.phase === 'pinned'){ f = H.pinT / 16; t = 'PINNED. UPLOAD ' + Math.round(H.upload*100) + '%'; }
+    else if (H.phase === 'rise'){ f = 0; t = 'IT IS GETTING UP'; }
+    bossEl.fill.style.width = (Math.max(0,Math.min(1,f))*100).toFixed(1) + '%';
+    bossEl.fill.classList.toggle('pin', H.phase === 'pinned');
+    bossEl.sub.textContent = t;
+  }
+  function objective(){
+    const t = { enter:'SURVIVE', sensors:'SHOOT THE RED SENSOR CLUSTER', cannons:'DESTROY BOTH ARM CANNONS',
+      vent:'LURE IT ONTO A GLOWING GRATE, THEN OPEN THE TAP', pinned:'GET TO THE CHAIR. RUN THE UPLOAD', rise:'BACK TO A VALVE' }[H.phase];
+    if (t && H.objKey !== t){ H.objKey = t; el.objective.textContent = t; }
+  }
+  function say(who, text){ G.radioQueue.push({ who, text }); }
+
+  /* ---- pose ---- */
+  function pose(dt){
+    const walk = H.amp, k = H.kneel, sw = Math.sin(H.ph);
+    const ext = [0,0];
+    legs.forEach((L,i) => {
+      const ph = H.ph + (i ? Math.PI : 0);
+      let th = -Math.sin(ph)*.38*walk, kn = Math.max(0, Math.sin(ph + 1.3))*.65*walk + .08;
+      if (H.stompT > 0 && i === 0){ const u = Math.min(1, (1 - H.stompT/.9)*1.6); th = -.62*Math.sin(u*Math.PI/2); kn = .2 + .8*u; }
+      th += ((i === 0 ? -1.25 : .25) - th) * k;
+      kn += ((i === 0 ? 1.25 : 1.3) - kn) * k;
+      L.hip.rotation.x = th; L.knee.rotation.x = kn; L.ank.rotation.x = -(th + kn)*(1 - k*.5);
+      ext[i] = 1.45*Math.cos(th) + 1.35*Math.cos(th + kn) + .28;
+    });
+    if (H.stompT > 0) ext[0] = 0;
+    hips.position.y = Math.max(ext[0], ext[1]);
+    hips.rotation.z = sw*.03*walk;
+    H.recoil = Math.max(0, H.recoil - dt*.8);
+    torso.rotation.x = .1 + k*.38 - H.recoil + Math.sin(G.time*.8)*.015;
+    torso.rotation.y = Math.sin(H.ph)*.05*walk;
+    arms.forEach((a,i) => {
+      const want = (H.charging && H.chargeArm === a) || (H.burstN > 0 && H.burstArm === a) ? 1 : 0;
+      a.aim += (want - a.aim) * Math.min(1, dt*5);
+      a.up.rotation.x = -Math.sin(H.ph + (i ? 0 : Math.PI))*.16*walk - .08 - a.aim*.55 - k*.25;
+      a.up.rotation.z = a.s*(.06 + k*.06);
+      a.elb.rotation.x = -.32 - a.aim*.85 - k*.2;
+    });
+    // head tracks the player a little, sensors flare when charging
+    const P = yawObj.position;
+    head.getWorldPosition(_w);
+    const pitch = Math.atan2(_w.y - P.y, Math.max(2, dist2(_w.x,_w.z,P.x,P.z)));
+    head.rotation.x += (Math.max(-.1, Math.min(.55, pitch - torso.rotation.x)) * (H.dimT < 0 ? 1 : .2) - head.rotation.x) * Math.min(1, dt*3);
+    H.shut += (H.shutT - H.shut) * Math.min(1, dt*6);
+    shutT.position.y = .38 - H.shut*.27; shutB.position.y = -.4 + H.shut*.27;
+    root.rotation.y = H.yaw;
+  }
+  function sensorColors(){
+    const ch = H.charging ? H.charge : 0;
+    sensors.forEach((m,i) => {
+      if (H.dimT >= 0){
+        const f = Math.max(0, Math.min(1, (H.dimT - i*.34) / .3));
+        m.color.setRGB(1 - f*.9, .16*(1-f) + .02, .16*(1-f) + .02);
+      } else m.color.setRGB(1, .16 + ch*.7 + H.flash*.5, .16 + ch*.6 + H.flash*.4);
+    });
+    const live = H.dimT >= 0 ? Math.max(0, 1 - H.dimT/2.6) : 1;
+    sLight.intensity = (H.active ? 9 + H.charge*10 : 0) * live * (1 - H.shut*.6);
+    halo.material.opacity = (.75 + H.charge*.4 + H.flash*.3) * live * (1 - H.shut*.85);
+  }
+
+  /* ---- combat ---- */
+  function blast(){
+    const a = H.chargeArm; if (!a || !a.alive) return;
+    a.tip.getWorldPosition(_w);
+    const tgt = yawObj.position.clone(); tgt.y = PLAYER_EYE - .25;
+    fireProjectile(_w.clone(), tgt, 17, 24, { r:2.5, col:0xff6a3a, hitR:.95, grace:.35, glow:true, silent:true });
+    AudioSys.hunterBlast(); H.recoil = .14; a.mg.material.opacity = 1; a.mg.scale.setScalar(3.2);
+    G.shakeT = .2; G.shakeAmp = .06;
+  }
+  function burstShot(){
+    const a = H.burstArm; a.btip.getWorldPosition(_w);
+    const tgt = yawObj.position.clone(); tgt.x += (Math.random()-.5)*1.4; tgt.z += (Math.random()-.5)*1.4; tgt.y = PLAYER_EYE - .3 + (Math.random()-.5)*.5;
+    fireProjectile(_w.clone(), tgt, 30, 5, { r:.75, col:0xffb347, hitR:.5, grace:.3, silent:true });
+    AudioSys.burst();
+  }
+  function stompNow(){
+    const f = new THREE.Vector3(Math.sin(H.yaw), 0, Math.cos(H.yaw));
+    const cx = pos().x + f.x*1.1, cz = pos().z + f.z*1.1;
+    AudioSys.hunterStomp(); G.shakeT = .45; G.shakeAmp = .13;
+    for (let i=0;i<10;i++) spawnSparks(new THREE.Vector3(cx + Math.cos(i*.63)*2.4, .2, cz + Math.sin(i*.63)*2.4), 5, 0xc9a080);
+    const P = yawObj.position, d = dist2(P.x,P.z,cx,cz);
+    if (d < 6.5){
+      damagePlayer(d < 3.5 ? 30 : 18);
+      const nx = (P.x - cx) / Math.max(.1,d), nz = (P.z - cz) / Math.max(.1,d);
+      P.x += nx*2.4; P.z += nz*2.4; collide(P, PLAYER_R);
+    }
+    H.ringFade = .3;
+  }
+  function destroyArm(a){
+    a.alive = false; a.gun.visible = false; a.stump.visible = true;
+    a.elMark.getWorldPosition(_w);
+    spawnSparks(_w, 30, 0xffaa55); spawnSparks(_w, 20, 0xff4a2a);
+    AudioSys.droneDie(); AudioSys.hunterBlast(); G.shakeT = .3; G.shakeAmp = .07;
+    sToast(a.s < 0 ? 'LEFT CANNON DOWN.' : 'RIGHT CANNON DOWN.');
+    if (H.charging && H.chargeArm === a){ H.charging = false; H.charge = 0; H.blastT = 1.6; }
+    if (!arms.some(x => x.alive)) toVent();
+  }
+  function toCannons(){
+    H.phase = 'cannons'; H.shutT = 1; H.flash = 1;
+    head.getWorldPosition(_w); spawnSparks(_w, 36, 0xff3a2a);
+    AudioSys.hunterRoar(); G.shakeT = .4; G.shakeAmp = .06;
+    sToast('SENSOR CLUSTER CRACKED. THE SHUTTERS SLAM DOWN.', true);
+    H.charging = false; H.charge = 0; H.blastT = 2.6; H.addT = 3;
+    H.midPending = true;
+  }
+  function toVent(){
+    H.phase = 'vent'; H.shutT = 1; H.burstT = 2.5; H.stompCd = 2;
+    vents.forEach(v => { v.cd = 0; v.p = 0; });
+    AudioSys.hunterRoar();
+    say('THOMAS', "Both cannons gone and its armor's sealed. The yard sits on a geothermal tap.");
+    say('THOMAS', "Draw it onto a glowing grate, then open the valve. Steam will lock its joints!");
+  }
+  function pin(v){
+    H.phase = 'pinned'; H.pinT = 16; H.kneelT = 1; H.shutT = 0; H.charging = false; H.burstN = 0; H.stompT = 0;
+    v.linger = 16;
+    AudioSys.hunterRoar(); G.shakeT = .5; G.shakeAmp = .1;
+    sToast('PINNED IN THE STEAM. GET TO THE CHAIR.');
+    say('THOMAS', "It's down! Marcus, the chair. Now!");
+    say('KARA', "Shoot the sensors if it starts to move. It buys you seconds.");
+  }
+  function triggerVent(v){
+    v.cd = 7; v.p = 0; v.steam = 3.2;
+    AudioSys.steam(); G.shakeT = .25; G.shakeAmp = .04;
+    if (dist2(pos().x, pos().z, v.gx, v.gz) < 3.4) pin(v);
+    else sToast('THE STEAM MISSED. DRAW IT ONTO THE GRATE FIRST.', true);
+  }
+  function freezeAdds(darken){
+    for (const d of drones){
+      if (!d.alive) continue;
+      d.alive = false; d.deathT = 0;
+      if (darken && d.eyeMat) d.eyeMat.color.setHex(0x120303);
+    }
+    projectiles.forEach(p => scene.remove(p.mesh)); projectiles.length = 0;
+  }
+
+  /* ---- update ---- */
+  function update(dt, animOnly){
+    if (!H.active){ return; }
+    const P = yawObj.position;
+    const dx = P.x - pos().x, dz = P.z - pos().z, dist = Math.hypot(dx, dz);
+    H.flash = Math.max(0, H.flash - dt*4);
+    let v = 0;
+    if (!animOnly){
+      if (H.phase === 'enter'){
+        faceTo(-6, -114, 1.2, dt); v = 2.1;
+        if (pos().x > -8.5){ H.phase = 'sensors'; H.blastT = 1.8; H.burstT = 4;
+          say('THOMAS', "Hunter! The red cluster in its head. That's the only soft thing on it!"); }
+      } else if (H.phase === 'sensors' || H.phase === 'cannons' || H.phase === 'vent'){
+        faceTo(P.x, P.z, H.phase === 'vent' ? 1.3 : .95, dt);
+        if (H.phase === 'vent') v = dist > 3.4 ? 2.5 : 0;
+        else v = dist > 13 ? 1.5 : 0;
+        // stomp
+        H.stompCd -= dt;
+        if (H.stompT > 0){ v = 0; H.stompT -= dt; if (H.stompT <= 0){ H.stompT = 0; stompNow(); } }
+        else if (H.stompCd <= 0 && dist < (H.phase === 'vent' ? 5 : 6.2)){ H.stompT = .9; H.stompCd = H.phase === 'vent' ? 2.6 : 4.6; AudioSys.hunterServo(); }
+        // arm cannon blasts with a one second telegraph
+        const live = arms.filter(a => a.alive);
+        if (H.phase !== 'vent' && live.length){
+          H.blastT -= dt;
+          if (!H.charging && H.blastT < 1.0){ H.charging = true; H.chargeArm = live[(H.shots++) % live.length]; AudioSys.sentryCharge(); AudioSys.hunterServo(); }
+          if (H.charging) H.charge = Math.min(1, 1 - Math.max(0, H.blastT));
+          if (H.blastT <= 0){ blast(); H.charging = false; H.charge = 0; H.blastT = (H.phase === 'cannons' ? 2.4 : 2.9) + Math.random()*.8; }
+        }
+        // belt-fed bursts
+        if (H.burstN === 0){
+          H.burstT -= dt;
+          if (H.burstT <= 0 && dist < 26){ H.burstN = 6; H.burstGap = .15; H.burstArm = arms[(H.bursts++) % 2]; }
+        } else {
+          H.burstGap -= dt;
+          if (H.burstGap <= 0){ H.burstGap = .1; H.burstN--; burstShot(); if (H.burstN === 0) H.burstT = H.phase === 'vent' ? 3.6 : 5.2; }
+        }
+      } else if (H.phase === 'pinned'){
+        H.pinT -= dt;
+        if (H.pinT <= 0){ H.phase = 'rise'; H.riseT = 1.8; H.kneelT = 0; H.shutT = 1; AudioSys.hunterServo(); AudioSys.hunterRoar();
+          sToast('IT IS GETTING UP.', true); say('THOMAS', "It's up! Get to a valve and vent it again!");
+          vents.forEach(x => { x.linger = 0; x.cd = Math.min(x.cd, 1.5); }); }
+      } else if (H.phase === 'rise'){
+        H.riseT -= dt; if (H.riseT <= 0){ H.phase = 'vent'; H.stompCd = 1.5; H.burstT = 2; }
+      }
+      // reinforcements once the sensors are gone
+      if (['cannons','vent','pinned','rise'].includes(H.phase)){
+        H.addT -= dt;
+        const n = drones.filter(d => d.alive && d.segment === 8).length;
+        if (H.addT <= 0 && n < (H.phase === 'pinned' ? 4 : 3)){
+          const sd = (H.addN++ % 2) ? -1 : 1;
+          spawnExtra('crawler', sd*11, -106.5 - Math.random()*3, 8);
+          H.addT = H.phase === 'pinned' ? 4.5 : 6.5;
+        }
+      }
+      // keep inside the yard, and keep the player out from under it
+      pos().x += Math.sin(H.yaw) * v * dt; pos().z += Math.cos(H.yaw) * v * dt;
+      if (H.phase !== 'enter'){ pos().x = Math.max(-10.5, Math.min(10.5, pos().x)); pos().z = Math.max(-139, Math.min(-108, pos().z)); }
+      const pd = Math.hypot(P.x - pos().x, P.z - pos().z);
+      if (pd < 1.8 && G.mode === 'play'){ const s = (1.8 - pd) / Math.max(.05, pd); P.x += (P.x - pos().x)*s; P.z += (P.z - pos().z)*s; collide(P, PLAYER_R); }
+      // Kara covers from her barricade
+      KARA.rotation.y = Math.atan2(pos().x - KARA.position.x, pos().z - KARA.position.z);
+      H.kfire -= dt;
+      if (H.kfire <= 0 && ['sensors','cannons','vent','pinned','rise'].includes(H.phase)){
+        H.kfire = 1.4;
+        let best = null, bd = 20;
+        for (const d of drones){
+          if (!d.alive || d.segment !== 8) continue;
+          const dd = dist2(d.mesh.position.x, d.mesh.position.z, KARA.position.x, KARA.position.z);
+          if (dd < bd){ bd = dd; best = d; }
+        }
+        let to = null;
+        if (best){ damageDrone(best, 9); to = best.mesh.position.clone().setY(1.3); }
+        else if (H.phase === 'sensors'){ sensorMark.getWorldPosition(_w); to = _w.clone(); H.sensHP -= 4; H.flash = .6; if (H.sensHP <= 0) toCannons(); }
+        else if (H.phase === 'cannons'){ const a = arms.find(x => x.alive); if (a){ a.mark.getWorldPosition(_w); to = _w.clone(); a.hp -= 5; if (a.hp <= 0) destroyArm(a); } }
+        if (to){
+          AudioSys.shot();
+          const from = new THREE.Vector3(KARA.position.x, 1.3, KARA.position.z);
+          const tr = new THREE.Mesh(new THREE.BoxGeometry(.03,.03, from.distanceTo(to)), new THREE.MeshBasicMaterial({ color:0xf4ecdf }));
+          tr.position.copy(from).lerp(to, .5); tr.lookAt(to); scene.add(tr); TRACERS.push({ mesh:tr, t:.12 });
+          if (best) KARA.userData.armR.rotation.x = -.85;
+        }
+      }
+      if (H.midPending && G.mode === 'play' && CB.bossMid){ H.midPending = false; setTimeout(() => { if (G.mode === 'play') Story.start(CB.bossMid); }, 700); }
+      objective();
+    }
+    // walk cycle and footfalls
+    H.amp += ((v > .05 ? 1 : 0) - H.amp) * Math.min(1, dt*4);
+    H.ph += dt * (v > .05 ? v*2.7 : 0);
+    const sn = Math.sin(H.ph);
+    if (H.amp > .3 && Math.sign(sn) !== H.lastSin){
+      H.lastSin = Math.sign(sn);
+      AudioSys.hunterStep(dist);
+      if (dist < 16){ G.shakeT = Math.max(G.shakeT, .16); G.shakeAmp = Math.max(G.shakeAmp || 0, .05*(1 - dist/16)); }
+    }
+    H.kneel += (H.kneelT - H.kneel) * Math.min(1, dt*(H.kneelT ? 3.5 : 1.6));
+    if (H.dimT >= 0) H.dimT += dt;
+    pose(dt); sensorColors();
+    arms.forEach(a => {
+      if (!(H.charging && H.chargeArm === a)){ a.mg.material.opacity = Math.max(0, a.mg.material.opacity - dt*5); }
+      else { a.mg.material.opacity = .25 + H.charge*.75; a.mg.scale.setScalar(.6 + H.charge*1.6); }
+      if (!a.alive && H.dimT < 0 && Math.random() < dt*4){ a.stump.getWorldPosition(_w); spawnSparks(_w, 4, 0xffaa55); }
+    });
+    // stomp telegraph ring
+    if (H.stompT > 0){
+      const f = new THREE.Vector3(Math.sin(H.yaw),0,Math.cos(H.yaw));
+      ring.position.set(pos().x + f.x*1.1, .05, pos().z + f.z*1.1);
+      const u = 1 - H.stompT/.9; ring.scale.setScalar(.6 + u*5.9); ring.material.opacity = .25 + u*.55;
+    } else if (H.ringFade > 0){ H.ringFade -= dt; ring.material.opacity = Math.max(0, H.ringFade*2); ring.scale.setScalar(6.5 + (.3 - H.ringFade)*6); }
+    else ring.material.opacity = 0;
+    // geothermal vents
+    vents.forEach(vn => {
+      vn.cd = Math.max(0, vn.cd - dt);
+      const ready = H.phase === 'vent' && vn.cd <= 0;
+      const pulse = .5 + .5*Math.sin(G.time*4);
+      vn.slitM.opacity = ready ? .55 + pulse*.4 : .18;
+      vn.glow.material.opacity = ready ? .35 + pulse*.3 : (vn.linger > 0 ? .3 : .05);
+      vn.lampM.color.setHex(ready ? 0x5aff7a : (H.phase === 'vent' ? 0xffb347 : 0x401010));
+      vn.steam = Math.max(0, vn.steam - dt); vn.linger = Math.max(0, vn.linger - dt);
+      const amt = vn.steam > 0 ? Math.min(1, vn.steam) : (vn.linger > 0 ? .8 : 0);
+      vn.puffs.forEach(p => {
+        const o = (p.userData.o + G.time*(.35 + amt*.4)) % 1;
+        p.position.set(p.userData.x*(.4 + o*.8), .3 + o*(amt > .6 ? 7.5 : 4.5), p.userData.z*(.4 + o*.8));
+        p.scale.setScalar(1.4 + o*4.2);
+        p.material.opacity = amt * Math.sin(Math.min(1, o*1.4) * Math.PI) * .7;
+      });
+      if (vn.p > 0 && !vn.holding) vn.p = Math.max(0, vn.p - dt);
+      vn.holding = false;
+      vn.wheel.rotation.x += vn.p > 0 ? dt*6 : 0;
+    });
+    if (!KARA.userData.armedPose){ KARA.userData.armedPose = true; }
+    KARA.userData.tick(dt, false); THOM.userData.tick(dt, false);
+    THOM.rotation.y = Math.atan2(P.x - THOM.position.x, P.z - THOM.position.z);
+    hud();
+  }
+
+  /* ---- chair + valves (replaces the default hold-to-plant) ---- */
+  function interact(dt){
+    const P = yawObj.position, holding = keys['KeyE'] || touchPlanting;
+    let target = null;
+    if (H.phase === 'vent') for (const vn of vents) if (vn.cd <= 0 && dist2(P.x,P.z,vn.vx,vn.vz) < 2.1) target = vn;
+    if (H.phase === 'pinned' && dist2(P.x,P.z,CORE_POS.x,CORE_POS.z) < 3.2) target = 'chair';
+    const lbl = document.getElementById('plantLabel');
+    if (!target){
+      G.planting = false;
+      el.prompt.style.display = 'none'; el.plantBtn.style.display = 'none';
+      const showUp = H.phase === 'pinned' && H.upload > 0;
+      el.plantWrap.style.display = showUp ? 'block' : 'none';
+      if (showUp){ lbl.textContent = 'UPLOADING'; el.plantFill.style.width = (H.upload*100).toFixed(1) + '%'; }
+      return;
+    }
+    const chairT = target === 'chair';
+    if (IS_TOUCH){ el.plantBtn.style.display = 'block'; el.plantBtn.textContent = chairT ? 'UPLOAD' : 'VENT'; }
+    el.prompt.textContent = chairT ? (IS_TOUCH ? CH.obj.promptTouch : CH.obj.promptKey) : (IS_TOUCH ? 'HOLD VENT' : 'HOLD [E] TO OPEN THE TAP');
+    el.prompt.style.display = holding ? 'none' : 'block';
+    el.plantWrap.style.display = holding || (chairT && H.upload > 0) ? 'block' : 'none';
+    if (chairT){
+      lbl.textContent = 'UPLOADING';
+      if (holding){
+        G.planting = true;
+        const prev = H.upload;
+        H.upload = Math.min(1, H.upload + dt/8.5);
+        if (Math.floor(prev*10) !== Math.floor(H.upload*10)) AudioSys.plantTick();
+        const lines = [[.2,"It's taking the package. Keep the chair live!"],[.6,"Past their outer layer. Hold it!"],[.95,"Almost there. Almost!"]];
+        lines.forEach(([m,t],i) => { if (H.upload >= m && H.marks <= i){ H.marks = i+1; say('THOMAS', t); } });
+        if (H.upload >= 1){ H.phase = 'done'; G.plantProgress = 1; freezeAdds(false); plantComplete(); }
+      } else G.planting = false;
+      el.plantFill.style.width = (H.upload*100).toFixed(1) + '%';
+    } else {
+      lbl.textContent = 'VENTING';
+      if (holding){ target.holding = true; target.p = Math.min(1, target.p + dt/1.4); if (target.p >= 1) triggerVent(target); }
+      el.plantFill.style.width = (target.p*100).toFixed(1) + '%';
+    }
+  }
+
+  /* ---- player shots ---- */
+  function sph(origin, dir, obj, r, maxT){
+    obj.getWorldPosition(_c); _c.sub(origin);
+    const t = _c.dot(dir); if (t < 0 || t > maxT) return null;
+    return (_c.lengthSq() - t*t) < r*r ? t : null;
+  }
+  function ray(origin, dir, maxT){
+    if (!H.active || ['off','dim','done'].includes(H.phase)) return null;
+    let best = null;
+    const test = (part, obj, r, arm) => { const t = sph(origin, dir, obj, r, best ? best.t : maxT); if (t !== null) best = { t, part, arm }; };
+    test('armor', chestMark, 1.3); test('armor', pelvisMark, 1.0);
+    legs.forEach(L => test('armor', L.mark, .65));
+    arms.forEach(a => { test('armor', a.elMark, .62); if (a.alive){ test('cannon', a.mark, .5, a); test('cannon', a.mark2, .45, a); } });
+    test('sensor', sensorMark, .62);
+    return best;
+  }
+  function hit(h, dmg, at){
+    const soft = (h.part === 'sensor' && (H.phase === 'sensors' || H.phase === 'enter' || H.phase === 'pinned')) || (h.part === 'cannon' && H.phase === 'cannons');
+    if (!soft){
+      AudioSys.ping(); spawnSparks(at, 8, 0xfff0d0);
+      if (G.time - (H.hintT || -99) > 9){
+        H.hintT = G.time;
+        if (H.phase === 'sensors') say('THOMAS', "That armor just eats rounds. The red cluster, Marcus!");
+        else if (H.phase === 'cannons') say('THOMAS', "The sensors are shuttered. Hit the cannons on its arms!");
+        else if (H.phase === 'vent') say('THOMAS', "Bullets won't do it now. Use the steam!");
+      }
+      return;
+    }
+    AudioSys.hitConfirm(); spawnSparks(at, 14, 0xff5a3a);
+    if (h.part === 'sensor'){
+      H.flash = 1;
+      if (H.phase === 'pinned'){ H.pinT = Math.min(16, H.pinT + .35); return; }
+      H.sensHP -= dmg;
+      if (H.sensHP <= 0) toCannons();
+    } else {
+      h.arm.hp -= dmg;
+      if (h.arm.hp <= 0 && h.arm.alive) destroyArm(h.arm);
+    }
+  }
+
+  /* ---- flow ---- */
+  function start(){
+    if (H.active) return;
+    H.active = true; H.phase = 'enter';
+    root.position.set(-15, 0, -110.5); H.yaw = Math.PI/2;
+    if (BREACH){
+      BREACH.mesh.visible = false;
+      for (let i=0;i<9;i++){
+        const r = new THREE.Mesh(new THREE.DodecahedronGeometry(.3 + Math.random()*.5, 0), BREACH.mesh.material);
+        r.position.set(BREACH.x + (Math.random()-.3)*2.2, .2 + Math.random()*.3, BREACH.z + (Math.random()-.5)*6.5);
+        r.rotation.set(Math.random()*3, Math.random()*3, 0); scene.add(r); rubble.push(r);
+      }
+      for (let i=0;i<6;i++) spawnSparks(new THREE.Vector3(BREACH.x, .5 + i*.45, BREACH.z + (i-3)), 12, 0xffaa66);
+    }
+    AudioSys.hunterBlast(); AudioSys.hunterRoar(); G.shakeT = .7; G.shakeAmp = .15;
+    sToast('THE YARD WALL BLEW IN.', true);
+    G.radioQueue.length = 0;
+    const P = yawObj.position;
+    G.yaw = Math.atan2(-(-11 - P.x), -(-110.5 - P.z)); G.pitch = .12;
+    pose(0);
+  }
+  function onRespawn(){
+    if (!H.active) return;
+    for (let i = drones.length-1; i >= 0; i--) if (drones[i].segment === 8){ scene.remove(drones[i].mesh); drones.splice(i,1); }
+    if (H.phase === 'enter') H.phase = 'sensors';
+    if (H.phase === 'sensors') H.sensHP = H.sensMax;
+    if (H.phase === 'cannons') arms.forEach(a => { if (a.alive) a.hp = a.max; });
+    if (H.phase === 'pinned' || H.phase === 'rise'){ H.phase = 'vent'; H.kneelT = 0; H.kneel = 0; H.shutT = 1; }
+    root.position.set(0, 0, -127); H.yaw = 0;
+    Object.assign(H, { stompT:0, stompCd:3, charging:false, charge:0, blastT:3, burstN:0, burstT:4.5, addT:5, ringFade:0 });
+    vents.forEach(v => { v.cd = 0; v.p = 0; v.steam = 0; v.linger = 0; });
+    H.objKey = ''; objective();
+  }
+  function dim(){
+    if (H.dimT >= 0) return;
+    H.dimT = 0; H.phase = 'dim'; H.charging = false; H.charge = 0; H.burstN = 0; H.stompT = 0; H.shutT = 0;
+    freezeAdds(true);
+    head.getWorldPosition(_w);
+    const P = yawObj.position;
+    G.yaw = Math.atan2(-(_w.x - P.x), -(_w.z - P.z));
+    G.pitch = Math.max(-.2, Math.min(.6, Math.atan2(_w.y - P.y, Math.hypot(_w.x - P.x, _w.z - P.z))));
+    yawObj.rotation.y = G.yaw; pitchObj.rotation.x = G.pitch;
+    AudioSys.hunterServo();
+    hud();
+  }
+  function epilogueLight(stage){
+    el.fade.style.transition = 'opacity 2.6s, background 2.6s';
+    el.fade.style.background = stage === 1 ? '#efe4cc' : 'radial-gradient(circle at 50% 38%, #fff7de 0%, #e8cf95 45%, #8a6534 100%)';
+    el.fade.style.opacity = stage === 1 ? .86 : .97;
+    hudVisible(false);
+  }
+  const RESUME = [
+    { say:[null, 'The laboratory yard. Six days of building. Kara behind her barricade. Thomas at the chair.'] },
+    { say:[null, 'Then the yard wall shook, and something twenty feet tall stepped through it.'] },
+    { fx(){ start(); } },
+  ];
+  function resumeRequested(){
+    try { if (sessionStorage.getItem('steel_resume') === '1'){ sessionStorage.removeItem('steel_resume'); return true; } } catch(e){}
+    return false;
+  }
+  function resume(){
+    for (const d of drones) if (d.alive && d.segment >= 1 && d.segment <= 3){ d.alive = false; d.deathT = 0; scene.remove(d.mesh); }
+    doors.forEach(dr => { dr.open = true; dr.anim = 1; dr.mesh.position.y = WALL_H/2 - (WALL_H - .05); dr.collider.active = false; dr.lock.material.color.setHex(0xe7c98a); });
+    yawObj.position.set(0, PLAYER_EYE, -106.5); G.yaw = 0; G.pitch = 0;
+    G.currentSegment = 4; G.checkpoint.pos.set(0, 0, -106.5); G.checkpoint.yaw = 0; G.checkpoint.segment = 4;
+    G.radioFired.add('core_enter'); setObjectiveText();
+    setTimeout(() => { if (G.mode === 'play') Story.start(RESUME); }, 500);
+  }
+  return { start, update, interact, ray, hit, onRespawn, dim, epilogueLight, resumeRequested, resume,
+    weakenCannons(f){ arms.forEach(a => { a.hp *= (1 - f); }); },
+    fighting(){ return H.active && !['off','dim','done'].includes(H.phase); },
+    H, root, arms, vents, KARA, THOM, sensorMark,
+    _force(phase){ // test hook: jump straight to a phase
+      if (!H.active) start();
+      if (phase === 'cannons'){ H.sensHP = 0; toCannons(); H.midPending = false; }
+      if (phase === 'vent'){ H.sensHP = 0; H.phase = 'cannons'; H.midPending = false; arms.forEach(a => a.alive && destroyArm(a)); }
+      if (phase === 'pinned'){ if (H.phase !== 'vent') this._force('vent'); pin(vents[0]); }
+    } };
+})();
+
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, sToast, ENDING_TEXT };
 
 /* ============================================================
    Main loop
@@ -4327,6 +5469,7 @@ function loop(){
     if (G.time - (G.musicT || 0) > .5){
       G.musicT = G.time;
       MusicSys.setMode(
+        Boss && Boss.fighting() ? 'alarm' :
         CH.stealth ? (G.detect > 55 ? 'combat' : (G.alarm && !G.planted ? 'alarm' : 'calm')) :
         G.alarm && !G.planted ? 'alarm' :
         drones.some(d => d.alive && d.state === 'attack') ? 'combat' : 'calm');
@@ -4337,6 +5480,7 @@ function loop(){
     updateRadio(dt);
     if (!CH.stealth) updateDrones(dt);
   }
+  if (Boss && G.mode !== 'title' && G.mode !== 'end') Boss.update(dt, G.mode !== 'play');
   // quality governor (disabled during scripted capture)
   if (G.mode === 'play' && !(window.__LATM && window.__LATM.capture)) governor(nowT);
   updateFX(dt);
