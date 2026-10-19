@@ -71,6 +71,44 @@ made permanent, and you go in unarmed:
   leave it hollow, give the finale **2 endings**, for **14 endings**
   total across the tree.
 
+## Book One: Chapters Four to Six and the final battle
+
+Either Counting House ending now continues into three chapters adapted
+from *Dystopia* Book One (chapters 2 to 14). Each chapter carries your
+earlier Book choices forward (saved in `latm_book`).
+
+| Chapter | Book chapters | Rules | Choices | Endings |
+|---|---|---|---|---|
+| **Four: The Conduits** (`#ch_conduits`) | 2 to 5 | Stealth, unarmed, no comms. Through the maintenance conduits under Omega-7 to the six-way junction | Volunteer for the infiltration, Elena's used adapter, go deeper or key the one-shot transmitter | THE PULSE, ONE TRANSMISSION |
+| **Five: The Harvest** (`#ch_harvest`) | 6 to 7 | Combat. Catwalks over the suspension cylinders, download the protocols while OMEGA-7 studies you | Burn the chamber or walk past Angela M., answer the facility's intelligence, split from the convoy or turn back | THE BASE IS GONE, THE SMOKE COLUMN |
+| **Six: Fire and Steel** (`#ch_steel`) | 8 to 14 | Combat north through the pass, then the **final battle** in the laboratory yard | Kara's kill package, her offer of two more years, the one conditional, the offer of rest, and the last question about which layer is real | THE LONG WAR, NO SEED, REST (losses with a retry), GAME OVER, THE COUNT |
+
+**The hunter.** A twenty foot machine modeled on the Dystopia Shorts
+design: scarred dark gunmetal, a hunched broad chest, a cluster of red
+sensors set low between the shoulders, and long arms ending in ribbed
+multi-barrel cannons with belt-fed under-mounts. It blows in the yard
+wall and fights in phases:
+
+1. **Sensor cluster.** Shoot the red optics. Armor elsewhere pings off.
+   Arm cannons fire big shots after a one second telegraph (sensors
+   flare white, the muzzle glows); belt bursts spray; get close and it
+   stomps (red ring telegraph, knockback).
+2. **Arm cannons.** The sensor shutters slam down. A timed choice: draw
+   its fire off Kara's barricade (cannons weakened) or stay in cover.
+   Destroy both cannons while crawler reinforcements arrive.
+3. **The vents.** Its armor seals. Lure it onto a glowing geothermal
+   grate and hold E (or VENT) at the valve. Steam locks its joints and
+   pins it for 16 seconds; miss and the tap needs 7 seconds to recover.
+4. **Pinned.** Run to Thomas's chair and hold E (or UPLOAD). Shooting
+   its sensors while it is pinned buys extra seconds. If it rises, vent
+   it again; upload progress is kept, even through death.
+
+Then the upload reaches the central layer, the book's ending plays out
+as story beats (the conditional, the dimming hunters, the offer of
+rest, Lagos, Vera, the converted hunter, and the simulation reveal),
+ending on the Book Two hook. Losing endings offer **TRY AGAIN: THE
+LABORATORY YARD**, which reloads straight into the boss fight.
+
 ## Choices change the game, visibly
 
 - **Help Reyes in Episode One and she is THERE**: a companion who runs
