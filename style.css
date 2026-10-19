@@ -183,9 +183,9 @@ body.cine #sbarTop,body.cine #sbarBot{height:9vh;}
   padding:10px 16px;opacity:0;transform:translateX(-12px);transition:all .45s;max-width:76vw;}
 #sToast.show{opacity:1;transform:translateX(0);}
 #sToast.ember{border-left-color:var(--red);}
+/* the speaker portrait is drawn into this box by the game renderer (see Cast in game.js) */
 #castStage{position:absolute;left:50%;bottom:calc(9vh + 168px);transform:translateX(-50%);
-  width:min(360px,64vw);height:202px;opacity:0;transition:opacity .35s;pointer-events:none;}
-#castStage canvas{width:100%!important;height:100%!important;}
+  width:min(440px,76vw);height:min(258px,30vh);pointer-events:none;}
 #endName{font-size:12px;letter-spacing:.34em;color:var(--brass-hot);margin-bottom:10px;}
 #endSummary{margin-top:16px;font-size:14px;color:var(--cream-dim);text-align:left;
   max-width:480px;line-height:1.55;font-family:"Cormorant Garamond",Georgia,serif;}
@@ -226,13 +226,15 @@ body.postfx #vig{display:none;}
 @media (max-width:600px){ #bossWrap{bottom:auto;top:56px;width:62vw;} #bossName{font-size:10px;} #bossSub{font-size:9px;letter-spacing:.18em;} }
 @media (max-width:600px){ body.bossOn #sToast{top:calc(9vh + 62px);} }
 
-/* Dystopia Shorts cinematics: fullscreen player + gallery */
-.cine{position:fixed;inset:0;z-index:90;background:#000;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center;}
-.cine.in{opacity:1;} .cine.out{opacity:0;pointer-events:none;}
-.cine video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;}
+/* Dystopia Shorts cinematics: fullscreen player + gallery.
+   Scoped to #cine: a bare .cine selector also matched body.cine (the
+   story letterbox class) and hid the whole page during dialogue. */
+#cine{position:fixed;inset:0;z-index:90;background:#000;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center;}
+#cine.in{opacity:1;} #cine.out{opacity:0;pointer-events:none;}
+#cine video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;}
 .cineTop{position:absolute;left:0;right:0;top:0;padding:calc(14px + env(safe-area-inset-top)) 18px 26px;
   background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,0));pointer-events:none;transition:opacity 1.2s 2.5s;}
-.cine.playing .cineTop{opacity:0;}
+#cine.playing .cineTop{opacity:0;}
 .cineKick{font-size:10px;letter-spacing:.42em;color:var(--brass-hot);}
 .cineTitle{font-size:12px;letter-spacing:.3em;color:var(--cream);margin-top:6px;}
 .cineBtns{position:absolute;right:calc(16px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));display:flex;gap:10px;}
@@ -244,7 +246,7 @@ body.postfx #vig{display:none;}
   background:rgba(7,7,11,.55);border:1px solid rgba(231,201,138,.6);color:var(--cream);font:inherit;font-size:11px;
   letter-spacing:.3em;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
 .cineTapIcon{font-size:34px;color:var(--brass-hot);letter-spacing:0;}
-.cine.blocked .cineTap{display:flex;}
+#cine.blocked .cineTap{display:flex;}
 .cineBar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(244,236,223,.12);}
 .cineBar i{display:block;height:100%;width:0;background:var(--brass-hot);}
 .cineGal{position:fixed;inset:0;z-index:85;background:radial-gradient(ellipse 80% 60% at 50% 30%, rgba(198,163,106,.10), transparent 60%), var(--bg);

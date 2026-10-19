@@ -190,6 +190,61 @@ time, and every shader (level, viewmodel, cinematic) is compiled while the
 title is showing, so ENTER and SKIP never hitch on first draw. The intro runs
 about 24 s (was about 57 s) and SKIP, a click or tap, or any key skips it at once.
 
+## Characters (humans.js)
+
+Everyone who speaks or stands in the world is a procedural human built at
+load time by `humans.js`, matched to the series bible:
+
+- **Marcus:** short dark hair, stubble, charcoal thermal shirt, canvas pants,
+  the cut at his right temple and the neural adapter disk on his belt.
+- **Kara:** green eyes, tight dark braid, dirt and war paint streaks, the thin
+  hooked scar at her left temple, torn olive field jacket over a gray shirt
+  with the sleeves rolled twice, two short lines on the inner left forearm.
+- **Thomas:** early sixties, close-cropped gray hair, gray stubble, weathered
+  face, worn dark field jacket.
+- **David Chen:** gray threading through a dark beard, brown canvas jacket,
+  right arm ending at the elbow with the sleeve folded and pinned with wire.
+- **Elena:** pale, dark hair in a low bun, small comms headset, a data pad
+  held together with hose clamps.
+- **Vera:** dark skin, short silver hair, pale gray high-collared clothes.
+- **Reyes:** olive jacket, red scarf, ponytail.
+- **Omega-7, Ledger, the Hunter:** graphite machine bodies with faceless
+  heads and glowing optical sensors.
+
+**How they are built.** One skinned mesh per body (vertex colours, a
+17-bone skeleton, a single draw call), plus a head with a painted face
+texture: skin variation, lips, brows, stubble or beard, scars and paint.
+The head has a real mouth seam, so the jaw opens; eyes with irises, blinking
+lids and small saccades; 3D brows that move with expressions (neutral,
+stern, grim, worried, warm). While a line shows, the speaker talks: jaw
+syllables with natural pauses, head nods and tilts, brow lifts. At rest
+everyone breathes and shifts weight.
+
+**Speaker portrait.** The current speaker is lit as a bust (key, fill and a
+rim light in the chapter's machine colour) behind the dialogue. It is drawn
+by the main renderer into a small offscreen target only while someone is
+speaking. There is no second WebGL context and no cost when nobody talks.
+
+**Suspension tubes.** Every tube holds a suspended sleeper in a thin gray
+garment, eyes closed, drifting slowly with floating hair, wired to the cap
+by cables, in amber fluid with rising bubbles and a name plate (Angela M.
+lit amber). All tubes in a hall share a handful of draw calls: merged
+hardware, one glass mesh, one fluid shader mesh, one GPU-animated bubble
+cloud, one name plate atlas. Sleepers beyond 26 m are hidden and only near
+ones animate their limbs.
+
+| Tier | Speaker portrait | People in the world | Tube sleepers |
+|------|------------------|---------------------|---------------|
+| low  | medium detail head (512 px face) | low detail: painted eyes, 256 px face | low detail, 9 bubbles per tube |
+| med  | full detail head (1024 px face) | low detail | low detail, 16 bubbles |
+| high | full detail, 4x MSAA | medium detail: modelled eyes, lids, brows, shadows | medium detail, 26 bubbles |
+
+**Credits and licences.** The characters use no third-party models,
+textures or animations. Geometry, face paint, hair and motion are generated
+in code in `humans.js`, which is part of this project and carries no
+separate licence terms. (The older `people.js` and `models/pod.glb` remain in
+the repo but are no longer loaded.)
+
 ## Play
 
 Single file, no build step. Serve `index.html` from anywhere
