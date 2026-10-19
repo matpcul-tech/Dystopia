@@ -1,0 +1,11 @@
+{
+  "about": "Dystopia Shorts episodes played as in-game cinematics. Episode N adapts Book One chapter N. To add one: drop cinematics/epNN.mp4 (H.264 720x1280, AAC, faststart, no end card) and epNN_poster.jpg, then add an entry. 'chapter' is the game chapter id that covers that book chapter (ep1: 1, ch_conduits: 2 to 5, ch_harvest: 6 to 7, ch_steel: 8 to 14). 'at' is when it plays: start, door1, door2, door3, core.",
+  "episodes": [
+    { "id": "ep01", "number": 1, "bookChapter": 1, "title": "Twenty Feet of Machine", "chapter": "ep1", "at": "start",
+      "src": "cinematics/ep01.mp4", "poster": "cinematics/ep01_poster.jpg",
+      "blurb": "He wakes with no memory. A twenty foot machine finds him." },
+    { "id": "ep02", "number": 2, "bookChapter": 2, "title": "Forty-Three Left", "chapter": "ch_conduits", "at": "start",
+      "src": "cinematics/ep02.mp4", "poster": "cinematics/ep02_poster.jpg",
+      "blurb": "Forty-three people under the ruins, and a memory that is not his own." }
+  ]
+}

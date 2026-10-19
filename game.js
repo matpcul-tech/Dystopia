@@ -3364,9 +3364,9 @@ function updateDoors(dt){
         dr.open = true;
         dr.lock.material.color.setHex(0xe7c98a);
         AudioSys.doorOpen();
-        if (dr.index === 1){ radio('seg1_clear'); if (CB.door1) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door1); }, 1400); }
-        if (dr.index === 2){ radio('seg2_clear'); if (CB.door2) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door2); }, 1400); }
-        if (dr.index === 3) radio('seg3_clear');
+        if (dr.index === 1){ radio('seg1_clear'); cineThen('door1', () => { if (CB.door1) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door1); }, 1400); }); }
+        if (dr.index === 2){ radio('seg2_clear'); cineThen('door2', () => { if (CB.door2) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door2); }, 1400); }); }
+        if (dr.index === 3){ radio('seg3_clear'); cineThen('door3'); }
       }
     }
     if (dr.open && dr.anim < 1){
@@ -3391,7 +3391,7 @@ function updateDoors(dt){
     if (seg === 4){
       radio('core_enter');
       if (!CH.noAlarm) startAlarm();
-      if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 700);
+      cineThen('core', () => { if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 700); });
     }
     setObjectiveText();
   }
@@ -3731,7 +3731,7 @@ function startIntro(){
   AudioSys.resume();
   AudioSys.heartbeatStart();
   MusicSys.start();
-  if (CH.cinematic){
+  if (CH.cinematic && !G.skipEngineCine){
     // the book's opening scene plays first, then the hive awakening
     G.mode = 'cinematic';
     introStartT = performance.now();
@@ -4766,8 +4766,32 @@ const Cast = (() => {
    ============================================================ */
 el.startBtn.addEventListener('click', () => {
   AudioSys.init(); AudioSys.resume();
+  // a Dystopia Shorts episode mapped to this chapter plays first (once per session)
+  const ep = window.WakingCinema && WakingCinema.auto(CH.id, 'start');
+  if (ep){
+    el.start.style.display = 'none';
+    G.mode = 'cinema';
+    WakingCinema.playAuto(ep, () => { G.skipEngineCine = true; startIntro(); });
+    return;
+  }
   startIntro();
 });
+{
+  const gb = document.getElementById('cineGalBtn');
+  if (gb){
+    if (!window.WakingCinema) gb.remove();
+    else gb.addEventListener('click', e => { e.stopPropagation(); WakingCinema.gallery(); });
+  }
+}
+// in-chapter cinematic triggers (door1, door2, door3, core) from episodes.json
+function cineThen(at, fn){
+  const ep = window.WakingCinema && WakingCinema.auto(CH.id, at);
+  if (!ep || G.mode !== 'play'){ if (fn) fn(); return; }
+  G.mode = 'cinema';
+  resetInputs();
+  if (document.pointerLockElement) document.exitPointerLock();
+  WakingCinema.playAuto(ep, () => { G.mode = 'play'; if (fn) fn(); });
+}
 el.replay.addEventListener('click', () => location.reload());
 
 document.addEventListener('visibilitychange', () => {
@@ -5484,7 +5508,7 @@ function loop(){
   // quality governor (disabled during scripted capture)
   if (G.mode === 'play' && !(window.__LATM && window.__LATM.capture)) governor(nowT);
   updateFX(dt);
-  if (G.mode === 'title' || G.mode === 'end') return;   // opaque screens cover the level
+  if (G.mode === 'title' || G.mode === 'end' || G.mode === 'cinema') return;   // opaque screens cover the level
   renderFrame(scene, camera);
 }
 loop();

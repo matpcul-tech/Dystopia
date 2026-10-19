@@ -225,3 +225,44 @@ body.postfx #vig{display:none;}
 #bossSub{font-size:10px;letter-spacing:.26em;color:var(--cream);margin-top:5px;opacity:.85;}
 @media (max-width:600px){ #bossWrap{bottom:auto;top:56px;width:62vw;} #bossName{font-size:10px;} #bossSub{font-size:9px;letter-spacing:.18em;} }
 @media (max-width:600px){ body.bossOn #sToast{top:calc(9vh + 62px);} }
+
+/* Dystopia Shorts cinematics: fullscreen player + gallery */
+.cine{position:fixed;inset:0;z-index:90;background:#000;opacity:0;transition:opacity .3s;display:flex;align-items:center;justify-content:center;}
+.cine.in{opacity:1;} .cine.out{opacity:0;pointer-events:none;}
+.cine video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;}
+.cineTop{position:absolute;left:0;right:0;top:0;padding:calc(14px + env(safe-area-inset-top)) 18px 26px;
+  background:linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,0));pointer-events:none;transition:opacity 1.2s 2.5s;}
+.cine.playing .cineTop{opacity:0;}
+.cineKick{font-size:10px;letter-spacing:.42em;color:var(--brass-hot);}
+.cineTitle{font-size:12px;letter-spacing:.3em;color:var(--cream);margin-top:6px;}
+.cineBtns{position:absolute;right:calc(16px + env(safe-area-inset-right));bottom:calc(22px + env(safe-area-inset-bottom));display:flex;gap:10px;}
+.cineBtn{font:inherit;font-size:11px;letter-spacing:.24em;color:var(--cream);background:rgba(7,7,11,.6);
+  border:1px solid rgba(244,236,223,.5);padding:11px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.cineBtn:hover{background:rgba(244,236,223,.12);}
+.cineMute.off{color:var(--cream-dim);border-color:rgba(244,236,223,.25);}
+.cineTap{display:none;position:absolute;inset:0;margin:auto;width:190px;height:190px;border-radius:50%;
+  background:rgba(7,7,11,.55);border:1px solid rgba(231,201,138,.6);color:var(--cream);font:inherit;font-size:11px;
+  letter-spacing:.3em;cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+.cineTapIcon{font-size:34px;color:var(--brass-hot);letter-spacing:0;}
+.cine.blocked .cineTap{display:flex;}
+.cineBar{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(244,236,223,.12);}
+.cineBar i{display:block;height:100%;width:0;background:var(--brass-hot);}
+.cineGal{position:fixed;inset:0;z-index:85;background:radial-gradient(ellipse 80% 60% at 50% 30%, rgba(198,163,106,.10), transparent 60%), var(--bg);
+  overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:calc(26px + env(safe-area-inset-top)) 16px 30px;text-align:center;}
+.cgKick{font-size:10px;letter-spacing:.42em;color:var(--brass-hot);}
+.cgTitle{font-family:"Cormorant Garamond",Georgia,serif;font-size:40px;letter-spacing:.12em;color:var(--cream);margin-top:6px;}
+.cgSub{font-size:10px;letter-spacing:.2em;color:var(--cream-dim);margin-top:8px;max-width:520px;line-height:1.7;}
+.cgGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:18px;width:min(920px,100%);margin-top:24px;}
+.cgCard{font:inherit;color:inherit;background:rgba(7,7,11,.55);border:1px solid rgba(244,236,223,.22);padding:0;cursor:pointer;text-align:left;}
+.cgCard:hover{border-color:var(--brass-hot);}
+.cgCard.locked{cursor:default;opacity:.75;}
+.cgPoster{position:relative;aspect-ratio:9/16;background:#050505;overflow:hidden;}
+.cgImg{position:absolute;inset:0;background:center/cover no-repeat;}
+.cgCard.locked .cgImg{filter:blur(6px) grayscale(.7) brightness(.45);transform:scale(1.08);}
+.cgLock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;letter-spacing:.4em;color:var(--cream);}
+.cgMeta{padding:10px 12px 12px;}
+.cgEp{font-size:10px;letter-spacing:.3em;color:var(--brass-hot);}
+.cgName{font-size:13px;letter-spacing:.18em;color:var(--cream);margin-top:5px;}
+.cgBlurb{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:14px;color:var(--cream-dim);margin-top:6px;line-height:1.35;}
+.cgClose{margin-top:26px;}
+@media (max-width:600px){ .cgGrid{grid-template-columns:repeat(2,1fr);gap:12px;} .cgTitle{font-size:32px;} .cineBtn{padding:12px 14px;font-size:10px;} }
