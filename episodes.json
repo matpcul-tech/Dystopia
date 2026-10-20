@@ -6,6 +6,9 @@
       "blurb": "He wakes with no memory. A twenty foot machine finds him." },
     { "id": "ep02", "number": 2, "bookChapter": 2, "title": "Forty-Three Left", "chapter": "ch_conduits", "at": "start",
       "src": "cinematics/ep02.mp4", "poster": "cinematics/ep02_poster.jpg",
-      "blurb": "Forty-three people under the ruins, and a memory that is not his own." }
+      "blurb": "Forty-three people under the ruins, and a memory that is not his own." },
+    { "id": "ep03", "number": 3, "bookChapter": 3, "title": "They Are Stealing Our Minds", "chapter": "ch_conduits", "at": "door1",
+      "src": "cinematics/ep03.mp4", "poster": "cinematics/ep03_poster.jpg",
+      "blurb": "Fewer than fifty million left, and Marcus can read the machines' code." }
   ]
 }
