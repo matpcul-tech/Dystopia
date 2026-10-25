@@ -131,7 +131,7 @@ try {
 
   await toChoice(desk.page);
   const opener = desk.page._opener || {};
-  check('ep1 opener is a short cue', opener.mode === 'beatclip' && opener.id === 'ep1_wake' && opener.max <= 20 && opener.max >= 8 && /rsa_ep01_720p/.test(opener.src), JSON.stringify(opener));
+  check('ep1 opener is a short cue', opener.mode === 'beatclip' && opener.id === 'ep1_wake' && opener.max <= 20 && opener.max >= 8 && /game_ep1_train/.test(opener.src) && !/rsa_ep01_720p/.test(opener.src), JSON.stringify(opener));
   const layout = await desk.page.evaluate(() => {
     const dlg = document.getElementById('storyDlg').getBoundingClientRect();
     const choice = document.getElementById('sChoice').getBoundingClientRect();

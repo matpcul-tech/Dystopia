@@ -16,7 +16,7 @@ All seven Book One Shorts are linked under `media/shorts/`. Each file is about a
 
 | Short | File | Where it plays in a level |
 |---|---|---|
-| 1. Twenty Feet of Machine | media/shorts/rsa_ep01_720p.mp4 | ep1 wake, 0 to 16s. ep1 street, 16 to 32s. The book close stays in the gallery. |
+| 1. Twenty Feet of Machine | media/shorts/rsa_ep01_720p.mp4 | Gallery only. Episode One levels use the game shorts below, not this file. |
 | 2. Forty-Three Left | media/shorts/rsa_ep02_720p.mp4 | Conduits bunker opener only, 0 to 18s. This is not the hive path. |
 | 3. They Are Stealing Our Minds | media/shorts/rsa_ep03_720p.mp4 | Gallery only. The cards are the Omega-7 briefing (forty kilometers northwest, systematically depleted, a harvesting facility). That opener is already Forty-Three Left, then the Thomas choice. No second video. |
 | 4. The Afternoons | media/shorts/rsa_ep04_720p.mp4 | Tower gallery only, 16 to 32s, blue to amber. This is not the convoy path. |
@@ -26,12 +26,25 @@ All seven Book One Shorts are linked under `media/shorts/`. Each file is about a
 
 Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` checks the caps.
 
-## Episode One, rsa1, ep1
+## Episode One, game shorts, ep1
 
-| Clip | When | Cap | Cue | What the player hits |
+Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay on the archive row. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control (the lines still play on the train open). The door off the train is a timed story choice, not a clip. The three game files are in the repo. Cue length matches each file.
+
+| Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| ep1_wake | open | 16s | 0 to 16 | Twenty Feet of Machine, opening window. Objective: FIND THE DEAD MAN'S RIFLE. Not the whole 58s file. |
-| ep1_street | room 1 | 16s | 16 to 32 | CROSS THE RUINED STREET. Next window of the same Short. The book close is gallery only. |
+| ep1_wake | open | 12s | media/shorts/game/game_ep1_train.mp4 (cue 0 to 12) | Wake in the abandoned rail car. Then CHOOSE A WAY OFF THE TRAIN. |
+| ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
+| ep1_depot | room 5 | 10s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 10) | PULL THE LEDGER AT THE DEPOT SCREEN. |
+
+Posters, same folder:
+
+- media/shorts/game/game_ep1_train.mp4 and media/shorts/game/game_ep1_train.jpg
+- media/shorts/game/game_ep1_street.mp4 and media/shorts/game/game_ep1_street.jpg
+- media/shorts/game/game_ep1_depot.mp4 and media/shorts/game/game_ep1_depot.jpg
+
+No game_ep1_door clip. The vestibule and the side hatch are the story choice `Two ways off the train`. Kicking the hatch sets `hatchScar`.
+
+Twenty Feet of Machine stays in the gallery as PLAY FULL SHORT. It is not an Episode One level opener.
 
 ## Inside the Hive, rsa2, ch_taken
 

@@ -475,9 +475,10 @@ function buildArchive(host){
     const block = el('div', 'epBlock');
     const head = el('div', 'epHead', 'EP ' + ep.n + '  ' + ep.title + (ep.shortTitle ? '  ·  ' + ep.shortTitle : '') + (ep.status === 'hook' ? '  (HOOK)' : ''));
     block.appendChild(head);
-    const full = el('button', 'btn small', ep.url ? 'PLAY FULL SHORT' : 'FULL SHORT NOT LINKED');
+    const pending = ep.status === 'pending';
+    const full = el('button', 'btn small', pending ? 'GAME SHORT PENDING' : (ep.url ? 'PLAY FULL SHORT' : 'FULL SHORT NOT LINKED'));
     full.type = 'button';
-    full.disabled = !ep.url;
+    full.disabled = pending || !ep.url;
     full.addEventListener('click', () => { if (ep.url && api.playFull) api.playFull(ep); });
     block.appendChild(full);
     (api.beats || []).filter(b => b.episode === ep.id).forEach(b => {
