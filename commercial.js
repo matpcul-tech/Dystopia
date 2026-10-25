@@ -461,7 +461,7 @@ function buildArchive(host){
   host.innerHTML = '';
   const box = el('div', 'sheetBody');
   box.appendChild(el('h3', 'sheetTitle', 'RED SKY ARCHIVE'));
-  box.appendChild(el('p', 'fine', 'Full episodes stay here. Inside a chapter you only get a short clip, 8 to 20 seconds, tied to a room, then you play. Twenty Feet of Machine, Forty-Three Left, and The Afternoons are linked. The other shorts are not in this build yet. Episodes 8 and 9 stay hooks.'));
+  box.appendChild(el('p', 'fine', 'Full episodes stay here. Inside a chapter you only get a short clip, 8 to 20 seconds, tied to a room, then you play. All seven Book One shorts are linked. Episode 9, Fire and Steel, stays a hook.'));
   const montage = el('button', 'btn', 'MONTAGE OF OPENERS');
   montage.type = 'button';
   montage.addEventListener('click', () => {

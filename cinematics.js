@@ -5,18 +5,20 @@
 
 // url is a local file under media/shorts. PLAY FULL SHORT uses the whole file.
 // A level never does. It only plays the cue on the beat that names this id.
-// Ep 3, 5, 6, and 7 are not in this build. Ep 8 and 9 stay hooks.
+// Episode 9, Fire and Steel, stays a hook. The Listening Dark is not Episode 7.
 export const ARCHIVE = [
   { id:'rsa1', n:1, title:'EPISODE ONE: THE WAKING', shortTitle:'TWENTY FEET OF MACHINE', chapter:'ep1', url:'media/shorts/rsa_ep01_720p.mp4', status:'ready' },
   { id:'short02', n:2, title:'FORTY-THREE LEFT', chapter:'ch_conduits', url:'media/shorts/rsa_ep02_720p.mp4', status:'ready' },
+  { id:'short03', n:3, title:'THEY ARE STEALING OUR MINDS', chapter:'ch_conduits', url:'media/shorts/rsa_ep03_720p.mp4', status:'ready' },
   { id:'short04', n:4, title:'THE AFTERNOONS', chapter:'ch_harvest', url:'media/shorts/rsa_ep04_720p.mp4', status:'ready' },
+  { id:'short07', n:7, title:'THE BASE IS GONE', chapter:'ch_harvest', url:'media/shorts/rsa_ep07_720p.mp4', status:'ready' },
   { id:'rsa2', n:2, title:'CHAPTER TWO: INSIDE THE HIVE', chapter:'ch_taken', url:'', status:'ready' },
   { id:'rsa3', n:3, title:'CHAPTER TWO: THE LISTENING DARK', chapter:'ch_ghost', url:'', status:'ready' },
   { id:'rsa4', n:4, title:'CHAPTER TWO: THE CONVOY', chapter:'ch_together', url:'', status:'ready' },
   { id:'rsa5', n:5, title:'CHAPTER TWO: THE LONG ROAD', chapter:'ch_lone', url:'', status:'ready' },
   { id:'rsa6', n:6, title:'CHAPTER THREE: THE COUNTING HOUSE', chapter:'ch_counting', url:'', status:'ready' },
-  { id:'rsa7', n:7, title:'CHAPTER FOUR: THE CONDUITS', chapter:'ch_conduits', url:'', status:'ready' },
-  { id:'rsa8', n:8, title:'CHAPTER FIVE: THE HARVEST', chapter:'ch_harvest', url:'', status:'hook' },
+  { id:'rsa7', n:7, title:'CHAPTER FOUR: THE CONDUITS', shortTitle:'EIGHT HUNDRED METERS', chapter:'ch_conduits', url:'media/shorts/rsa_ep05_720p.mp4', status:'ready' },
+  { id:'rsa8', n:8, title:'CHAPTER FIVE: THE HARVEST', shortTitle:'BATCH', chapter:'ch_harvest', url:'media/shorts/rsa_ep06_720p.mp4', status:'ready' },
   { id:'rsa9', n:9, title:'CHAPTER SIX: FIRE AND STEEL', chapter:'ch_steel', url:'', status:'hook' },
 ];
 
@@ -53,18 +55,19 @@ export const BEATS = [
   { id:'count_entry', episode:'rsa6', chapter:'ch_counting', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
   { id:'count_hall', episode:'rsa6', chapter:'ch_counting', at:'room', room:1, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:0' },
 
-  // Conduits. Forty-Three Left is the bunker count, not the whole chapter.
-  // Eight Hundred Meters is not linked yet, so the later rooms stay text.
+  // Conduits. Forty-Three Left stays the bunker opener.
+  // Eight Hundred Meters is the later rooms. Windows come from that file's cards.
+  // The sweep room has no card in the file, so it stays text.
   { id:'conduits_brief', episode:'short02', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:18, cue:[0, 18], labelFrom:'advance' },
-  { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[18, 28], labelFrom:'segs:0' },
-  { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:12, cue:[28, 40], labelFrom:'segs:1' },
-  { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, intro:[4, 5], max:14, cue:[40, 54], labelFrom:'segs:2' },
+  { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, textOnly:true, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[0, 10], labelFrom:'segs:0' },
+  { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:12, cue:[20, 32], labelFrom:'segs:1' },
+  { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, radio:[{ key:'seg3_enter', idx:[0] }], max:8, cue:[4, 12], labelFrom:'segs:2' },
 
-  // Harvest. The Afternoons is the false window, not the Batch short.
-  // Batch is not linked yet, so the depletion floor stays text.
-  { id:'harvest_hatch', episode:'short04', chapter:'ch_harvest', at:'open', intro:[1], max:16, cue:[0, 16], labelFrom:'advance' },
+  // Harvest. Batch is the core. The Afternoons stays the tower, blue to amber.
+  // The Angela choice and the core voice stay door stories, not extra clips.
+  { id:'harvest_hatch', episode:'rsa8', chapter:'ch_harvest', at:'open', intro:[1], max:8, cue:[0, 8], labelFrom:'advance' },
   { id:'harvest_gallery', episode:'short04', chapter:'ch_harvest', at:'room', room:2, intro:[2], max:16, cue:[16, 32], labelFrom:'segs:1' },
-  { id:'harvest_floor', episode:'rsa8', chapter:'ch_harvest', at:'room', room:3, intro:[4], max:10, cue:[26, 36], labelFrom:'segs:2' },
+  { id:'harvest_floor', episode:'rsa8', chapter:'ch_harvest', at:'room', room:3, intro:[4], max:8, cue:[8, 16], labelFrom:'segs:2' },
 
   // Fire and Steel hook. Ridge opener, pass, then the yard before the hunter.
   { id:'steel_ridge', episode:'rsa9', chapter:'ch_steel', at:'open', intro:[1, 4], max:16, cue:[0, 16], labelFrom:'advance' },

@@ -103,7 +103,16 @@ try {
   const archiveText = await desk.page.$eval('#archiveSheet', n => n.innerText);
   check('archive lists beat rows', /ROOM|OPEN/.test(archiveText) && /8 to 20/.test(archiveText));
   const linked = (archiveText.match(/PLAY FULL SHORT/g) || []).length;
-  check('three shorts linked', linked >= 3 && /TWENTY FEET OF MACHINE/.test(archiveText) && /FORTY-THREE LEFT/.test(archiveText) && /THE AFTERNOONS/.test(archiveText), 'linked=' + linked);
+  const titles = ['TWENTY FEET OF MACHINE', 'FORTY-THREE LEFT', 'THEY ARE STEALING OUR MINDS', 'THE AFTERNOONS', 'EIGHT HUNDRED METERS', 'BATCH', 'THE BASE IS GONE'];
+  check('seven shorts linked', linked >= 7 && titles.every(t => archiveText.includes(t)), 'linked=' + linked + ' missing=' + titles.filter(t => !archiveText.includes(t)).join(','));
+  for (const [name, needle] of [['desktop-archive-minds', 'THEY ARE STEALING OUR MINDS'], ['desktop-archive-meters', 'EIGHT HUNDRED METERS'], ['desktop-archive-base', 'THE BASE IS GONE']]){
+    await desk.page.evaluate((needle) => {
+      const hit = [...document.querySelectorAll('#archiveSheet .epHead')].find(n => n.textContent.includes(needle));
+      if (hit) hit.scrollIntoView({ block: 'center' });
+    }, needle);
+    await new Promise(r => setTimeout(r, 200));
+    await shot(desk.page, name);
+  }
   check('full short not linked', /FULL SHORT NOT LINKED/.test(archiveText));
   await desk.page.evaluate(() => {
     const b = [...document.querySelectorAll('#archiveSheet button')].find(n => n.textContent === 'CLOSE');

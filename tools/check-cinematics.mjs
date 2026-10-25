@@ -30,7 +30,7 @@ for (const id of chapters){
 for (const ep of ARCHIVE){
   if (ep.url && !existsSync(new URL('../' + ep.url, import.meta.url))) fail(ep.id + ' missing ' + ep.url);
   if (!ep.url && ep.status === 'ready' && ep.id.indexOf('short') === 0) fail(ep.id + ' short has no file');
-  const cues = BEATS.filter(b => b.episode === ep.id).map(b => b.cue);
+  const cues = BEATS.filter(b => b.episode === ep.id && !b.textOnly).map(b => b.cue);
   cues.sort((a, b) => a[0] - b[0]);
   for (let i = 1; i < cues.length; i++){
     if (cues[i][0] < cues[i - 1][1]) fail(ep.id + ' cues overlap');

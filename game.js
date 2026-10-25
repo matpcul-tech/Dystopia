@@ -3842,7 +3842,7 @@ function showKicker(clip){
 function cueVideo(clip){
   const ep = episodeOf(clip.episode);
   const v = ensureVideo();
-  if (!ep || !ep.url || !clip.cue){ v.style.display = 'none'; return; }
+  if (!ep || !ep.url || !clip.cue || clip.textOnly){ v.style.display = 'none'; return; }
   const dur = Math.min(20, clip.max || 20, clip.cue[1] - clip.cue[0]);
   v.style.display = 'block';
   v.src = ep.url;
@@ -3884,7 +3884,7 @@ function playClip(clip, opts){
     G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
   }
   const epForClip = episodeOf(clip.episode);
-  const video = !!(epForClip && epForClip.url && clip.cue);
+  const video = !!(epForClip && epForClip.url && clip.cue && !clip.textOnly);
   beatState = { lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video };
   cueVideo(clip);
   if (window.__LATM){
