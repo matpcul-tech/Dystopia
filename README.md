@@ -181,13 +181,18 @@ the GRAPHICS button on the title screen (AUTO, LOW, MED, HIGH).
 Nothing heavy sits on the path to gameplay: post-processing modules load only
 for tiers that use them, the GLB models and the Book One cover load in idle
 time, and every shader (level, viewmodel, cinematic) is compiled while the
-title is showing, so ENTER and SKIP never hitch on first draw. The intro runs
-about 24 s (was about 57 s) and SKIP, a click or tap, or any key skips it at once.
+title is showing, so ENTER and SKIP never hitch on first draw.
+
+Chapter openers are short beat clips, 8 to 20 seconds, then you play.
+A full Red Sky Archive episode is never dumped at the start of a level.
+The title screen ARCHIVE can list a full short or a montage of openers.
+See `CINEMATIC_PLAN.md` for the room by room map.
 
 ## Play
 
-Single file, no build step. Serve `index.html` from anywhere
-(GitHub Pages works as-is). Three.js loads from the jsdelivr CDN.
+No build step. Serve the folder (GitHub Pages works once Matthew says to
+publish). Three.js r160 and the title fonts are vendored under `vendor/`,
+so a chapter loads with no CDN.
 
 - **Desktop:** WASD move · mouse look (click to lock) · click/Space fire
   · E interacts · during story beats: Space advances, 1 to 3 picks.

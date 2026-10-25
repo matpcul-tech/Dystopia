@@ -6,11 +6,7 @@
 <title>DYSTOPIA: The Waking</title>
 <link rel="icon" href="data:,">
 <meta name="description" content="The Waking, a playable episode of Dystopia: Life After The Machines.">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500;1,600&family=Outfit:wght@300;400;500&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -74,6 +70,7 @@
     <div id="startHint"></div>
   </div>
   <div class="screen" id="intro">
+    <div id="introKicker"></div>
     <div id="introText"></div>
     <button id="skipBtn" type="button">SKIP</button>
   </div>
@@ -102,8 +99,8 @@
 <script src="people.js"></script>
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three": "./vendor/three/build/three.module.js",
+  "three/addons/": "./vendor/three/examples/jsm/"
 } }
 </script>
 <script type="module" src="game.js"></script>
