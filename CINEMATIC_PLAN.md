@@ -28,15 +28,15 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 
 ## Episode One, game shorts, ep1
 
-Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay on the archive row. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control (the lines still play on the train open). The door off the train is a timed story choice, not a clip.
+Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay on the archive row. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control (the lines still play on the train open). The door off the train is a timed story choice, not a clip. The three game files are in the repo. Cue length matches each file.
 
 | Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
 | ep1_wake | open | 12s | media/shorts/game/game_ep1_train.mp4 (cue 0 to 12) | Wake in the abandoned rail car. Then CHOOSE A WAY OFF THE TRAIN. |
-| ep1_street | room 2 | 16s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 16) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
-| ep1_depot | room 5 | 12s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 12) | PULL THE LEDGER AT THE DEPOT SCREEN. |
+| ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
+| ep1_depot | room 5 | 10s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 10) | PULL THE LEDGER AT THE DEPOT SCREEN. |
 
-Drop these files when the shots exist. Posters, same folder:
+Posters, same folder:
 
 - media/shorts/game/game_ep1_train.mp4 and media/shorts/game/game_ep1_train.jpg
 - media/shorts/game/game_ep1_street.mp4 and media/shorts/game/game_ep1_street.jpg

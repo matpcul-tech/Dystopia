@@ -21,10 +21,10 @@ export const ARCHIVE = [
   { id:'rsa8', n:8, title:'CHAPTER FIVE: THE HARVEST', shortTitle:'BATCH', chapter:'ch_harvest', url:'media/shorts/rsa_ep06_720p.mp4', status:'ready' },
   { id:'rsa9', n:9, title:'CHAPTER SIX: FIRE AND STEEL', chapter:'ch_steel', url:'', status:'hook' },
   // Episode One level clips. Book RSA files stay in the gallery.
-  // status pending: the mp4 is not in the repo yet. A missing file skips to control.
-  { id:'game_ep1_train', n:'G1', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'pending', game:true },
-  { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'pending', game:true },
-  { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'pending', game:true },
+  // A missing file still skips to control.
+  { id:'game_ep1_train', n:'G1', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
+  { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true },
+  { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'ready', game:true },
 ];
 
 // at: 'open' plays once when the chapter starts, then gameplay.
@@ -35,8 +35,8 @@ export const BEATS = [
   // Episode One. Game shorts, not the book file. Each file is its own cue.
   // The door is a story choice, not a clip. Missing mp4s fall back to control.
   { id:'ep1_wake', episode:'game_ep1_train', chapter:'ep1', at:'open', intro:[0, 1], max:12, cue:[0, 12], labelFrom:'train' },
-  { id:'ep1_street', episode:'game_ep1_street', chapter:'ep1', at:'room', room:2, max:16, cue:[0, 16], labelFrom:'segs:0' },
-  { id:'ep1_depot', episode:'game_ep1_depot', chapter:'ep1', at:'room', room:5, max:12, cue:[0, 12], labelFrom:'final' },
+  { id:'ep1_street', episode:'game_ep1_street', chapter:'ep1', at:'room', room:2, max:10, cue:[0, 10], labelFrom:'segs:0' },
+  { id:'ep1_depot', episode:'game_ep1_depot', chapter:'ep1', at:'room', room:5, max:10, cue:[0, 10], labelFrom:'final' },
 
   // Inside the Hive
   { id:'taken_pod', episode:'rsa2', chapter:'ch_taken', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
