@@ -179,9 +179,10 @@ try {
   await conduits.page.waitForFunction(() => window.__LATM.clipLog && window.__LATM.clipLog.length, { timeout: 15000 });
   const clip = await conduits.page.evaluate(() => {
     const c = window.__LATM.clipLog[0];
-    return { id: c.id, lines: c.lines, max: c.max, mode: window.__LATM.G.mode };
+    const v = document.getElementById('beatVideo');
+    return { id: c.id, lines: c.lines, max: c.max, src: v ? (v.currentSrc || v.src || '') : '', mode: window.__LATM.G.mode };
   });
-  check('conduits opener is the briefing', clip.id === 'conduits_brief' && clip.lines === 3 && clip.max <= 20 && clip.max >= 8,
+  check('conduits opener is the river short', clip.id === 'conduits_brief' && clip.lines === 3 && clip.max <= 15 && clip.max >= 8 && /game_ch4_conduits_river/.test(clip.src) && !/rsa_/.test(clip.src),
     JSON.stringify(clip));
   check('conduits opener is a beat clip', clip.mode === 'beatclip', clip.mode);
   await shot(conduits.page, 'conduits-opener');

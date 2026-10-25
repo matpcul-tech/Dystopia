@@ -34,6 +34,10 @@ export const ARCHIVE = [
   { id:'game_ch2_hive_pods', n:'G7', title:'GAME SHORT: THE POD GALLERY', chapter:'ch_taken', url:'media/shorts/game/game_ch2_hive_pods.mp4', poster:'media/shorts/game/game_ch2_hive_pods.jpg', status:'ready', game:true },
   { id:'game_ch2_ghost_trunk', n:'G8', title:'GAME SHORT: THE TRUNK LINE', chapter:'ch_ghost', url:'media/shorts/game/game_ch2_ghost_trunk.mp4', poster:'media/shorts/game/game_ch2_ghost_trunk.jpg', status:'ready', game:true },
   { id:'game_ch3_counting_hall', n:'G9', title:'GAME SHORT: THE RECORDS HALL', chapter:'ch_counting', url:'media/shorts/game/game_ch3_counting_hall.mp4', poster:'media/shorts/game/game_ch3_counting_hall.jpg', status:'ready', game:true },
+  { id:'game_ch2_convoy_ridge', n:'G10', title:'GAME SHORT: THE RIDGE', chapter:'ch_together', url:'media/shorts/game/game_ch2_convoy_ridge.mp4', poster:'media/shorts/game/game_ch2_convoy_ridge.jpg', status:'ready', game:true },
+  { id:'game_ch4_conduits_river', n:'G11', title:'GAME SHORT: THE DRY RIVERBED', chapter:'ch_conduits', url:'media/shorts/game/game_ch4_conduits_river.mp4', poster:'media/shorts/game/game_ch4_conduits_river.jpg', status:'ready', game:true },
+  { id:'game_ch5_harvest_core', n:'G12', title:'GAME SHORT: THE CORE', chapter:'ch_harvest', url:'media/shorts/game/game_ch5_harvest_core.mp4', poster:'media/shorts/game/game_ch5_harvest_core.jpg', status:'ready', game:true },
+  { id:'game_ch6_steel_pass', n:'G13', title:'GAME SHORT: THE PASS', chapter:'ch_steel', url:'media/shorts/game/game_ch6_steel_pass.mp4', poster:'media/shorts/game/game_ch6_steel_pass.jpg', status:'ready', game:true },
 ];
 
 // at: 'open' plays once when the chapter starts, then gameplay.
@@ -57,8 +61,8 @@ export const BEATS = [
   { id:'ghost_well', episode:'game_ch2_ghost_trunk', chapter:'ch_ghost', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'ghost_cable', episode:'rsa3', chapter:'ch_ghost', at:'room', room:3, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:2' },
 
-  // The Convoy
-  { id:'convoy_ridge', episode:'rsa4', chapter:'ch_together', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
+  // The Convoy. The open is a game short. Later rooms stay lines.
+  { id:'convoy_ridge', episode:'game_ch2_convoy_ridge', chapter:'ch_together', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'convoy_check', episode:'rsa4', chapter:'ch_together', at:'room', room:2, intro:[3], max:10, cue:[14, 24], labelFrom:'segs:1' },
   { id:'convoy_yard', episode:'rsa4', chapter:'ch_together', at:'room', room:3, intro:[4], max:12, cue:[24, 36], labelFrom:'segs:2' },
 
@@ -72,22 +76,22 @@ export const BEATS = [
   { id:'count_entry', episode:'game_ch3_counting_hall', chapter:'ch_counting', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'count_hall', episode:'rsa6', chapter:'ch_counting', at:'room', room:1, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:0' },
 
-  // Conduits. Forty-Three Left stays the bunker opener.
+  // Conduits. The open is the dry riverbed game short, not Forty-Three Left.
   // Eight Hundred Meters is the later rooms. Windows come from that file's cards.
   // The sweep room has no card in the file, so it stays text.
-  { id:'conduits_brief', episode:'short02', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:18, cue:[0, 18], labelFrom:'advance' },
+  { id:'conduits_brief', episode:'game_ch4_conduits_river', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, textOnly:true, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[0, 10], labelFrom:'segs:0' },
   { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:12, cue:[20, 32], labelFrom:'segs:1' },
   { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, radio:[{ key:'seg3_enter', idx:[0] }], max:8, cue:[4, 12], labelFrom:'segs:2' },
 
-  // Harvest. Batch is the core. The Afternoons stays the tower, blue to amber.
+  // Harvest. The open is a game short. The tower stays The Afternoons.
   // The Angela choice and the core voice stay door stories, not extra clips.
-  { id:'harvest_hatch', episode:'rsa8', chapter:'ch_harvest', at:'open', intro:[1], max:8, cue:[0, 8], labelFrom:'advance' },
+  { id:'harvest_hatch', episode:'game_ch5_harvest_core', chapter:'ch_harvest', at:'open', intro:[1], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'harvest_gallery', episode:'short04', chapter:'ch_harvest', at:'room', room:2, intro:[2], max:16, cue:[16, 32], labelFrom:'segs:1' },
   { id:'harvest_floor', episode:'rsa8', chapter:'ch_harvest', at:'room', room:3, intro:[4], max:8, cue:[8, 16], labelFrom:'segs:2' },
 
-  // Fire and Steel hook. Ridge opener, pass, then the yard before the hunter.
-  { id:'steel_ridge', episode:'rsa9', chapter:'ch_steel', at:'open', intro:[1, 4], max:16, cue:[0, 16], labelFrom:'advance' },
+  // Fire and Steel. The open is the pass game short. Later rooms stay lines.
+  { id:'steel_ridge', episode:'game_ch6_steel_pass', chapter:'ch_steel', at:'open', intro:[1, 4], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'steel_pass', episode:'rsa9', chapter:'ch_steel', at:'room', room:1, intro:[2], max:12, cue:[16, 28], labelFrom:'segs:0' },
   { id:'steel_yard', episode:'rsa9', chapter:'ch_steel', at:'room', room:4, intro:[3], max:12, cue:[28, 40], labelFrom:'final' },
 ];
