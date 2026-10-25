@@ -3883,7 +3883,9 @@ function playClip(clip, opts){
     yawObj.position.set(0, .35, 0);
     G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
   }
-  beatState = { lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake };
+  const epForClip = episodeOf(clip.episode);
+  const video = !!(epForClip && epForClip.url && clip.cue);
+  beatState = { lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video };
   cueVideo(clip);
   if (window.__LATM){
     __LATM.clipLog = __LATM.clipLog || [];
@@ -3910,7 +3912,7 @@ function updateBeat(dt){
       s.i++; s.t = 0; s.shown = false;
     }
   } else if (s.phase === 'hold'){
-    const floor = Math.min(8, s.max);
+    const floor = s.video ? s.max : Math.min(8, s.max);
     if (s.elapsed >= floor){
       if (s.wake){ s.phase = 'rise'; s.t = 0; el.intro.style.background = 'transparent'; el.introText.style.display = 'none'; }
       else endClip(false);

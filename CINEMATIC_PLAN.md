@@ -12,7 +12,13 @@ Rules the engine enforces:
 5. Lines are indexes into intro text and radio lines that already exist. No new story prose.
 6. After each opener the player gets the controls back. Door stories still run as choices, not as a long video.
 
-No episode URL is filled in. Inventing links would point at the wrong films. Episodes 8 and 9 stay hooks until those full shorts exist.
+Three Shorts are linked under `media/shorts/`. Each file is about a minute, so PLAY FULL SHORT is the only control that runs the whole file. A level plays one cue window, 8 to 20 seconds, then returns control. Ep 3, Ep 5, Ep 6, and Ep 7 are not in this build. Episodes 8 and 9 stay hooks.
+
+| Short | File | Where it plays in a level |
+|---|---|---|
+| 1. Twenty Feet of Machine | media/shorts/rsa_ep01_720p.mp4 | ep1 wake, 0 to 16s. ep1 street, 16 to 32s. The book close stays in the gallery. |
+| 2. Forty-Three Left | media/shorts/rsa_ep02_720p.mp4 | Conduits bunker opener only, 0 to 18s. Later conduit rooms stay text until Eight Hundred Meters is linked. This is not the hive path. |
+| 4. The Afternoons | media/shorts/rsa_ep04_720p.mp4 | Harvest hatch, 0 to 16s. Tower gallery, 16 to 32s. The depletion floor stays text until Batch is linked. This is not the convoy path. |
 
 Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` checks the caps.
 
@@ -20,8 +26,8 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 
 | Clip | When | Cap | Cue | What the player hits |
 |---|---|---|---|---|
-| ep1_wake | open | 18s | 0 to 17 | In engine awakening. Objective: FIND THE DEAD MAN'S RIFLE. This replaces a second dump of the chapter intro. |
-| ep1_street | room 1 | 14s | 17 to 31 | CROSS THE RUINED STREET. Existing lines: gravel and cold, then Reyes, get up. |
+| ep1_wake | open | 16s | 0 to 16 | Twenty Feet of Machine, opening window. Objective: FIND THE DEAD MAN'S RIFLE. Not the whole 58s file. |
+| ep1_street | room 1 | 16s | 16 to 32 | CROSS THE RUINED STREET. Next window of the same Short. The book close is gallery only. |
 
 ## Inside the Hive, rsa2, ch_taken
 
@@ -65,7 +71,7 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 
 | Clip | When | Cap | Cue | What the player hits |
 |---|---|---|---|---|
-| conduits_brief | open | 18s | 0 to 18 | Riverbed briefing. Forty three, David's count, Omega 7. FOLLOW THE DRY RIVERBED. The Thomas choice comes after control returns. |
+| conduits_brief | open | 18s | 0 to 18 of Forty-Three Left | Bunker count. Forty-three, the fifty million, Omega-7. FOLLOW THE DRY RIVERBED. The Thomas choice comes after control returns. The rest of that Short stays in the gallery. |
 | conduits_sweep | room 1 | 10s | 18 to 28 | STAY UNDER THE PERIMETER SWEEPS. |
 | conduits_dash | room 2 | 12s | 28 to 40 | MAKE THE FORTY SECOND DASH. Existing line: open ground, forty seconds. |
 | conduits_data | room 3 | 14s | 40 to 54 | FOLLOW THE DATA CONDUITS. Stealing minds, and he can read the code. |
@@ -74,8 +80,8 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 
 | Clip | When | Cap | Cue | What the player hits |
 |---|---|---|---|---|
-| harvest_hatch | open | 14s | 0 to 14 | Cathedral of chrome, and Kara's spare rifle at the hatch. |
-| harvest_gallery | room 2 | 12s | 14 to 26 | CROSS THE TOWER GALLERY. Blue to amber towers. The Angela choice is the door story before this clip. |
+| harvest_hatch | open | 16s | 0 to 16 of The Afternoons | Cathedral of chrome. The false afternoon starts here. Control returns before the book close. |
+| harvest_gallery | room 2 | 16s | 16 to 32 of The Afternoons | CROSS THE TOWER GALLERY. Blue to amber. The Angela choice is the door story before this clip. |
 | harvest_floor | room 3 | 10s | 26 to 36 | CROSS THE DEPLETION FLOOR. |
 
 ## Fire and Steel, rsa9 hook, ch_steel
@@ -89,5 +95,5 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 ## Gallery vs level
 
 - ARCHIVE on the title lists every episode, each beat row, and MONTAGE OF OPENERS.
-- PLAY FULL SHORT stays disabled until `url` is set on that episode. The button reads FULL SHORT NOT LINKED.
+- PLAY FULL SHORT is on only where `url` is set: Twenty Feet of Machine, Forty-Three Left, and The Afternoons. Every other row reads FULL SHORT NOT LINKED.
 - In a level, `playClip` stops at `max` (never above 20) and, if a file exists, stops at the end of `cue`.

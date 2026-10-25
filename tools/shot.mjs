@@ -66,6 +66,11 @@ async function toChoice(page){
     return m === 'cinematic' || m === 'beatclip' || m === 'play';
   }, { timeout: 20000 });
   await new Promise(r => setTimeout(r, 250));
+  page._opener = await page.evaluate(() => {
+    const v = document.getElementById('beatVideo');
+    const log = (window.__LATM.clipLog || [])[0] || {};
+    return { mode: window.__LATM.G.mode, max: log.max, id: log.id, src: v ? (v.currentSrc || v.src || '') : '' };
+  });
   await page.evaluate(() => window.__LATM && window.__LATM.G && (window.__skip = true));
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__LATM.G.mode === 'play', { timeout: 15000 });
@@ -97,6 +102,8 @@ try {
   await shot(desk.page, 'desktop-archive');
   const archiveText = await desk.page.$eval('#archiveSheet', n => n.innerText);
   check('archive lists beat rows', /ROOM|OPEN/.test(archiveText) && /8 to 20/.test(archiveText));
+  const linked = (archiveText.match(/PLAY FULL SHORT/g) || []).length;
+  check('three shorts linked', linked >= 3 && /TWENTY FEET OF MACHINE/.test(archiveText) && /FORTY-THREE LEFT/.test(archiveText) && /THE AFTERNOONS/.test(archiveText), 'linked=' + linked);
   check('full short not linked', /FULL SHORT NOT LINKED/.test(archiveText));
   await desk.page.evaluate(() => {
     const b = [...document.querySelectorAll('#archiveSheet button')].find(n => n.textContent === 'CLOSE');
@@ -114,6 +121,8 @@ try {
   await new Promise(r => setTimeout(r, 200));
 
   await toChoice(desk.page);
+  const opener = desk.page._opener || {};
+  check('ep1 opener is a short cue', opener.mode === 'beatclip' && opener.id === 'ep1_wake' && opener.max <= 20 && opener.max >= 8 && /rsa_ep01_720p/.test(opener.src), JSON.stringify(opener));
   const layout = await desk.page.evaluate(() => {
     const dlg = document.getElementById('storyDlg').getBoundingClientRect();
     const choice = document.getElementById('sChoice').getBoundingClientRect();

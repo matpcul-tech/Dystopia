@@ -230,7 +230,7 @@ body.postfx #vig{display:none;}
 @media (max-width:600px){ body.bossOn #sToast{top:calc(9vh + 62px);} }
 
 #introKicker{font-size:11px;letter-spacing:.28em;color:var(--brass-hot);margin-bottom:14px;min-height:1.2em;}
-#beatVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none;}
+#beatVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:0;display:none;}
 #introText,#introKicker,#skipBtn{position:relative;z-index:1;}
 
 html[data-text="sm"] #sText{font-size:18px;}

@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import { ARCHIVE, BEATS } from '../cinematics.js';
 
 const chapters = ['ep1','ch_taken','ch_ghost','ch_together','ch_lone','ch_counting','ch_conduits','ch_harvest','ch_steel'];
@@ -27,6 +28,8 @@ for (const id of chapters){
 }
 
 for (const ep of ARCHIVE){
+  if (ep.url && !existsSync(new URL('../' + ep.url, import.meta.url))) fail(ep.id + ' missing ' + ep.url);
+  if (!ep.url && ep.status === 'ready' && ep.id.indexOf('short') === 0) fail(ep.id + ' short has no file');
   const cues = BEATS.filter(b => b.episode === ep.id).map(b => b.cue);
   cues.sort((a, b) => a[0] - b[0]);
   for (let i = 1; i < cues.length; i++){

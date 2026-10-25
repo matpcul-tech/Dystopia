@@ -3,8 +3,13 @@
 // This file stores no story sentences. intro indexes and radio keys point at
 // lines that already live on the chapter in game.js.
 
+// url is a local file under media/shorts. PLAY FULL SHORT uses the whole file.
+// A level never does. It only plays the cue on the beat that names this id.
+// Ep 3, 5, 6, and 7 are not in this build. Ep 8 and 9 stay hooks.
 export const ARCHIVE = [
-  { id:'rsa1', n:1, title:'EPISODE ONE: THE WAKING', chapter:'ep1', url:'', status:'ready' },
+  { id:'rsa1', n:1, title:'EPISODE ONE: THE WAKING', shortTitle:'TWENTY FEET OF MACHINE', chapter:'ep1', url:'media/shorts/rsa_ep01_720p.mp4', status:'ready' },
+  { id:'short02', n:2, title:'FORTY-THREE LEFT', chapter:'ch_conduits', url:'media/shorts/rsa_ep02_720p.mp4', status:'ready' },
+  { id:'short04', n:4, title:'THE AFTERNOONS', chapter:'ch_harvest', url:'media/shorts/rsa_ep04_720p.mp4', status:'ready' },
   { id:'rsa2', n:2, title:'CHAPTER TWO: INSIDE THE HIVE', chapter:'ch_taken', url:'', status:'ready' },
   { id:'rsa3', n:3, title:'CHAPTER TWO: THE LISTENING DARK', chapter:'ch_ghost', url:'', status:'ready' },
   { id:'rsa4', n:4, title:'CHAPTER TWO: THE CONVOY', chapter:'ch_together', url:'', status:'ready' },
@@ -20,9 +25,10 @@ export const ARCHIVE = [
 // cue is the window inside the full episode file, used only if url is set.
 // The player never runs the file from 0 to the end during a level.
 export const BEATS = [
-  // Episode One. The in engine awakening is already 17 seconds. It is the opener.
-  { id:'ep1_wake', episode:'rsa1', chapter:'ep1', at:'open', kind:'cinematic', max:18, cue:[0, 17], labelFrom:'find' },
-  { id:'ep1_street', episode:'rsa1', chapter:'ep1', at:'room', room:1, intro:[0, 1], max:14, cue:[17, 31], labelFrom:'segs:0' },
+  // Episode One. Twenty Feet of Machine. The file is about 58s.
+  // The level uses two windows, then the book close stays in the gallery.
+  { id:'ep1_wake', episode:'rsa1', chapter:'ep1', at:'open', max:16, cue:[0, 16], labelFrom:'find' },
+  { id:'ep1_street', episode:'rsa1', chapter:'ep1', at:'room', room:1, max:16, cue:[16, 32], labelFrom:'segs:0' },
 
   // Inside the Hive
   { id:'taken_pod', episode:'rsa2', chapter:'ch_taken', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
@@ -47,15 +53,17 @@ export const BEATS = [
   { id:'count_entry', episode:'rsa6', chapter:'ch_counting', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
   { id:'count_hall', episode:'rsa6', chapter:'ch_counting', at:'room', room:1, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:0' },
 
-  // Conduits: briefing, perimeter, the forty second dash, then the conduits.
-  { id:'conduits_brief', episode:'rsa7', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:18, cue:[0, 18], labelFrom:'advance' },
+  // Conduits. Forty-Three Left is the bunker count, not the whole chapter.
+  // Eight Hundred Meters is not linked yet, so the later rooms stay text.
+  { id:'conduits_brief', episode:'short02', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:18, cue:[0, 18], labelFrom:'advance' },
   { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[18, 28], labelFrom:'segs:0' },
   { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:12, cue:[28, 40], labelFrom:'segs:1' },
   { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, intro:[4, 5], max:14, cue:[40, 54], labelFrom:'segs:2' },
 
-  // Harvest hook. Tower gallery is its own clip.
-  { id:'harvest_hatch', episode:'rsa8', chapter:'ch_harvest', at:'open', intro:[1, 3], max:14, cue:[0, 14], labelFrom:'advance' },
-  { id:'harvest_gallery', episode:'rsa8', chapter:'ch_harvest', at:'room', room:2, intro:[2], max:12, cue:[14, 26], labelFrom:'segs:1' },
+  // Harvest. The Afternoons is the false window, not the Batch short.
+  // Batch is not linked yet, so the depletion floor stays text.
+  { id:'harvest_hatch', episode:'short04', chapter:'ch_harvest', at:'open', intro:[1], max:16, cue:[0, 16], labelFrom:'advance' },
+  { id:'harvest_gallery', episode:'short04', chapter:'ch_harvest', at:'room', room:2, intro:[2], max:16, cue:[16, 32], labelFrom:'segs:1' },
   { id:'harvest_floor', episode:'rsa8', chapter:'ch_harvest', at:'room', room:3, intro:[4], max:10, cue:[26, 36], labelFrom:'segs:2' },
 
   // Fire and Steel hook. Ridge opener, pass, then the yard before the hunter.
