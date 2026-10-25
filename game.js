@@ -30,7 +30,9 @@ const CHAPTERS = {
     subtitle: 'EPISODE ONE: THE WAKING',
     nextHash: null,
     startArmed: false,
-    cinematic: true,          // the book's opening scene plays first
+    cinematic: false,         // short game opener, then control. Not the book scene.
+    train: true,              // room 0 is the abandoned rail car
+    spawnZ: 14.5,             // stand in the car, facing the vestibule
     setPiece: 'ledger',       // the depot screen: the list of taken names
     palette: {
       // surface ruins at dusk: ash concrete, phosphor-green machine light
@@ -41,11 +43,12 @@ const CHAPTERS = {
       hemi:0x5c5747, lamp:0xffe4bd, dust:0xb0a488, coreLight:0xe7c98a,
     },
     rooms: [
-      { x1:-3, x2:3, z1:-10,  z2:2    },   // the gravel lot where he wakes
-      { x1:-5, x2:5, z1:-42,  z2:-10  },   // ruined street
-      { x1:-4, x2:4, z1:-76,  z2:-42  },   // hardware district
-      { x1:-3, x2:3, z1:-112, z2:-76  },   // the rail bridge
-      { x1:-9, x2:9, z1:-136, z2:-112 },   // the depot
+      { x1:-1.7, x2:1.7, z1:2,    z2:16   },   // abandoned rail car
+      { x1:-3,   x2:3,   z1:-10,  z2:2    },   // gravel lot, the rifle, the river road
+      { x1:-5,   x2:5,   z1:-42,  z2:-10  },   // ruined street
+      { x1:-4,   x2:4,   z1:-76,  z2:-42  },   // hardware district
+      { x1:-3,   x2:3,   z1:-112, z2:-76  },   // the rail bridge
+      { x1:-9,   x2:9,   z1:-136, z2:-112 },   // the depot
     ],
     pillars: [
       [-3.4,-20,.5],[3.4,-27,.5],[-3.4,-35,.5],
@@ -61,20 +64,21 @@ const CHAPTERS = {
     ],
     cylinders: [],
     drones: [
-      ['crawler',  0, -18, 1], ['crawler', -3, -26, 1], ['crawler',  3, -33, 1], ['crawler', 0, -39, 1],
-      ['crawler', -2, -48, 2], ['crawler',  2, -55, 2], ['sentry', -3, -60, 2], ['crawler', 0, -66, 2], ['sentry', 3, -72, 2],
-      ['crawler',  0, -82, 3], ['sentry', -2, -88, 3], ['crawler', 0, -95, 3], ['sentry', 2, -101, 3], ['warden', 0, -108, 3],
-      ['sentry', -5, -120, 4], ['sentry', 5, -120, 4],
+      ['crawler',  0, -18, 2], ['crawler', -3, -26, 2], ['crawler',  3, -33, 2], ['crawler', 0, -39, 2],
+      ['crawler', -2, -48, 3], ['crawler',  2, -55, 3], ['sentry', -3, -60, 3], ['crawler', 0, -66, 3], ['sentry', 3, -72, 3],
+      ['crawler',  0, -82, 4], ['sentry', -2, -88, 4], ['crawler', 0, -95, 4], ['sentry', 2, -101, 4], ['warden', 0, -108, 4],
+      ['sentry', -5, -120, 5], ['sentry', 5, -120, 5],
     ],
     waveSpawns: [[-7,-114],[7,-114],[-7,-134],[7,-134]],
     waveTotal: 12,
     zones: [ {z:-26,key:'seg1_mid'}, {z:-58,key:'seg2_mid'}, {z:-94,key:'seg3_mid'} ],
     objectivePos: [0, 1.4, -128],
     annexes: [
-      { room:1, side:'R', z1:-38, z2:-30, depth:4,   loot:'med'  },   // looted clinic off the street
-      { room:3, side:'L', z1:-100, z2:-92, depth:3.5, loot:'cell' },  // bridge service platform
+      { room:2, side:'R', z1:-38, z2:-30, depth:4,   loot:'med'  },   // looted clinic off the street
+      { room:4, side:'L', z1:-100, z2:-92, depth:3.5, loot:'cell' },  // bridge service platform
     ],
     obj: {
+      train:'CHOOSE A WAY OFF THE TRAIN',
       find:"FIND THE DEAD MAN'S RIFLE", advance:'HEAD FOR THE RIVER',
       segs:['CROSS THE RUINED STREET','CLEAR THE HARDWARE DISTRICT','CROSS THE RAIL BRIDGE'],
       final:'PULL THE LEDGER AT THE DEPOT SCREEN', done:'GET OUT OF THE NET',
@@ -82,13 +86,16 @@ const CHAPTERS = {
       promptKey:'HOLD [E] TO PULL THE LEDGER', promptTouch:'HOLD PULL TO COPY THE LEDGER',
     },
     introLines: [
-      "Gravel. Cold. Somewhere past the overpass, a sound like counting.",
-      "A dead man's radio crackled. \"...can hear you breathing. My name is Reyes. Get up.\"",
+      "A rail car. Torn seats. The sky through the broken windows was the color of old blood.",
+      "Somewhere in the static, a woman: \"Reyes. Get up.\"",
     ],
     radio: {
       pickup:      [{who:'REYES', text:"There's a rifle by the man who didn't make it. He'd want it used."},
                     {who:'REYES', text:"Crawlers between you and the river. Light them up and keep moving."}],
+      pickup_scar: [{who:'REYES', text:"There's a rifle by the man who didn't make it. He'd want it used."},
+                    {who:'REYES', text:"I heard the hatch. So did a crawler on the street. Light it up and keep moving."}],
       seg1_mid:    [{who:'REYES', text:"I'm across the river. The old rail depot. Real walls. Come find me."}],
+      seg1_mid_scar:[{who:'REYES', text:"That noise off the train is still with you. Extra crawler, your side of the street. I'm across the river."}],
       seg1_clear:  [{who:'REYES', text:"Street's clear. You're better at this than you sound."}],
       seg2_enter:  [{who:'REYES', text:"Hardware district. They collect here. Don't be collectible."}],
       seg2_mid:    [{who:'REYES', text:"Sentries ahead. The red flare is the wind-up. Move on the flare."}],
@@ -97,6 +104,7 @@ const CHAPTERS = {
       seg3_mid:    [{who:'REYES', text:"Heavy frame on the span. A warden. Use the trusses, Marcus."}],
       seg3_clear:  [{who:'REYES', text:"You're across. Marcus... The depot gate is open. It shouldn't be open."}],
       core_enter:  [{who:'REYES', text:"Cots. Cartons. Lights. No people. Get to that screen. The list is everyone."}],
+      core_enter_scar:[{who:'REYES', text:"You came in loud. Cots, cartons, lights, no people. The net remembers the hatch. Get to that screen."}],
       alarm:       [{who:'LEDGER', text:"SUBJECT M-1. UNREGISTERED. REMAIN WHERE YOU ARE."},
                     {who:'REYES', text:"It's a net! Copy the ledger and RUN!"}],
       planted:     [{who:'REYES', text:"You have the names. Every name they took. Now GET OUT!"}],
@@ -1697,10 +1705,12 @@ const Cinematic = (() => {
 window.addEventListener('resize', () => Cinematic.resize());
 
 /* ============================================================
-   Level: 5 rooms (start, 3 segments, core) along -Z
+   Level: rooms along -Z. Episode One adds the rail car in front,
+   so its depot is room 5. Every other chapter still ends on room 4.
    ============================================================ */
 const WALL_H = CH.wallH || 4, DOOR_HALF = 1.6;
 const ROOMS = CH.rooms;
+const CORE_SEG = ROOMS.length - 1;
 const PILLARS = CH.pillars;
 
 /* ---- procedural PBR texture sets (canvas, zero image assets) ----
@@ -2186,6 +2196,61 @@ ANNEXES.forEach(a => {
   scene.add(grp);
   LOOT.push({ grp, x:lx, z:lz, type:a.loot });
 });
+
+// Episode One's first room is a rail car: seats, broken windows, a side hatch.
+// The hatch does not open. The story choice does, and it can scar the run.
+function dressTrain(){
+  if (!CH.train) return;
+  const r = ROOMS[0];
+  const seatMat = new THREE.MeshStandardMaterial({ color:0x2a2420, roughness:.86, metalness:.06 });
+  const metal = new THREE.MeshStandardMaterial({ color:0x34383c, roughness:.42, metalness:.8 });
+  const glass = new THREE.MeshStandardMaterial({ color:0x1a120e, roughness:.15, metalness:.1, transparent:true, opacity:.72 });
+  const hole = new THREE.MeshBasicMaterial({ color:0x2a0c08 });
+  const midZ = (r.z1 + r.z2) / 2;
+  const span = (r.z2 - r.z1) - .6;
+  const fc = new THREE.Mesh(new THREE.BoxGeometry((r.x2 - r.x1) + .4, .08, span), metal);
+  fc.position.set(0, 2.58, midZ);
+  scene.add(fc);
+  const runner = new THREE.Mesh(new THREE.BoxGeometry(.7, .02, span), new THREE.MeshStandardMaterial({ color:0x241c18, roughness:.9, metalness:.05 }));
+  runner.position.set(0, .02, midZ);
+  scene.add(runner);
+  for (let z = 12.4; z > r.z1 + 3.2; z -= 2.2){
+    [-1, 1].forEach(side => {
+      const x = side * 1.15;
+      addBox(x - .26, x + .26, z - .4, z + .4, .46, seatMat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(.48, .5, .07), seatMat);
+      back.position.set(x, .74, z + .34);
+      scene.add(back);
+    });
+  }
+  let lights = 0;
+  for (let z = r.z2 - 1.8; z > r.z1 + 1.5; z -= 1.8){
+    [-1, 1].forEach((side, i) => {
+      const broken = ((Math.round(z) + i) % 3) === 0;
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(.05, .58, .84), broken ? hole : glass);
+      pane.position.set(side * (r.x2 - .08), 1.52, z);
+      scene.add(pane);
+      if (broken && lights < 4){
+        lights++;
+        const L = new THREE.PointLight(0xff4a28, .9, 3.8, 2);
+        L.position.set(side * 1.15, 1.52, z);
+        scene.add(L);
+      }
+    });
+  }
+  const hx = r.x2 - .05;
+  const hatch = new THREE.Mesh(new THREE.BoxGeometry(.07, .92, .72), metal);
+  hatch.position.set(hx, 1.02, 8.2);
+  scene.add(hatch);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(.02, .16, .72), new THREE.MeshBasicMaterial({ color:0xc9731f }));
+  stripe.position.set(hx + .04, 1.28, 8.2);
+  scene.add(stripe);
+  const grab = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 2.35, 8), metal);
+  grab.position.set(.72, 1.2, 9.4);
+  scene.add(grab);
+}
+dressTrain();
+
 function applyLoot(t){
   AudioSys.checkpoint();
   if (t === 'med'){ G.regenFast = true; G.hp = 100; sToast('FIELD CACHE. FULL VITALS, FASTER RECOVERY.'); }
@@ -2892,8 +2957,20 @@ function spawnSegment(seg){
     const d = makeDrone(k,x,z,s);
     d.spawned = true; scene.add(d.mesh);
   });
+  if (seg === 2) addHatchCrawler();
 }
-modelsReady.then(() => { [1,2,3,4].forEach(spawnSegment); });
+function addHatchCrawler(){
+  if (!SFLAGS.hatchScar) return;
+  if (drones.some(d => d.scar === 'hatch' && d.alive)) return;
+  const d = makeDrone('crawler', 2.2, -22, 2);
+  d.spawned = true;
+  d.scar = 'hatch';
+  scene.add(d.mesh);
+}
+modelsReady.then(() => {
+  const segs = new Set(INITIAL_DRONES.map(d => d[3]));
+  segs.forEach(spawnSegment);
+});
 
 function segmentCleared(seg){
   return !drones.some(d => d.segment === seg && d.alive);
@@ -3115,7 +3192,9 @@ function segIntersectsAABB(x0,z0,x1,z1,c){
 function radio(key){
   if (G.radioFired.has(key)) return;
   G.radioFired.add(key);
-  (RADIO[key] || []).forEach(l => G.radioQueue.push(l));
+  const scarKey = key + '_scar';
+  const lines = (SFLAGS.hatchScar && RADIO[scarKey]) ? RADIO[scarKey] : (RADIO[key] || []);
+  lines.forEach(l => G.radioQueue.push(l));
 }
 function updateRadio(dt){
   G.radioT -= dt;
@@ -3377,18 +3456,26 @@ function updateProjectiles(dt){
 
 /* ============================================================
    Doors / checkpoints / progression
+   Episode One's rail car is room 0. progIndex maps the rooms
+   after it back onto the old rifle, street, hardware, bridge, depot.
    ============================================================ */
+function progIndex(roomIndex){
+  return CH.train ? roomIndex - 1 : roomIndex;
+}
 function updateDoors(dt){
   doors.forEach(dr => {
     if (!dr.open){
-      const canOpen = CH.stealth ? (yawObj.position.z > dr.boundaryZ && yawObj.position.z - dr.boundaryZ < 7) : (dr.index === 0 ? G.hasRifle : segmentCleared(dr.index));
+      const prog = progIndex(dr.index);
+      const canOpen = (CH.train && dr.index === 0) ? !!SFLAGS.leftTrain
+        : CH.stealth ? (yawObj.position.z > dr.boundaryZ && yawObj.position.z - dr.boundaryZ < 7)
+        : (prog === 0 ? G.hasRifle : segmentCleared(dr.index));
       if (canOpen){
         dr.open = true;
         dr.lock.material.color.setHex(0xe7c98a);
         AudioSys.doorOpen();
-        if (dr.index === 1){ radio('seg1_clear'); if (CB.door1) queueStory(CB.door1); }
-        if (dr.index === 2){ radio('seg2_clear'); if (CB.door2) queueStory(CB.door2); }
-        if (dr.index === 3) radio('seg3_clear');
+        if (prog === 1){ radio('seg1_clear'); if (CB.door1) queueStory(CB.door1); }
+        if (prog === 2){ radio('seg2_clear'); if (CB.door2) queueStory(CB.door2); }
+        if (prog === 3) radio('seg3_clear');
       }
     }
     if (dr.open && dr.anim < 1){
@@ -3412,12 +3499,14 @@ function updateDoors(dt){
       chapter: CH.id, segment: seg,
       x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
       yaw: G.yaw, hp: G.hp,
+      leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
     });
     const clip = roomBeat(CH.id, seg);
     const arrive = () => {
-      if (seg === 2) radio('seg2_enter');
-      if (seg === 3) radio('seg3_enter');
-      if (seg === 4){
+      const prog = progIndex(seg);
+      if (prog === 2) radio('seg2_enter');
+      if (prog === 3) radio('seg3_enter');
+      if (seg === CORE_SEG){
         radio('core_enter');
         if (!CH.noAlarm) startAlarm();
         if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 500);
@@ -3461,11 +3550,16 @@ function updateDoors(dt){
 function setObjectiveText(){
   const O = CH.obj;
   if (G.escape){ el.objective.textContent = O.done; return; }
+  if (CH.train && G.currentSegment === 0){
+    el.objective.textContent = SFLAGS.leftTrain ? (G.hasRifle ? O.advance : O.find) : (O.train || O.find);
+    return;
+  }
+  const prog = progIndex(G.currentSegment);
   const t = {
     0: G.hasRifle ? O.advance : O.find,
     1: O.segs[0], 2: O.segs[1], 3: O.segs[2],
     4: G.planted ? O.done : O.final,
-  }[G.currentSegment] || '';
+  }[prog] || '';
   el.objective.textContent = t;
 }
 
@@ -3496,7 +3590,7 @@ function updateWave(dt){
 function updateObjective(dt){
   if (CH.boss && Boss){ Boss.interact(dt); return; }
   if (CB.plantMid && !G.midDone && G.plantProgress >= .5){ G.midDone = true; Story.start(CB.plantMid); return; }
-  if (G.currentSegment !== 4 || G.planted) { el.plantWrap.style.display='none'; el.plantBtn.style.display='none'; return; }
+  if (G.currentSegment !== CORE_SEG || G.planted) { el.plantWrap.style.display='none'; el.plantBtn.style.display='none'; return; }
   const dx = yawObj.position.x - CORE_POS.x, dz = yawObj.position.z - CORE_POS.z;
   const near = (dx*dx + dz*dz) < 9;
   const holding = keys['KeyE'] || touchPlanting || G.padUse;
@@ -3594,8 +3688,8 @@ function die(){
 function respawn(){
   const seg = G.checkpoint.segment;
   // reset the segment being attempted (and the core wave if applicable)
-  if (seg >= 1 && seg <= 4) spawnSegment(seg);
-  if (seg === 4){
+  if (seg >= 1 && seg <= CORE_SEG) spawnSegment(seg);
+  if (seg === CORE_SEG){
     G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
     // remove wave drones
     for (let i = drones.length-1; i >= 0; i--){
@@ -3704,12 +3798,17 @@ function updatePlayer(dt){
   el.healthFill.style.width = G.hp.toFixed(0)+'%';
   el.healthFill.style.background = G.hp > 35 ? 'var(--grn)' : 'var(--red)';
 
-  // rifle pickup
-  if (!G.hasRifle && !CH.stealth){
+  // rifle pickup. The prompt only shows when the rifle is close,
+  // so the rail car does not ask for a gun that is still on the gravel.
+  if (!G.hasRifle && !CH.stealth && rifleFloor.parent){
     const d = yawObj.position.distanceTo(rifleFloor.position);
-    el.prompt.style.display = 'block';
-    el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
-    if (d < 1.6) pickupRifle();
+    if (d < 3.2){
+      el.prompt.style.display = 'block';
+      el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
+      if (d < 1.6) pickupRifle();
+    } else if (el.prompt.textContent === 'RETRIEVE THE PULSE RIFLE'){
+      el.prompt.style.display = 'none';
+    }
   }
 }
 function pickupRifle(){
@@ -3723,7 +3822,6 @@ function pickupRifle(){
   radio('pickup');
   AudioSys.checkpoint();
   AudioSys.humStart();
-  G.currentSegment = 0;
   setObjectiveText();
   setTimeout(setObjectiveText, 50);
 }
@@ -3847,19 +3945,43 @@ function showKicker(clip){
     el.intro.insertBefore(k, el.introText);
   }
   const ep = episodeOf(clip.episode);
-  k.textContent = 'RED SKY ARCHIVE ' + (ep ? ep.n : '') + '   ' + clipLabel(clip, CHAPTERS);
+  k.textContent = (ep && ep.game)
+    ? clipLabel(clip, CHAPTERS)
+    : ('RED SKY ARCHIVE ' + (ep ? ep.n : '') + '   ' + clipLabel(clip, CHAPTERS));
 }
 function cueVideo(clip){
   const ep = episodeOf(clip.episode);
   const v = ensureVideo();
-  if (!ep || !ep.url || !clip.cue || clip.textOnly){ v.style.display = 'none'; return; }
+  const hide = () => { v.style.display = 'none'; };
+  if (!ep || !ep.url || !clip.cue || clip.textOnly){ hide(); return; }
   const dur = Math.min(20, clip.max || 20, clip.cue[1] - clip.cue[0]);
   v.style.display = 'block';
+  if (ep.poster) v.poster = ep.poster;
+  let failed = false;
+  const fail = () => {
+    if (failed) return;
+    failed = true;
+    hide();
+    if (beatState && beatState.clipId === clip.id){
+      beatState.video = false;
+      beatState.missing = true;
+    }
+  };
+  v.onerror = fail;
   v.src = ep.url;
-  v.onloadedmetadata = () => { try { v.currentTime = clip.cue[0]; } catch (e) {} v.play().catch(()=>{}); };
+  v.onloadedmetadata = () => {
+    if (failed) return;
+    try { v.currentTime = clip.cue[0]; } catch (e) {}
+    v.play().catch(()=>{});
+  };
   v.ontimeupdate = () => {
     if (v.currentTime >= clip.cue[0] + dur - 0.05) endClip(false);
   };
+  // A missing game short must not hold the level on a black frame.
+  setTimeout(() => {
+    if (failed || !beatState || beatState.clipId !== clip.id) return;
+    if (v.error || v.networkState === 3) fail();
+  }, 1500);
 }
 function playClip(clip, opts){
   if (!clip){ if (opts && opts.then === 'play') finishIntro(true); return; }
@@ -3890,12 +4012,13 @@ function playClip(clip, opts){
   el.fade.style.opacity = 0;
   const wake = opts.then === 'play';
   if (wake){
-    yawObj.position.set(0, .35, 0);
+    yawObj.position.set(0, .35, CH.spawnZ || 0);
     G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
+    G.yaw = 0; yawObj.rotation.y = 0;
   }
   const epForClip = episodeOf(clip.episode);
   const video = !!(epForClip && epForClip.url && clip.cue && !clip.textOnly);
-  beatState = { lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video };
+  beatState = { clipId: clip.id, lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video, missing:false };
   cueVideo(clip);
   if (window.__LATM){
     __LATM.clipLog = __LATM.clipLog || [];
@@ -3922,6 +4045,7 @@ function updateBeat(dt){
       s.i++; s.t = 0; s.shown = false;
     }
   } else if (s.phase === 'hold'){
+    if (s.missing){ endClip(false); return; }
     const floor = s.video ? s.max : Math.min(8, s.max);
     if (s.elapsed >= floor){
       if (s.wake){ s.phase = 'rise'; s.t = 0; el.intro.style.background = 'transparent'; el.introText.style.display = 'none'; }
@@ -3991,6 +4115,7 @@ function playFullEpisode(ep){
   el.intro.style.background = '#000';
   showSkip();
   v.src = ep.url;
+  v.onerror = () => endClip(false);
   v.onended = () => endClip(false);
   v.play().catch(()=>{});
 }
@@ -4056,7 +4181,7 @@ function finishIntro(skipAll){
   el.fade.style.opacity = 0;
   const mid = takeResume();
   if (!mid){
-    yawObj.position.set(0, PLAYER_EYE, 0);
+    yawObj.position.set(0, PLAYER_EYE, CH.spawnZ || 0);
     G.pitch = 0; G.yaw = 0;
   } else {
     yawObj.position.set(mid.x || 0, PLAYER_EYE, mid.z || 0);
@@ -4065,6 +4190,8 @@ function finishIntro(skipAll){
     G.currentSegment = mid.segment || 0;
     G.checkpoint.segment = mid.segment || 0;
     G.checkpoint.pos.set(mid.x || 0, 0, mid.z || 0);
+    if (mid.leftTrain) SFLAGS.leftTrain = true;
+    if (mid.hatchScar) SFLAGS.hatchScar = true;
     G._resumed = true;
     BEATS.forEach(b => {
       if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= mid.segment))) G.firedClips.add(b.id);
@@ -4076,13 +4203,19 @@ function finishIntro(skipAll){
   hudVisible(true);
   if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
   else if (!pointerLocked){ try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(()=>{}); } catch(e){} }
-  if (!CH.stealth && (skipAll || CH.startArmed)) pickupRifle();
+  // Skip used to hand over the rifle because it sat in the first room.
+  // On the train, the rifle is out on the gravel. A fresh skip must not take it.
+  // Continue still arms you, so a mid-chapter resume is not stuck behind a closed door.
+  if (!CH.stealth && (CH.startArmed || (skipAll && G._resumed))) pickupRifle();
   if (CH.stealth) radio('pickup');
   if (CH.id === 'ch_together') spawnCompanion();
+  if (SFLAGS.hatchScar) addHatchCrawler();
   renderPerks();
   setObjectiveText();
   if (CH.boss && Boss && Boss.resumeRequested()) { Boss.resume(); return; }
-  if (CB.start && !G._resumed) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
+  const trainChoice = CH.train && CB.start && !SFLAGS.leftTrain
+    && (!G._resumed || (G.currentSegment === 0 && yawObj.position.z > 2));
+  if ((CB.start && !G._resumed) || trainChoice) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
 function showSkip(){ el.skipBtn.style.transition = 'none'; el.skipBtn.style.opacity = .85; }
 function skipIntro(){
@@ -4339,8 +4472,22 @@ const VOICE_BEATS = [
   ]}},
 ];
 
+const TRAIN_BEATS = [
+  { say:[null, 'The vestibule door is at the end of the car. A hatch is cut into the side wall.'] },
+  { say:['REYES', 'Quiet gets you onto the gravel. Kick the hatch and they hear you.'] },
+  { choice:{ record:'Two ways off the train', timer:10, options:[
+    { label:'Open the vestibule door', sub:'Quieter. Toward the signal.', flags:{ leftTrain:true, hatchScar:false },
+      toast:'THE VESTIBULE GIVES. THE RIFLE IS OUT ON THE GRAVEL.' },
+    { label:'Kick the side hatch', silent:true, sub:'Loud. They will hear it.', flags:{ leftTrain:true, hatchScar:true },
+      apply(){ G.hp = Math.min(G.hp, 70); G.lastDamageT = G.time; addHatchCrawler(); },
+      toast:'THE HATCH SCREAMS. A CRAWLER TURNS TOWARD THE NOISE.', ember:true },
+  ]}},
+  { fx(){ setObjectiveText(); } },
+];
+
 const FINALE_BEATS = [
   { say:['LEDGER', 'SUBJECT M-1. UNREGISTERED. REMAIN WHERE YOU ARE.'] },
+  { if:'hatchScar', say:['REYES', 'They have been counting you since you kicked the hatch. These doors will not stay open.'] },
   { say:[null, 'The lights walked themselves toward him down the ceiling, row by row. The doors were still open. For a few more seconds, everything was still a choice.'] },
   { choice:{ record:'The depot is a net. And it is closing', timer:8, options:[
     { label:'Run for the bridge', sub:'Everything you have left', end:'RUNCHECK' },
@@ -4613,7 +4760,7 @@ const ST_FINALE = [
   ]}},
 ];
 const BEATSETS = {
-  ep1:        { door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
+  ep1:        { start:TRAIN_BEATS, door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
   ch_taken:   { door1:TK_MID, finale:TK_FINALE },
   ch_ghost:   { door1:GH_MID, finale:GH_FINALE },
   ch_together:{ door1:TW_MID, finale:TW_FINALE },
@@ -5031,6 +5178,7 @@ function renderPerks(){
   if (SFLAGS.radio) chips.push('RADIO');
   if (SFLAGS.freed) chips.push('LIBERATOR');
   if (SFLAGS.spoke) chips.push('SPOKE TO IT');
+  if (SFLAGS.hatchScar) chips.push('SCAR');
   box.innerHTML = chips.map(c => '<div class="pchip">' + c + '</div>').join('');
 }
 
@@ -5874,6 +6022,7 @@ if (window.Waking) Waking.mount({
     chapter: CH.id, segment: G.currentSegment,
     x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
     yaw: G.yaw, hp: G.hp,
+    leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
   }),
   Q,
   isTouch: IS_TOUCH,

@@ -8,16 +8,21 @@ Every path funnels to Book One.
 
 ## What it is
 
-**You fight like a shooter and choose like a story.** Marcus wakes under
-the blood sky (the book's "Awakening in Rust" cinematic plays in-engine),
-takes the dead man's rifle, and fights crawlers, sentries, and a warden
-through the ruined street, the hardware district, and the rail bridge to
-the depot, where pulling the ledger of taken names springs the trap.
+**You fight like a shooter and choose like a story.** Marcus wakes in an
+abandoned rail car. A short game opener hands back control, then a timed
+choice: the vestibule door, or the side hatch. The hatch leaves a scar
+(`hatchScar`) that Reyes remembers and that puts an extra crawler on the
+street. He takes the dead man's rifle and fights crawlers, sentries, and
+a warden through the ruined street, the hardware district, and the rail
+bridge to the depot, where pulling the ledger of taken names springs the trap.
 
 Between combat segments the game drops into **cinematic story beats**:
 letterboxed, timed choices with a draining timer, freeze and your
 silence is the answer. Choices have teeth:
 
+- **The train**: open the vestibule (quiet, on toward the rifle) or kick
+  the side hatch (a scar: lower vitals, an extra crawler, Reyes changes
+  her radio lines, and the depot net remembers it).
 - **The cache**: rig the weapon (more damage), field-dress your wounds
   (faster regen), or take everything (both, but slower).
 - **Reyes on the radio**: help her (*"◆ REYES WILL REMEMBER THAT."*,
@@ -111,7 +116,7 @@ LABORATORY YARD**, which reloads straight into the boss fight.
 
 ## Cinematics: the Dystopia Shorts episodes
 
-All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. The map is `CINEMATIC_PLAN.md`.
+All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Episode One level openers use `media/shorts/game/` (wake, ruined street, depot). The book file for Episode One stays in the gallery. If a game mp4 is missing, play continues. The map is `CINEMATIC_PLAN.md`.
 
 The older `cinematics/` files and `episodes.json` are the previous full-episode intros. The level does not play those.
 
