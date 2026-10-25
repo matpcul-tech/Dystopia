@@ -30,7 +30,7 @@ const CHAPTERS = {
     subtitle: 'EPISODE ONE: THE WAKING',
     nextHash: null,
     startArmed: false,
-    cinematic: false,         // short game opener, then control. Not the book scene.
+    cinematic: false,         // origin short, then control in the rail car. Not the book scene.
     train: true,              // room 0 is the abandoned rail car
     spawnZ: 14.5,             // stand in the car, facing the vestibule
     setPiece: 'ledger',       // the depot screen: the list of taken names
@@ -86,8 +86,8 @@ const CHAPTERS = {
       promptKey:'HOLD [E] TO PULL THE LEDGER', promptTouch:'HOLD PULL TO COPY THE LEDGER',
     },
     introLines: [
-      "A rail car. Torn seats. The sky through the broken windows was the color of old blood.",
-      "Somewhere in the static, a woman: \"Reyes. Get up.\"",
+      "No memory. Copper on his tongue. A twenty foot machine found him under a blood sky.",
+      "He dove into a dead rail car and went still under the seats. When he came to, Reyes was already in the static.",
     ],
     radio: {
       pickup:      [{who:'REYES', text:"There's a rifle by the man who didn't make it. He'd want it used."},
@@ -3969,11 +3969,31 @@ function cueVideo(clip){
   };
   v.onerror = fail;
   v.src = ep.url;
-  v.onloadedmetadata = () => {
-    if (failed) return;
-    try { v.currentTime = clip.cue[0]; } catch (e) {}
-    v.play().catch(()=>{});
+  // play() has to run in the ENTER click. A later metadata callback
+  // loses the gesture and the short sits on its poster.
+  // Cues that start later still seek first, then play.
+  const tryPlay = () => {
+    const p = v.play();
+    if (p && p.catch) p.catch(() => {});
   };
+  const start = clip.cue[0] || 0;
+  if (start > 0.05) {
+    v.onloadedmetadata = () => {
+      if (failed) return;
+      const afterSeek = () => {
+        v.removeEventListener('seeked', afterSeek);
+        tryPlay();
+      };
+      v.addEventListener('seeked', afterSeek);
+      try { v.currentTime = start; } catch (e) { tryPlay(); }
+    };
+  } else {
+    tryPlay();
+    v.onloadedmetadata = () => {
+      if (failed || !v.paused) return;
+      tryPlay();
+    };
+  }
   v.ontimeupdate = () => {
     if (v.currentTime >= clip.cue[0] + dur - 0.05) endClip(false);
   };

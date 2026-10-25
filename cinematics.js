@@ -22,7 +22,9 @@ export const ARCHIVE = [
   { id:'rsa9', n:9, title:'CHAPTER SIX: FIRE AND STEEL', chapter:'ch_steel', url:'', status:'hook' },
   // Episode One level clips. Book RSA files stay in the gallery.
   // A missing file still skips to control.
-  { id:'game_ep1_train', n:'G1', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
+  // Origin is the New Game open. The older rail car wake stays a gallery rewatch.
+  { id:'game_ep1_origin', n:'G1', title:'GAME SHORT: WHY THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_origin.mp4', poster:'media/shorts/game/game_ep1_origin.jpg', status:'ready', game:true },
+  { id:'game_ep1_train', n:'G1b', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
   { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true },
   { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'ready', game:true },
 ];
@@ -33,8 +35,9 @@ export const ARCHIVE = [
 // The player never runs the file from 0 to the end during a level.
 export const BEATS = [
   // Episode One. Game shorts, not the book file. Each file is its own cue.
+  // The open is why he is in the car: hunter, dive, still. Then the door choice.
   // The door is a story choice, not a clip. Missing mp4s fall back to control.
-  { id:'ep1_wake', episode:'game_ep1_train', chapter:'ep1', at:'open', intro:[0, 1], max:12, cue:[0, 12], labelFrom:'train' },
+  { id:'ep1_wake', episode:'game_ep1_origin', chapter:'ep1', at:'open', intro:[0, 1], max:15, cue:[0, 15], labelFrom:'train' },
   { id:'ep1_street', episode:'game_ep1_street', chapter:'ep1', at:'room', room:2, max:10, cue:[0, 10], labelFrom:'segs:0' },
   { id:'ep1_depot', episode:'game_ep1_depot', chapter:'ep1', at:'room', room:5, max:10, cue:[0, 10], labelFrom:'final' },
 

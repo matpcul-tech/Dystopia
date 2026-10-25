@@ -8,9 +8,11 @@ Every path funnels to Book One.
 
 ## What it is
 
-**You fight like a shooter and choose like a story.** Marcus wakes in an
-abandoned rail car. A short game opener hands back control, then a timed
-choice: the vestibule door, or the side hatch. The hatch leaves a scar
+**You fight like a shooter and choose like a story.** Marcus comes to
+under a blood sky with no memory. A twenty foot machine finds him. He
+dives into an abandoned rail car and goes still. A short game opener
+hands back control in that car, then a timed choice: the vestibule
+door, or the side hatch. The hatch leaves a scar
 (`hatchScar`) that Reyes remembers and that puts an extra crawler on the
 street. He takes the dead man's rifle and fights crawlers, sentries, and
 a warden through the ruined street, the hardware district, and the rail
@@ -116,7 +118,7 @@ LABORATORY YARD**, which reloads straight into the boss fight.
 
 ## Cinematics: the Dystopia Shorts episodes
 
-All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Episode One level openers use `media/shorts/game/` (wake, ruined street, depot). The book file for Episode One stays in the gallery. If a game mp4 is missing, play continues. The map is `CINEMATIC_PLAN.md`.
+All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Episode One level openers use `media/shorts/game/` (origin, ruined street, depot). The book file for Episode One stays in the gallery. If a game mp4 is missing, play continues and the two origin lines still play. The map is `CINEMATIC_PLAN.md`.
 
 The older `cinematics/` files and `episodes.json` are the previous full-episode intros. The level does not play those.
 

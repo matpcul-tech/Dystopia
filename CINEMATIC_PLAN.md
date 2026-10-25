@@ -28,19 +28,21 @@ Cue windows inside one episode do not overlap. `tools/check-cinematics.mjs` chec
 
 ## Episode One, game shorts, ep1
 
-Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay on the archive row. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control (the lines still play on the train open). The door off the train is a timed story choice, not a clip. The three game files are in the repo. Cue length matches each file.
+Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay on the archive row. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control (the two origin lines still play on the train open). The door off the train is a timed story choice, not a clip. Cue length matches each level file.
 
 | Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| ep1_wake | open | 12s | media/shorts/game/game_ep1_train.mp4 (cue 0 to 12) | Wake in the abandoned rail car. Then CHOOSE A WAY OFF THE TRAIN. |
+| ep1_wake | open | 15s | media/shorts/game/game_ep1_origin.mp4 (cue 0 to 15) | No memory. A twenty foot hunter under a blood sky. He dives into the dead rail car and goes still. Then control, and CHOOSE A WAY OFF THE TRAIN. |
 | ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
 | ep1_depot | room 5 | 10s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 10) | PULL THE LEDGER AT THE DEPOT SCREEN. |
 
 Posters, same folder:
 
-- media/shorts/game/game_ep1_train.mp4 and media/shorts/game/game_ep1_train.jpg
+- media/shorts/game/game_ep1_origin.mp4 and media/shorts/game/game_ep1_origin.jpg
 - media/shorts/game/game_ep1_street.mp4 and media/shorts/game/game_ep1_street.jpg
 - media/shorts/game/game_ep1_depot.mp4 and media/shorts/game/game_ep1_depot.jpg
+
+`media/shorts/game/game_ep1_train.mp4` stays on the archive row as a rewatch of the rail car. New Game does not play it.
 
 No game_ep1_door clip. The vestibule and the side hatch are the story choice `Two ways off the train`. Kicking the hatch sets `hatchScar`.
 
