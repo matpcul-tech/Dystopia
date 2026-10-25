@@ -71,13 +71,21 @@ Twenty Feet of Machine stays in the gallery as PLAY FULL SHORT. It is not an Epi
 | convoy_check | room 2 | 10s | 14 to 24 | CLEAR THE CHECKPOINT. Reyes hands over the rifle. |
 | convoy_yard | room 3 | 12s | 24 to 36 | CROSS THE STAGING YARD. |
 
-## The Long Road, rsa5, ch_lone
+## The Long Road, game shorts, ch_lone
 
-| Clip | When | Cap | Cue | What the player hits |
+Level clips do not play a book RSA file. `rsa5` stays on the archive row with no level cue. A level clip points at `media/shorts/game/`. If that mp4 is missing, the clip skips to control. Cue length matches each file.
+
+| Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| road_open | open | 14s | 0 to 14 | Dead highway, then the human pulse. |
-| road_toll | room 2 | 12s | 14 to 26 | PASS THE TOLL PLAZA. |
-| road_climb | room 3 | 12s | 26 to 38 | CLIMB THE ACCESS ROAD. |
+| road_open | open | 10s | media/shorts/game/game_ch2_lone_highway.mp4 (cue 0 to 10) | Dead highway, then the human pulse. FOLLOW THE DEAD HIGHWAY. |
+| road_toll | room 2 | 10s | media/shorts/game/game_ch2_lone_toll.mp4 (cue 0 to 10) | PASS THE TOLL PLAZA. |
+| road_climb | room 3 | 10s | media/shorts/game/game_ch2_lone_beacon.mp4 (cue 0 to 10) | CLIMB THE ACCESS ROAD. The beacon is ahead. |
+
+Posters, same folder:
+
+- media/shorts/game/game_ch2_lone_highway.mp4 and media/shorts/game/game_ch2_lone_highway.jpg
+- media/shorts/game/game_ch2_lone_toll.mp4 and media/shorts/game/game_ch2_lone_toll.jpg
+- media/shorts/game/game_ch2_lone_beacon.mp4 and media/shorts/game/game_ch2_lone_beacon.jpg
 
 ## Counting House, rsa6, ch_counting
 

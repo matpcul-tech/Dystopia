@@ -27,6 +27,10 @@ export const ARCHIVE = [
   { id:'game_ep1_train', n:'G1b', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
   { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true },
   { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'ready', game:true },
+  // Long Road level clips. The book row stays rsa5 with no level cue.
+  { id:'game_ch2_lone_highway', n:'G4', title:'GAME SHORT: THE DEAD HIGHWAY', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_highway.mp4', poster:'media/shorts/game/game_ch2_lone_highway.jpg', status:'ready', game:true },
+  { id:'game_ch2_lone_toll', n:'G5', title:'GAME SHORT: THE TOLL PLAZA', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_toll.mp4', poster:'media/shorts/game/game_ch2_lone_toll.jpg', status:'ready', game:true },
+  { id:'game_ch2_lone_beacon', n:'G6', title:'GAME SHORT: THE BEACON', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_beacon.mp4', poster:'media/shorts/game/game_ch2_lone_beacon.jpg', status:'ready', game:true },
 ];
 
 // at: 'open' plays once when the chapter starts, then gameplay.
@@ -55,10 +59,11 @@ export const BEATS = [
   { id:'convoy_check', episode:'rsa4', chapter:'ch_together', at:'room', room:2, intro:[3], max:10, cue:[14, 24], labelFrom:'segs:1' },
   { id:'convoy_yard', episode:'rsa4', chapter:'ch_together', at:'room', room:3, intro:[4], max:12, cue:[24, 36], labelFrom:'segs:2' },
 
-  // The Long Road
-  { id:'road_open', episode:'rsa5', chapter:'ch_lone', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
-  { id:'road_toll', episode:'rsa5', chapter:'ch_lone', at:'room', room:2, intro:[3], max:12, cue:[14, 26], labelFrom:'segs:1' },
-  { id:'road_climb', episode:'rsa5', chapter:'ch_lone', at:'room', room:3, intro:[4], max:12, cue:[26, 38], labelFrom:'segs:2' },
+  // The Long Road. Game shorts, not a book file. Each file is its own cue.
+  // Missing mp4s fall back to control. The book row stays in the gallery.
+  { id:'road_open', episode:'game_ch2_lone_highway', chapter:'ch_lone', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
+  { id:'road_toll', episode:'game_ch2_lone_toll', chapter:'ch_lone', at:'room', room:2, intro:[3], max:10, cue:[0, 10], labelFrom:'segs:1' },
+  { id:'road_climb', episode:'game_ch2_lone_beacon', chapter:'ch_lone', at:'room', room:3, intro:[4], max:10, cue:[0, 10], labelFrom:'segs:2' },
 
   // Counting House entry, then the records hall. Not one long open.
   { id:'count_entry', episode:'rsa6', chapter:'ch_counting', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },

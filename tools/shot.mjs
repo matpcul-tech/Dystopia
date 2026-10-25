@@ -194,6 +194,18 @@ try {
   await shot(conduits.page, 'conduits-play');
   if (conduits.bag.errors.length) report.console.push(...conduits.bag.errors.map(e => 'conduits ' + e));
 
+  const lone = await boot('?preview=1&q=low#ch_lone', 1280, 720);
+  await lone.page.click('#startBtn');
+  await lone.page.waitForFunction(() => window.__LATM.clipLog && window.__LATM.clipLog.length, { timeout: 15000 });
+  const road = await lone.page.evaluate(() => {
+    const c = window.__LATM.clipLog[0];
+    const v = document.getElementById('beatVideo');
+    return { id: c.id, max: c.max, src: v ? (v.currentSrc || v.src || '') : '', mode: window.__LATM.G.mode };
+  });
+  check('long road opener is the highway short', road.mode === 'beatclip' && road.id === 'road_open' && road.max <= 15 && road.max >= 8 && /game_ch2_lone_highway/.test(road.src) && !/rsa_/.test(road.src), JSON.stringify(road));
+  await shot(lone.page, 'lone-highway-open');
+  if (lone.bag.errors.length) report.console.push(...lone.bag.errors.map(e => 'lone ' + e));
+
   const pay = await boot('?q=low#ch_counting', 1280, 720);
   await pay.page.click('#startBtn');
   await pay.page.waitForFunction(() => {
@@ -202,11 +214,39 @@ try {
   }, { timeout: 8000 });
   await new Promise(r => setTimeout(r, 200));
   const payText = await pay.page.$eval('#paySheet', n => n.textContent || '');
-  check('paywall does not grant a pass', /Nothing is charged/.test(payText) && /RevenueCat/.test(payText));
+  check('paywall explains the pages unlock', /Nothing is charged/.test(payText) && /SEASON PASS/.test(payText) && !/do not unlock anything/.test(payText));
   check('ad stand in is labeled', /stand in until AdMob is connected/.test(payText));
   await shot(pay.page, 'desktop-paywall');
   const stillTitle = await pay.page.evaluate(() => window.__LATM.G.mode);
   check('locked chapter stays on the title', stillTitle === 'title', stillTitle);
+  const beforePass = await pay.page.evaluate(() => ({
+    ep1: window.Waking.isLocked('ep1'),
+    counting: window.Waking.isLocked('ch_counting'),
+    steel: window.Waking.isLocked('ch_steel'),
+    hive: window.Waking.isLocked('ch_taken'),
+  }));
+  check('episode one stays free before the pass', beforePass.ep1 === false && beforePass.counting === true && beforePass.steel === true && beforePass.hive === true, JSON.stringify(beforePass));
+  await Promise.all([
+    pay.page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
+    pay.page.evaluate(() => {
+      const b = [...document.querySelectorAll('#paySheet button')].find(n => n.textContent.indexOf('SEASON PASS') === 0);
+      if (b) b.click();
+    }),
+  ]);
+  await pay.page.waitForFunction(() => window.__LATM && window.__LATM.G && window.__LATM.G.mode === 'title', { timeout: 45000 });
+  const afterPass = await pay.page.evaluate(() => {
+    const file = JSON.parse(localStorage.getItem('latm_save_v1') || '{}');
+    const s = (file.slots || [])[file.active || 0] || {};
+    return {
+      pass: !!s.pass,
+      counting: window.Waking.isLocked('ch_counting'),
+      steel: window.Waking.isLocked('ch_steel'),
+      hive: window.Waking.isLocked('ch_taken'),
+      lone: window.Waking.isLocked('ch_lone'),
+      ep1: window.Waking.isLocked('ep1'),
+    };
+  });
+  check('season pass unlocks the book on this device', afterPass.pass === true && afterPass.ep1 === false && afterPass.counting === false && afterPass.steel === false && afterPass.hive === false && afterPass.lone === false, JSON.stringify(afterPass));
 
   const hard = report.console.filter(e => /ReferenceError|updateIntro|is not defined|SyntaxError/.test(e));
   check('no crash strings', hard.length === 0, hard.join(' | ').slice(0, 400));

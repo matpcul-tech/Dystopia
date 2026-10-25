@@ -20,7 +20,7 @@ for (const b of BEATS){
   if (b.at === 'room' && !(b.room >= 1)) fail(b.id + ' room beat must be room 1 or later');
   if (b.at === 'open' && b.intro && b.intro.length >= 5) fail(b.id + ' open clip dumps too many intro lines');
   if (!ARCHIVE.some(e => e.id === b.episode)) fail(b.id + ' episode missing');
-  if (b.chapter === 'ep1'){
+  if (b.chapter === 'ep1' || b.chapter === 'ch_lone'){
     const ep = ARCHIVE.find(e => e.id === b.episode);
     if (ep && /rsa_ep\d+_720p\.mp4/.test(ep.url || '')) fail(b.id + ' still uses a book RSA short');
     if (!ep || !ep.game) fail(b.id + ' must use a game short');
