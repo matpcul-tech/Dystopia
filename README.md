@@ -111,9 +111,9 @@ LABORATORY YARD**, which reloads straight into the boss fight.
 
 ## Cinematics: the Dystopia Shorts episodes
 
-Each Dystopia Shorts episode adapts one chapter of Book One and plays fullscreen as the cinematic intro of the game chapter that covers it (Episode 1 before Episode One gameplay, Episode 2 at the start of Chapter Four). It plays once per browser session, so REPLAY and retries go straight to the game. Skip with the SKIP button, a tap, or Esc. SOUND ON / SOUND OFF toggles mute (M on desktop). If the browser blocks autoplay, a TAP TO PLAY button appears. Landscape screens get the 9:16 video pillarboxed. A missing or broken file never blocks the game. **CINEMATICS** on the title screen rewatches every episode you have seen.
+All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. The map is `CINEMATIC_PLAN.md`.
 
-Adding an episode: put `cinematics/epNN.mp4` (H.264 720x1280, AAC, `+faststart`, no end card) and `cinematics/epNN_poster.jpg` in the repo, then add an entry to `episodes.json`. `chapter` is the game chapter covering that book chapter (`ep1`: 1, `ch_conduits`: 2 to 5, `ch_harvest`: 6 to 7, `ch_steel`: 8 to 14). `at` is when it plays: `start`, `door1`, `door2`, `door3`, or `core`.
+The older `cinematics/` files and `episodes.json` are the previous full-episode intros. The level does not play those.
 
 ## Choices change the game, visibly
 
@@ -187,8 +187,12 @@ the GRAPHICS button on the title screen (AUTO, LOW, MED, HIGH).
 Nothing heavy sits on the path to gameplay: post-processing modules load only
 for tiers that use them, the GLB models and the Book One cover load in idle
 time, and every shader (level, viewmodel, cinematic) is compiled while the
-title is showing, so ENTER and SKIP never hitch on first draw. The intro runs
-about 24 s (was about 57 s) and SKIP, a click or tap, or any key skips it at once.
+title is showing, so ENTER and SKIP never hitch on first draw.
+
+Chapter openers are short beat clips, 8 to 20 seconds, then you play.
+A full Red Sky Archive episode is never dumped at the start of a level.
+The title screen ARCHIVE can list a full short or a montage of openers.
+See `CINEMATIC_PLAN.md` for the room by room map.
 
 ## Characters (humans.js)
 
@@ -253,8 +257,9 @@ the repo but are no longer loaded.)
 
 ## Play
 
-Single file, no build step. Serve `index.html` from anywhere
-(GitHub Pages works as-is). Three.js loads from the jsdelivr CDN.
+No build step. GitHub Pages serves this folder from `main`. Three.js r160
+and the title fonts are vendored under `vendor/`, so a chapter loads with
+no CDN.
 
 - **Desktop:** WASD move · mouse look (click to lock) · click/Space fire
   · E interacts · during story beats: Space advances, 1 to 3 picks.
