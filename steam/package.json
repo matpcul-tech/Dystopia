@@ -1,0 +1,7 @@
+{
+  "name": "dystopia-the-waking",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Electron scaffold for Dystopia: The Waking. Not a Steam depot.",
+  "main": "main.js"
+}

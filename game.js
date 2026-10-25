@@ -1,5 +1,8 @@
 // @ts-nocheck
 import * as THREE from 'three';
+import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
+import { Waking } from './commercial.js';
+import { showPortrait, hidePortrait } from './portraits.js';
 
 window.THREE = THREE; // people.js is a classic script that reads global THREE at call time
 
@@ -677,16 +680,6 @@ document.getElementById('endTitle').textContent = CH.endTitle;
 document.getElementById('endSub').textContent = CH.endSub;
 {
   const UNLOCKED = (()=>{ try { return JSON.parse(localStorage.getItem('latm_unlocked'))||[]; } catch(e){ return []; } })();
-  Object.values(CHAPTERS).forEach(c => {
-    if (c.id === CH.id) return;
-    if (c.id !== 'ep1' && !UNLOCKED.includes(c.id)) return;
-    const sw = document.createElement('button');
-    sw.className = 'btn';
-    sw.style.cssText = 'margin-top:14px;font-size:11px;padding:10px 18px;opacity:.85';
-    sw.textContent = '\u25B8 ' + c.subtitle;
-    sw.onclick = () => { location.hash = '#' + c.id; location.reload(); };
-    document.getElementById('startScreen').appendChild(sw);
-  });
   if (UNLOCKED.length){
     const t = document.createElement('div');
     t.style.cssText = 'margin-top:16px;font-size:10px;letter-spacing:3px;color:#ffb85c;';
@@ -697,7 +690,7 @@ document.getElementById('endSub').textContent = CH.endSub;
     const nx = document.createElement('button');
     nx.className = 'btn';
     nx.textContent = 'NEXT CHAPTER \u25B8';
-    nx.onclick = () => { location.hash = CH.nextHash; location.reload(); };
+    nx.onclick = () => goChapter(CH.nextHash);
     document.getElementById('endBtns').appendChild(nx);
   }
 }
@@ -765,7 +758,10 @@ const AudioSys = (() => {
   function init(){
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+    master = ctx.createGain();
+    const v = AudioSys._userVol == null ? 1 : AudioSys._userVol;
+    master.gain.value = 0.55 * Math.max(0, Math.min(1, v));
+    master.connect(ctx.destination);
   }
   function now(){ return ctx.currentTime; }
   function env(g, t0, a, peak, d){
@@ -794,6 +790,11 @@ const AudioSys = (() => {
   }
   return {
     init,
+    setVolume(v){
+      AudioSys._userVol = Math.max(0, Math.min(1, Number(v) || 0));
+      if (master) master.gain.value = 0.55 * AudioSys._userVol;
+    },
+    _userVol: 1,
     getCtx(){ init(); return ctx; },
     resume(){ if (ctx && ctx.state === 'suspended') ctx.resume(); },
     heartbeatStart(){
@@ -914,7 +915,7 @@ const MusicSys = (() => {
     if (running) return;
     running = true;
     ctx = AudioSys.getCtx();
-    out = ctx.createGain(); out.gain.value = muted ? 0 : 1; out.connect(ctx.destination);
+    out = ctx.createGain(); out.gain.value = muted ? 0 : (MusicSys._vol || 1); out.connect(ctx.destination);
     // pad: two detuned saws under a slowly breathing lowpass
     padGain = ctx.createGain(); padGain.gain.value = 0;
     padFilter = ctx.createBiquadFilter();
@@ -1004,8 +1005,13 @@ const MusicSys = (() => {
     },
     toggleMute(){
       muted = !muted;
-      if (out) out.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, .05);
+      if (out) out.gain.setTargetAtTime(muted ? 0 : (MusicSys._vol || 1), ctx.currentTime, .05);
     },
+    setVolume(v){
+      MusicSys._vol = Math.max(0, Math.min(1, v));
+      if (out && !muted) out.gain.setTargetAtTime(MusicSys._vol, ctx.currentTime, .05);
+    },
+    _vol: 1,
   };
 })();
 
@@ -1018,7 +1024,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.p.pr));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = CH.palette.exposure || 1.1;
+renderer.toneMappingExposure = CH.palette.exposure || 1.24;
+renderer.domElement.addEventListener('webglcontextlost', e => {
+  e.preventDefault();
+  if (window.Waking) Waking.onContextLost();
+}, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { location.reload(); });
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
@@ -1095,12 +1106,12 @@ function ensurePost(){
       const fxaa = new ShaderPass(FXAAShader);
       const grade = new ShaderPass({
         uniforms: {
-          tDiffuse:{value:null}, uTime:{value:0}, uCA:{value:0}, uDmg:{value:0}, uLow:{value:0},
+          tDiffuse:{value:null}, uTime:{value:0}, uCA:{value:0}, uDmg:{value:0}, uLow:{value:0}, uGrain:{value:1},
           uShadow:{value:new THREE.Vector3(...G_.sh)}, uHigh:{value:new THREE.Vector3(...G_.hi)},
         },
         vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
         fragmentShader: `
-          uniform sampler2D tDiffuse; uniform float uTime, uCA, uDmg, uLow;
+          uniform sampler2D tDiffuse; uniform float uTime, uCA, uDmg, uLow, uGrain;
           uniform vec3 uShadow, uHigh; varying vec2 vUv;
           float rnd(vec2 c){ return fract(sin(dot(c, vec2(12.9898,78.233)))*43758.5453); }
           void main(){
@@ -1118,7 +1129,7 @@ function ensurePost(){
             col = mix(vec3(dot(col, vec3(.2126,.7152,.0722))), col, sat);
             col = mix(col, col * vec3(1.35,.35,.35), uDmg * .55);   // hit tint
             col *= 1.0 - smoothstep(.30, .95, length(c) * 1.28) * (.55 + uLow * .25 + uDmg * .3);   // vignette
-            col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .045;     // film grain
+            col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .045 * uGrain;     // film grain
             gl_FragColor = vec4(col, 1.);
           }`,
       });
@@ -1208,7 +1219,7 @@ function applyQuality(level){
   renderer.setSize(w, h);
   const spot = !!p.shadows;
   hemi.intensity = (CH.palette.hemiI || .75) * (spot ? 1 : 1.5);
-  renderer.toneMappingExposure = (CH.palette.exposure || 1.1) * (p.post || spot ? 1 : 1.12);
+  renderer.toneMappingExposure = (CH.palette.exposure || 1.24) * (p.post || spot ? 1 : 1.12);
   flash.visible = spot; flash.castShadow = spot;
   lamp.intensity = spot ? 14 : 42;
   accent.visible = !!p.accent;
@@ -1272,6 +1283,7 @@ function renderFrame(sc, cm){
     postFX.renderPass.scene = sc; postFX.renderPass.camera = cm;
     const u = postFX.grade.uniforms;
     u.uTime.value = G.time; u.uCA.value = FX.ca; u.uDmg.value = FX.dmg; u.uLow.value = FX.low;
+    if (u.uGrain) u.uGrain.value = (window.Waking && Waking.reducedMotion()) ? 0 : 1;
     postFX.composer.render();
   } else {
     renderer.render(sc, cm);
@@ -1307,13 +1319,12 @@ float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
 float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.-2.*f);
   return mix(mix(h21(i), h21(i+vec2(1.,0.)), f.x), mix(h21(i+vec2(0.,1.)), h21(i+vec2(1.,1.)), f.x), f.y); }
 float fbm(vec2 p){ float a = .5, s = 0.; for (int i=0;i<4;i++){ s += vn(p)*a; p = p*2.03 + 17.1; a *= .5; } return s; }
-float tri(float x){ return abs(fract(x*.5)*2. - 1.); }      // mirrored repeat without a seam
 void main(){
   vec3 d = normalize(vDir);
   float e = asin(clamp(d.y, -1., 1.));                      // elevation, radians
   float az = atan(d.x, -d.z);
-  // horizon band: the photo wrapped as a cylinder, four mirrored copies
-  vec2 bu = vec2(tri(az / 6.2831853 * 4.), clamp(.27 + e * 57.2958 / 52., .003, .997));
+  // horizon band: the photo wrapped once, no mirrored copies, so the seam is not doubled
+  vec2 bu = vec2(fract(az / 6.2831853), clamp(.27 + e * 57.2958 / 52., .003, .997));
   vec3 band = uHas > .5 ? texture2D(uSky, bu).rgb : mix(uHaze, uTop, smoothstep(0., .7, e));
   // overhead smoke deck: a gentle projection (smooth at the zenith, no radial
   // streaks), domain-warped noise so it reads as rolling smoke
@@ -2107,7 +2118,7 @@ function addBox(x1,x2,z1,z2,h,mat,solid=true){
     const dome = makeSkyDome(100);
     dome.onBeforeRender = () => { dome.position.set(yawObj.position.x, 0, yawObj.position.z); };
     scene.add(dome);
-    const sun = new THREE.DirectionalLight(0xff6a40, .45);
+    const sun = new THREE.DirectionalLight(0xff6a40, .9);
     sun.position.set(-40, 30, cz-40); scene.add(sun);
   }
 }
@@ -2393,8 +2404,10 @@ function buildRifle(){
   const parts = [
     [unitBox, gunMetal, [.085,.11,.42],  [0,0,0],       [0,0,0]],   // receiver
     [unitBox, gunDark,  [.07,.08,.26],   [0,-.005,-.32],[0,0,0]],   // fore-end
-    [cylGeo,  gunDark,  [.018,.30,.018], [0,.02,-.55],  [Math.PI/2,0,0]], // barrel
-    [cylGeo,  gunMetal, [.028,.07,.028], [0,.02,-.70],  [Math.PI/2,0,0]], // muzzle brake
+    [cylGeo,  gunDark,  [.022,.46,.022], [0,.02,-.58],  [Math.PI/2,0,0]], // barrel
+    [cylGeo,  gunMetal, [.034,.05,.034], [0,.02,-.42],  [Math.PI/2,0,0]], // rib
+    [cylGeo,  gunMetal, [.034,.05,.034], [0,.02,-.52],  [Math.PI/2,0,0]], // rib
+    [cylGeo,  gunMetal, [.03,.08,.03],   [0,.02,-.78],  [Math.PI/2,0,0]], // muzzle brake
     [unitBox, gunDark,  [.03,.02,.34],   [0,.07,-.10],  [0,0,0]],   // top rail
     [unitBox, gunDark,  [.05,.05,.03],   [0,.10,.02],   [0,0,0]],   // sight base
     [unitBox, gunDark,  [.05,.14,.06],   [0,-.12,.10],  [.35,0,0]], // grip
@@ -2427,7 +2440,7 @@ const rifleFloor = new THREE.Group();
 }
 
 // view-model rifle (attached to camera after pickup)
-const VMLIGHT = { value:.03 };   // direct light reaching the viewmodel (raised by the muzzle flash)
+const VMLIGHT = { value:.62 };   // direct light reaching the viewmodel (raised by the muzzle flash)
 function dimViewmodel(group){
   // the view-model sits half a metre from the headlamp, so its lit materials are
   // darkened and de-glossed or physically-correct falloff blows them out white
@@ -2440,7 +2453,7 @@ function dimViewmodel(group){
       if (m.isMeshStandardMaterial){
         const glow = m.emissiveIntensity > 0 && m.emissive.getHex() > 0;
         if (glow) m.emissiveIntensity = Math.min(m.emissiveIntensity, .55);
-        else { m.color.multiplyScalar(.5); m.roughness = Math.max(.42, m.roughness); m.metalness = Math.min(.75, m.metalness); m.envMapIntensity = .9; }
+        else { m.color.multiplyScalar(.78); m.roughness = Math.max(.42, m.roughness); m.metalness = Math.min(.75, m.metalness); m.envMapIntensity = 1.15; }
         m.onBeforeCompile = sh => {
           sh.uniforms.uVML = VMLIGHT;
           sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uVML;')
@@ -2925,6 +2938,7 @@ const G = {
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
   alarm: false, waveSpawned: 0, waveT: 0,
   time: 0, shakeT: 0,
+  firedClips: new Set(), padFire: false, padUse: false, storyQueued: false,
 };
 const PLAYER_R = 0.4, PLAYER_EYE = 1.7;
 const MOVE_SPEED = 5.2;
@@ -3121,7 +3135,7 @@ const _muzzle = new THREE.Vector3();
 
 function tryFire(dt){
   G.fireCd -= dt;
-  const wantFire = (mouseFiring || touchFiring || keys['Space']) && G.hasRifle;
+  const wantFire = (mouseFiring || touchFiring || keys['Space'] || G.padFire) && G.hasRifle;
   if (!wantFire || G.fireCd > 0) return;
   G.fireCd = 0.18; // fire-rate cap
   AudioSys.shot();
@@ -3131,6 +3145,7 @@ function tryFire(dt){
   camera.getWorldDirection(_rayDir);
   const origin = new THREE.Vector3();
   camera.getWorldPosition(origin);
+  storyAim(origin, _rayDir);
 
   // find nearest hit: walls (2D) vs drones (3D sphere test along ray)
   let bestT = 60, bestDrone = null;
@@ -3204,6 +3219,7 @@ function setDroneState(d, s){
 
 function damagePlayer(dmg){
   if (G.mode !== 'play') return;
+  if (window.Waking && Waking.storyMode()) dmg *= 0.55;
   G.hp -= dmg;
   G.lastDamageT = G.time;
   AudioSys.hurt();
@@ -3364,8 +3380,8 @@ function updateDoors(dt){
         dr.open = true;
         dr.lock.material.color.setHex(0xe7c98a);
         AudioSys.doorOpen();
-        if (dr.index === 1){ radio('seg1_clear'); if (CB.door1) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door1); }, 1400); }
-        if (dr.index === 2){ radio('seg2_clear'); if (CB.door2) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.door2); }, 1400); }
+        if (dr.index === 1){ radio('seg1_clear'); if (CB.door1) queueStory(CB.door1); }
+        if (dr.index === 2){ radio('seg2_clear'); if (CB.door2) queueStory(CB.door2); }
         if (dr.index === 3) radio('seg3_clear');
       }
     }
@@ -3386,14 +3402,24 @@ function updateDoors(dt){
     G.checkpoint.yaw = 0; // yaw 0 faces -z, deeper into the hive
     G.checkpoint.segment = seg;
     AudioSys.checkpoint();
-    if (seg === 2) radio('seg2_enter');
-    if (seg === 3) radio('seg3_enter');
-    if (seg === 4){
-      radio('core_enter');
-      if (!CH.noAlarm) startAlarm();
-      if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 700);
-    }
-    setObjectiveText();
+    if (window.Waking) Waking.autosave({
+      chapter: CH.id, segment: seg,
+      x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
+      yaw: G.yaw, hp: G.hp,
+    });
+    const clip = roomBeat(CH.id, seg);
+    const arrive = () => {
+      if (seg === 2) radio('seg2_enter');
+      if (seg === 3) radio('seg3_enter');
+      if (seg === 4){
+        radio('core_enter');
+        if (!CH.noAlarm) startAlarm();
+        if (CB.core) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.core); }, 500);
+      }
+      setObjectiveText();
+    };
+    if (clip && !G.firedClips.has(clip.id) && G.mode === 'play') considerClip(clip, arrive);
+    else arrive();
   }
   // radio pickup
   if (radioProp){
@@ -3467,7 +3493,7 @@ function updateObjective(dt){
   if (G.currentSegment !== 4 || G.planted) { el.plantWrap.style.display='none'; el.plantBtn.style.display='none'; return; }
   const dx = yawObj.position.x - CORE_POS.x, dz = yawObj.position.z - CORE_POS.z;
   const near = (dx*dx + dz*dz) < 9;
-  const holding = keys['KeyE'] || touchPlanting;
+  const holding = keys['KeyE'] || touchPlanting || G.padUse;
   if (near){
     if (IS_TOUCH) el.plantBtn.style.display = 'block';
     el.prompt.style.display = holding ? 'none' : 'block';
@@ -3579,13 +3605,61 @@ function respawn(){
    Player movement
    ============================================================ */
 const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
+function storyAim(origin, dir){
+  if (!window.Waking || !Waking.storyMode()) return;
+  let best = null, bestAng = 0.5;
+  const consider = (point) => {
+    if (!point) return;
+    const to = point.clone().sub(origin);
+    const dist = to.length();
+    if (dist < 1.4 || dist > 28) return;
+    to.multiplyScalar(1 / dist);
+    const ang = Math.acos(Math.min(1, Math.max(-1, dir.dot(to))));
+    if (ang < bestAng){ bestAng = ang; best = to; }
+  };
+  for (const d of drones){
+    if (!d.alive) continue;
+    consider(d.mesh.position);
+  }
+  if (Boss && Boss.aimPoint) consider(Boss.aimPoint());
+  if (best) dir.copy(best);
+}
+function pollGamepad(dt){
+  G.padFire = false;
+  if (!window.Waking || !Waking.gamepadOn() || !navigator.getGamepads) return { x:0, y:0 };
+  const pads = navigator.getGamepads();
+  let pad = null;
+  for (const p of pads) if (p) pad = p;
+  if (!pad) return { x:0, y:0 };
+  const ax = v => Math.abs(v) > 0.18 ? v : 0;
+  const lookX = ax(pad.axes[2] || 0), lookY = ax(pad.axes[3] || 0);
+  if (G.mode === 'play'){
+    G.yaw -= lookX * dt * 2.4;
+    G.pitch = Math.max(-1.2, Math.min(1.2, G.pitch - lookY * dt * 1.8));
+  }
+  G.padFire = !!(pad.buttons[7] && pad.buttons[7].value > 0.45);
+  G.padUse = !!(pad.buttons[0] && pad.buttons[0].pressed) && G.mode === 'play';
+  if (G.mode === 'story' && window.__LATM && Story){
+    if (pad.buttons[0] && pad.buttons[0].pressed && !G._padA) Story.pickIndex(0);
+    if (pad.buttons[2] && pad.buttons[2].pressed && !G._padX) Story.pickIndex(1);
+    if (pad.buttons[3] && pad.buttons[3].pressed && !G._padY) Story.pickIndex(2);
+  }
+  G._padA = !!(pad.buttons[0] && pad.buttons[0].pressed);
+  G._padX = !!(pad.buttons[2] && pad.buttons[2].pressed);
+  G._padY = !!(pad.buttons[3] && pad.buttons[3].pressed);
+  if (pad.buttons[9] && pad.buttons[9].pressed && !G._padStart && window.Waking) Waking.togglePause();
+  G._padStart = !!(pad.buttons[9] && pad.buttons[9].pressed);
+  return { x: ax(pad.axes[0] || 0), y: ax(pad.axes[1] || 0) };
+}
 function updatePlayer(dt){
+  const pad = pollGamepad(dt);
   let mx = 0, mz = 0;
   if (keys['KeyW'] || keys['ArrowUp'])    mz -= 1;
   if (keys['KeyS'] || keys['ArrowDown'])  mz += 1;
   if (keys['KeyA'] || keys['ArrowLeft'])  mx -= 1;
   if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
   if (stick.active){ mx += stick.dx; mz += stick.dy; }
+  mx += pad.x; mz += pad.y;
   const len = Math.hypot(mx, mz);
   if (len > 1){ mx/=len; mz/=len; }
 
@@ -3600,6 +3674,7 @@ function updatePlayer(dt){
   yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
 
   // camera shake
+  if (window.Waking && Waking.reducedMotion()){ G.shakeT = 0; G.shakeAmp = 0; }
   if (G.shakeT > 0){
     G.shakeT -= dt;
     const sa = Math.max(.02, G.shakeAmp || 0);
@@ -3722,75 +3797,243 @@ function updateFX(dt){
 }
 
 /* ============================================================
-   Intro sequence (Scene 1: Awakening)
+   Short beat clips. A full Red Sky Archive episode never plays
+   inside a level. Each clip is capped at 20 seconds, then control
+   returns (movement, a choice, or the objective).
    ============================================================ */
-let introState = null;
+let beatState = null;
+let clipReturn = null;
+let montageQueue = null;
+let introStartT = 0;
+function ensureVideo(){
+  let v = document.getElementById('beatVideo');
+  if (!v){
+    v = document.createElement('video');
+    v.id = 'beatVideo';
+    v.setAttribute('playsinline', '');
+    v.playsInline = true;
+    el.intro.appendChild(v);
+  }
+  return v;
+}
+function resolveLines(clip){
+  const src = CHAPTERS[clip.chapter] || CH;
+  const out = [];
+  (clip.intro || []).forEach(i => {
+    const t = src.introLines && src.introLines[i];
+    if (t && t !== '...') out.push({ who:'', text:t });
+  });
+  (clip.radio || []).forEach(spec => {
+    const lines = (src.radio && src.radio[spec.key]) || [];
+    (spec.idx || [0]).forEach(i => { if (lines[i]) out.push(lines[i]); });
+  });
+  return out;
+}
+function showKicker(clip){
+  let k = document.getElementById('introKicker');
+  if (!k){
+    k = document.createElement('div');
+    k.id = 'introKicker';
+    el.intro.insertBefore(k, el.introText);
+  }
+  const ep = episodeOf(clip.episode);
+  k.textContent = 'RED SKY ARCHIVE ' + (ep ? ep.n : '') + '   ' + clipLabel(clip, CHAPTERS);
+}
+function cueVideo(clip){
+  const ep = episodeOf(clip.episode);
+  const v = ensureVideo();
+  if (!ep || !ep.url || !clip.cue || clip.textOnly){ v.style.display = 'none'; return; }
+  const dur = Math.min(20, clip.max || 20, clip.cue[1] - clip.cue[0]);
+  v.style.display = 'block';
+  v.src = ep.url;
+  v.onloadedmetadata = () => { try { v.currentTime = clip.cue[0]; } catch (e) {} v.play().catch(()=>{}); };
+  v.ontimeupdate = () => {
+    if (v.currentTime >= clip.cue[0] + dur - 0.05) endClip(false);
+  };
+}
+function playClip(clip, opts){
+  if (!clip){ if (opts && opts.then === 'play') finishIntro(true); return; }
+  opts = opts || { then:'play' };
+  G.firedClips.add(clip.id);
+  if (opts.then === 'play' || opts.then === 'resume'){
+    (clip.radio || []).forEach(spec => G.radioFired.add(spec.key));
+  }
+  clipReturn = { then: opts.then, onDone: opts.onDone || null, clip };
+  introStartT = performance.now();
+  if (document.pointerLockElement) document.exitPointerLock();
+  showKicker(clip);
+  el.intro.style.display = 'flex';
+  el.introText.style.display = '';
+  el.introText.style.opacity = 0;
+  showSkip();
+  if (opts.then === 'gallery' || opts.then === 'montage') el.start.style.display = 'none';
+  if (clip.kind === 'cinematic'){
+    G.mode = 'cinematic';
+    el.intro.style.background = 'transparent';
+    Cinematic.start(() => endClip(false));
+    return;
+  }
+  G.mode = (opts.then === 'gallery' || opts.then === 'montage') ? 'galleryclip' : 'beatclip';
+  el.intro.style.background = 'rgba(0,0,0,.45)';
+  el.fade.style.transition = 'opacity .4s';
+  el.fade.style.background = '#000';
+  el.fade.style.opacity = 0;
+  const wake = opts.then === 'play';
+  if (wake){
+    yawObj.position.set(0, .35, 0);
+    G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
+  }
+  const epForClip = episodeOf(clip.episode);
+  const video = !!(epForClip && epForClip.url && clip.cue && !clip.textOnly);
+  beatState = { lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video };
+  cueVideo(clip);
+  if (window.__LATM){
+    __LATM.clipLog = __LATM.clipLog || [];
+    __LATM.clipLog.push({ id: clip.id, lines: beatState.lines.length, max: beatState.max });
+  }
+}
+function updateBeat(dt){
+  const s = beatState;
+  if (!s) return;
+  s.elapsed += dt;
+  if (s.elapsed >= s.max){ endClip(false); return; }
+  if (s.phase === 'lines'){
+    const line = s.lines[s.i];
+    if (!line){ s.phase = 'hold'; return; }
+    if (!s.shown){
+      el.introText.textContent = line.who ? line.text : line.text;
+      el.introText.style.opacity = 1;
+      s.shown = true;
+      s.hold = Math.min(6.2, Math.max(2.5, 1.1 + line.text.length * 0.028));
+    }
+    s.t += dt;
+    if (s.t > s.hold){
+      el.introText.style.opacity = 0;
+      s.i++; s.t = 0; s.shown = false;
+    }
+  } else if (s.phase === 'hold'){
+    const floor = s.video ? s.max : Math.min(8, s.max);
+    if (s.elapsed >= floor){
+      if (s.wake){ s.phase = 'rise'; s.t = 0; el.intro.style.background = 'transparent'; el.introText.style.display = 'none'; }
+      else endClip(false);
+    }
+  } else if (s.phase === 'rise'){
+    s.t += dt;
+    const k = Math.min(1, s.t / 1.05);
+    const e = k * k * (3 - 2 * k);
+    yawObj.position.y = .35 + (PLAYER_EYE - .35) * e;
+    G.pitch = 1.1 * (1 - e);
+    pitchObj.rotation.x = G.pitch;
+    if (k >= 1) endClip(false);
+  }
+}
+function endClip(skipped){
+  const ret = clipReturn;
+  if (!ret) return;
+  clipReturn = null;
+  beatState = null;
+  const v = document.getElementById('beatVideo');
+  if (v){ try { v.pause(); } catch (e) {} v.style.display = 'none'; v.ontimeupdate = null; v.onended = null; }
+  el.intro.style.display = 'none';
+  el.intro.style.background = '';
+  el.introText.style.opacity = 0;
+  el.skipBtn.style.opacity = 0;
+  const kicker = document.getElementById('introKicker');
+  if (kicker) kicker.textContent = '';
+  if (ret.then === 'play') finishIntro(!!skipped);
+  else if (ret.then === 'resume'){
+    G.mode = 'play';
+    hudVisible(true);
+    setObjectiveText();
+    if (ret.onDone) ret.onDone();
+  }
+  else if (ret.then === 'montage') nextMontage();
+  else {
+    G.mode = 'title';
+    el.start.style.display = 'flex';
+    if (window.Waking) Waking.onGalleryReturn();
+  }
+}
+function nextMontage(){
+  if (!montageQueue || !montageQueue.length){
+    montageQueue = null;
+    G.mode = 'title';
+    el.start.style.display = 'flex';
+    if (window.Waking) Waking.onGalleryReturn();
+    return;
+  }
+  playClip(montageQueue.shift(), { then:'montage' });
+}
+function playMontage(clips){
+  montageQueue = clips.slice();
+  el.start.style.display = 'none';
+  nextMontage();
+}
+function playFullEpisode(ep){
+  if (!ep || !ep.url) return;
+  el.start.style.display = 'none';
+  clipReturn = { then:'gallery', onDone:null, clip:null };
+  G.mode = 'galleryclip';
+  introStartT = performance.now();
+  const v = ensureVideo();
+  v.style.display = 'block';
+  el.intro.style.display = 'flex';
+  el.intro.style.background = '#000';
+  showSkip();
+  v.src = ep.url;
+  v.onended = () => endClip(false);
+  v.play().catch(()=>{});
+}
+function queueStory(beats){
+  G.storyQueued = true;
+  setTimeout(() => {
+    G.storyQueued = false;
+    const tryStart = () => {
+      if (G.mode === 'beatclip' || G.mode === 'cinematic' || G.mode === 'galleryclip'){ setTimeout(tryStart, 200); return; }
+      if (G.mode === 'play') Story.start(beats);
+    };
+    tryStart();
+  }, 1400);
+}
+function considerClip(clip, after){
+  const go = () => {
+    if (G.storyQueued || G.mode === 'story'){ setTimeout(go, 200); return; }
+    if (G.mode !== 'play') return;
+    if (G.firedClips.has(clip.id)){ after(); return; }
+    playClip(clip, { then:'resume', onDone: after });
+  };
+  if (G.storyQueued || G.mode === 'story') setTimeout(go, 200);
+  else go();
+}
+function peekResume(){
+  try { return sessionStorage.getItem('latm_resume'); } catch (e) { return null; }
+}
+function takeResume(){
+  try {
+    const raw = sessionStorage.getItem('latm_resume');
+    if (!raw) return null;
+    sessionStorage.removeItem('latm_resume');
+    const mid = JSON.parse(raw);
+    if (!mid || mid.chapter !== CH.id) return null;
+    return mid;
+  } catch (e) { return null; }
+}
 function startIntro(){
   el.start.style.display = 'none';
   AudioSys.init();
   AudioSys.resume();
   AudioSys.heartbeatStart();
   MusicSys.start();
-  if (CH.cinematic){
-    // the book's opening scene plays first, then the hive awakening
-    G.mode = 'cinematic';
-    introStartT = performance.now();
-    el.intro.style.display = 'flex';
-    el.intro.style.background = 'transparent';
-    Cinematic.start(beginWakeIntro);
-    showSkip();
-    return;
-  }
+  if (window.Waking) Waking.onChapterStart(CH.id);
   introStartT = performance.now();
-  beginWakeIntro();
-}
-function beginWakeIntro(){
-  G.mode = 'intro';
-  el.intro.style.display = 'flex';
-  // the hive is visible behind the text from the first frame: no black wait
-  el.intro.style.background = 'rgba(0,0,0,.45)';
-  el.fade.style.transition = 'opacity .6s';
-  el.fade.style.background = '#000';
-  el.fade.style.opacity = 0;
-  // lying on the floor, looking up
-  yawObj.position.set(0, .35, 0);
-  G.pitch = 1.1; pitchObj.rotation.x = G.pitch;
-  introState = { line: 0, t: 0, phase: 'lines', riseT: 0 };
-  showSkip();
-}
-const WAKE_HOLD = 2.3;   // seconds per wake-up line (was 3.6 on a black screen)
-function updateIntro(dt){
-  const s = introState;
-  if (!s) return;
-  s.t += dt;
-  if (s.phase === 'lines'){
-    if (s.line < INTRO_LINES.length){
-      if (s.t > .15 && !s.shown){
-        el.introText.textContent = INTRO_LINES[s.line];
-        el.introText.style.opacity = 1;
-        s.shown = true;
-      }
-      if (s.t > Math.min(WAKE_HOLD + 1, 1.3 + INTRO_LINES[s.line].length * .02)){
-        el.introText.style.opacity = 0;
-        s.line++; s.t = 0; s.shown = false;
-      }
-    } else {
-      s.phase = 'rise'; s.t = 0;
-      el.intro.style.background = 'transparent';
-      el.introText.style.display = 'none';
-    }
-  }
-  else if (s.phase === 'rise'){
-    const k = Math.min(1, s.t / 1.6);
-    const e = k*k*(3-2*k); // smoothstep
-    yawObj.position.y = .35 + (PLAYER_EYE - .35) * e;
-    G.pitch = 1.1 * (1 - e);
-    pitchObj.rotation.x = G.pitch;
-    if (k >= 1) finishIntro();
-  }
+  if (peekResume()){ finishIntro(true); return; }
+  const open = openBeat(CH.id);
+  if (!open){ finishIntro(true); return; }
+  playClip(open, { then:'play' });
 }
 function finishIntro(skipAll){
-  introState = null;
+  beatState = null;
+  clipReturn = null;
   AudioSys.heartbeatStop();
   el.intro.style.display = 'none';
   el.intro.style.background = '';
@@ -3798,11 +4041,27 @@ function finishIntro(skipAll){
   el.introText.style.transition = '';
   el.introText.style.opacity = 0;
   el.skipBtn.style.opacity = 0;
-  el.fade.style.transition = skipAll ? 'none' : 'opacity 1s';
+  el.fade.style.transition = skipAll ? 'none' : 'opacity .6s';
   el.fade.style.background = '#000';
   el.fade.style.opacity = 0;
-  yawObj.position.set(0, PLAYER_EYE, 0);
-  G.pitch = 0; G.yaw = 0;
+  const mid = takeResume();
+  if (!mid){
+    yawObj.position.set(0, PLAYER_EYE, 0);
+    G.pitch = 0; G.yaw = 0;
+  } else {
+    yawObj.position.set(mid.x || 0, PLAYER_EYE, mid.z || 0);
+    G.yaw = mid.yaw || 0; G.pitch = 0;
+    G.hp = mid.hp || 100;
+    G.currentSegment = mid.segment || 0;
+    G.checkpoint.segment = mid.segment || 0;
+    G.checkpoint.pos.set(mid.x || 0, 0, mid.z || 0);
+    G._resumed = true;
+    BEATS.forEach(b => {
+      if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= mid.segment))) G.firedClips.add(b.id);
+    });
+  }
+  pitchObj.rotation.x = G.pitch;
+  yawObj.rotation.y = G.yaw;
   G.mode = 'play';
   hudVisible(true);
   if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
@@ -3813,25 +4072,32 @@ function finishIntro(skipAll){
   renderPerks();
   setObjectiveText();
   if (CH.boss && Boss && Boss.resumeRequested()) { Boss.resume(); return; }
-  if (CB.start) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 900);
+  if (CB.start && !G._resumed) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
-// SKIP: visible at once, and the button, a click or tap anywhere on the
-// intro, or any key all skip immediately (no waiting on fades).
 function showSkip(){ el.skipBtn.style.transition = 'none'; el.skipBtn.style.opacity = .85; }
-let introStartT = 0;
 function skipIntro(){
-  if (G.mode !== 'cinematic' && G.mode !== 'intro') return false;
-  if (performance.now() - introStartT < 180) return false;   // ignore the ENTER press itself
+  const mode = G.mode;
+  if (mode !== 'cinematic' && mode !== 'beatclip' && mode !== 'galleryclip') return false;
+  if (performance.now() - introStartT < 180) return false;
   el.introText.style.transition = 'none';
-  if (G.mode === 'cinematic') Cinematic.skip();
-  finishIntro(true);
+  if (mode === 'cinematic') Cinematic.skip();
+  endClip(true);
   return true;
 }
 el.skipBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); skipIntro(); });
 el.skipBtn.addEventListener('click', e => { e.stopPropagation(); skipIntro(); });
 el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) skipIntro(); });
 addEventListener('keydown', e => {
-  if ((G.mode === 'cinematic' || G.mode === 'intro') && !e.repeat){
+  if (e.repeat) return;
+  if (e.code === 'Escape' && window.Waking){
+    const m = G.mode;
+    if (m === 'play' || m === 'story' || m === 'paused' || m === 'title' || m === 'end'){
+      e.preventDefault();
+      Waking.togglePause();
+      return;
+    }
+  }
+  if (G.mode === 'cinematic' || G.mode === 'beatclip' || G.mode === 'galleryclip'){
     if (skipIntro()){ e.preventDefault(); keys[e.code] = false; }
   }
 }, true);
@@ -3891,6 +4157,7 @@ function sToast(text, ember){
 
 const Story = (() => {
   let beats = [], bi = 0, sayT = 0, cState = null, active = false;
+  let sayFull = '', sayShown = 0, typeOn = false;
   function start(list){
     if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return;
     active = true; beats = list; bi = 0;
@@ -3898,7 +4165,7 @@ const Story = (() => {
     resetInputs();
     if (document.pointerLockElement) document.exitPointerLock();
     document.body.classList.add('cine');
-    sEl.wrap.style.display = 'block';
+    sEl.wrap.style.display = 'flex';
     next();
   }
   function next(){
@@ -3919,24 +4186,32 @@ const Story = (() => {
     sEl.choice.style.display = 'none';
     sEl.speaker.textContent = who || '';
     sEl.speaker.className = who ? who.toLowerCase() : '';
-    sEl.text.textContent = text;
     sEl.text.className = who ? '' : 'narr';
-    sayT = Math.max(3.4, text.length * .06);
+    const speed = (window.Waking && Waking.textSpeed()) || 1;
+    sayFull = text;
+    sayShown = 0;
+    typeOn = true;
+    sEl.text.textContent = '';
+    sayT = Math.max(3.4, text.length * .06) / speed;
     if (Cast) Cast.speak(who);
   }
   function showChoice(c){
     if (Cast) Cast.silence();
-    sEl.dlg.style.display = 'none';
+    sEl.dlg.style.display = 'block';
     sEl.opts.innerHTML = '';
     const opts = c.options;
     function pick(o){
       if (o.locked) return;
       sEl.choice.style.display = 'none';
       cState = null;
-      SCHOICES.push({ q: c.record, a: o.label.replace(/[\[\]]/g,'') });
+      const clean = o.label.replace(/[\[\]]/g,'');
+      SCHOICES.push({ q: c.record, a: clean });
       if (o.flags) Object.assign(SFLAGS, o.flags);
       if (o.apply) o.apply();
-      if (o.toast) sToast(o.toast, o.ember);
+      let world = '';
+      if (window.Waking) world = Waking.onChoice(CH.id, c.record, clean) || '';
+      if (o.toast) sToast(world ? (o.toast + '  ' + world) : o.toast, o.ember);
+      else if (world) sToast(world);
       renderPerks();
       if (Cast && !o.silent) Cast.nod('MARCUS');
       AudioSys.doorOpen();
@@ -3954,7 +4229,12 @@ const Story = (() => {
       sEl.opts.appendChild(b);
     });
     sEl.choice.style.display = 'block';
-    cState = { opts, pick, t: c.timer || 8, total: c.timer || 8, locked: o => o.req && !SFLAGS[o.req] };
+    const mode = (window.Waking && Waking.timerMode()) || 'on';
+    const base = c.timer || 8;
+    const total = mode === 'long' ? base * 2 : base;
+    const timerEl = document.getElementById('sTimer');
+    if (timerEl) timerEl.style.display = mode === 'off' ? 'none' : '';
+    cState = { opts, pick, t: total, total, off: mode === 'off', locked: o => o.req && !SFLAGS[o.req] };
   }
   function finish(){
     active = false;
@@ -3972,11 +4252,18 @@ const Story = (() => {
   }
   function advance(){
     if (G.mode !== 'story' || cState) return;
+    if (typeOn && sayFull){
+      typeOn = false;
+      sEl.text.textContent = sayFull;
+      sayT = Math.min(sayT, 0.45);
+      return;
+    }
     next();
   }
   function update(dt){
     if (G.mode !== 'story') return;
     if (cState){
+      if (cState.off) return;
       cState.t -= dt;
       const k = Math.max(0, cState.t / cState.total);
       sEl.timerFill.style.width = (k*100) + '%';
@@ -3987,6 +4274,13 @@ const Story = (() => {
         cState.pick(def);
       }
       return;
+    }
+    if (typeOn && sayFull){
+      const speed = (window.Waking && Waking.textSpeed()) || 1;
+      sayShown += dt * 42 * speed;
+      const n = Math.min(sayFull.length, Math.floor(sayShown));
+      sEl.text.textContent = sayFull.slice(0, n);
+      if (n >= sayFull.length) typeOn = false;
     }
     sayT -= dt;
     if (sayT <= 0) advance();
@@ -4383,9 +4677,17 @@ Object.assign(ENDING_TEXT, {
   the_count: { name:'THE COUNT', title:'HE KEPT COUNTING THE TOWERS.', fadeCol:'#f3e7c8',
     sub:'He stayed, and he stayed careful, the way Thomas said they all had. Every morning he counted. One morning, back in the cooperative, the number was wrong. That morning is where Book Two, Layers of Truth, begins.' },
 });
+function goChapter(hash){
+  const id = String(hash || '').replace('#', '');
+  if (!id) return;
+  if (window.Waking && Waking.isLocked(id)){ Waking.openPaywall(id); return; }
+  location.hash = '#' + id;
+  location.reload();
+}
 function finishEnding(id){
   loadCover();
   const E = ENDING_TEXT[id];
+  if (window.Waking) Waking.onComplete(CH.id);
   G.mode = 'extracting';
   Story.finish();
   sEl.endName.textContent = 'ENDING: ' + E.name;
@@ -4409,7 +4711,7 @@ function finishEnding(id){
       document.getElementById('endBtns').prepend(cont);
     }
     cont.textContent = label;
-    cont.onclick = () => { location.hash = hash; location.reload(); };
+    cont.onclick = () => goChapter(hash);
   };
   const unlock = cid => { try {
     const u = JSON.parse(localStorage.getItem('latm_unlocked'))||[];
@@ -4419,7 +4721,7 @@ function finishEnding(id){
     // the lose endings of the final battle: go back to the laboratory yard
     addCont('TRY AGAIN: THE LABORATORY YARD \u25B8', '#ch_steel');
     const c = document.getElementById('contBtn');
-    c.onclick = () => { try { sessionStorage.setItem('steel_resume', '1'); } catch(e){} location.hash = '#ch_steel'; location.reload(); };
+    c.onclick = () => { try { sessionStorage.setItem('steel_resume', '1'); } catch(e){} goChapter('#ch_steel'); };
   }
   if (CH.id !== 'ep1' && E.next){
     const cid = E.next.slice(1);
@@ -4442,7 +4744,7 @@ function finishEnding(id){
         document.getElementById('endBtns').prepend(cont);
       }
       cont.textContent = 'CONTINUE: ' + (CHAPTERS[cid] ? CHAPTERS[cid].subtitle : 'CHAPTER TWO') + ' \u25B8';
-      cont.onclick = () => { location.hash = E.next; location.reload(); };
+      cont.onclick = () => goChapter(E.next);
     }
   } else if (!CH.book && CH.id !== 'ch_counting'){
     try {
@@ -4456,10 +4758,13 @@ function finishEnding(id){
       document.getElementById('endBtns').prepend(cont);
     }
     cont.textContent = 'CONTINUE: CHAPTER THREE: THE COUNTING HOUSE \u25B8';
-    cont.onclick = () => { location.hash = '#ch_counting'; location.reload(); };
+    cont.onclick = () => goChapter('#ch_counting');
   }
   sEl.endSummary.innerHTML = SCHOICES.length
-    ? '<b>YOUR CHOICES:</b><br>' + SCHOICES.map(c => '▸ ' + c.q + '. <b>' + c.a + '</b>').join('<br>')
+    ? '<b>YOUR CHOICES:</b><br>' + SCHOICES.map(c => {
+        const world = window.Waking ? Waking.worldLine(c.q, c.a, CH.id) : '';
+        return '▸ ' + c.q + '. <b>' + c.a + '</b>' + (world ? '<br><i>' + world + '</i>' : '');
+      }).join('<br>')
     : '';
   if (id === 'together' || id === 'lone') radio('extract');
   AudioSys.extract();
@@ -4744,6 +5049,17 @@ const Cast = (() => {
   return {
     members, stage,
     speak(who){
+      const cards = window.Waking && Waking.portraitMode() === 'cards';
+      if (cards){
+        if (active){ active.userData.setTalking(false); active.visible = false; }
+        active = null;
+        div.style.opacity = 0;
+        div.style.display = 'none';
+        showPortrait(who, 'speak');
+        return;
+      }
+      hidePortrait();
+      div.style.display = '';
       const c = members[who];
       if (active && active !== c){ active.userData.setTalking(false); active.visible = false; }
       active = c || null;
@@ -4751,6 +5067,7 @@ const Cast = (() => {
       if (c){ c.visible = true; c.userData.setTalking(true); }
     },
     silence(){
+      hidePortrait();
       if (active) active.userData.setTalking(false);
       div.style.opacity = 0;
     },
@@ -4765,6 +5082,7 @@ const Cast = (() => {
    Boot / title / replay
    ============================================================ */
 el.startBtn.addEventListener('click', () => {
+  if (window.Waking && Waking.isLocked(CH.id)){ Waking.openPaywall(CH.id); return; }
   AudioSys.init(); AudioSys.resume();
   startIntro();
 });
@@ -4994,7 +5312,7 @@ const Boss = (() => {
     if (H.phase === 'enter' || H.phase === 'sensors'){ f = H.sensHP / H.sensMax; t = 'SENSOR CLUSTER'; }
     else if (H.phase === 'cannons'){ f = arms.reduce((a,b)=>a+Math.max(0,b.hp),0) / arms.reduce((a,b)=>a+b.max,0); t = 'ARM CANNONS ' + arms.filter(a=>a.alive).length + ' / 2'; }
     else if (H.phase === 'vent'){ f = 1; t = 'ARMOR SEALED. VENT IT ONTO A GRATE'; }
-    else if (H.phase === 'pinned'){ f = H.pinT / 16; t = 'PINNED. UPLOAD ' + Math.round(H.upload*100) + '%'; }
+    else if (H.phase === 'pinned'){ f = H.pinT / pinMax(); t = 'PINNED. UPLOAD ' + Math.round(H.upload*100) + '%'; }
     else if (H.phase === 'rise'){ f = 0; t = 'IT IS GETTING UP'; }
     bossEl.fill.style.width = (Math.max(0,Math.min(1,f))*100).toFixed(1) + '%';
     bossEl.fill.classList.toggle('pin', H.phase === 'pinned');
@@ -5107,9 +5425,10 @@ const Boss = (() => {
     say('THOMAS', "Both cannons gone and its armor's sealed. The yard sits on a geothermal tap.");
     say('THOMAS', "Draw it onto a glowing grate, then open the valve. Steam will lock its joints!");
   }
+  function pinMax(){ return (window.Waking && Waking.storyMode()) ? 10 : 16; }
   function pin(v){
-    H.phase = 'pinned'; H.pinT = 16; H.kneelT = 1; H.shutT = 0; H.charging = false; H.burstN = 0; H.stompT = 0;
-    v.linger = 16;
+    H.phase = 'pinned'; H.pinT = pinMax(); H.kneelT = 1; H.shutT = 0; H.charging = false; H.burstN = 0; H.stompT = 0;
+    v.linger = pinMax();
     AudioSys.hunterRoar(); G.shakeT = .5; G.shakeAmp = .1;
     sToast('PINNED IN THE STEAM. GET TO THE CHAIR.');
     say('THOMAS', "It's down! Marcus, the chair. Now!");
@@ -5267,7 +5586,7 @@ const Boss = (() => {
 
   /* ---- chair + valves (replaces the default hold-to-plant) ---- */
   function interact(dt){
-    const P = yawObj.position, holding = keys['KeyE'] || touchPlanting;
+    const P = yawObj.position, holding = keys['KeyE'] || touchPlanting || G.padUse;
     let target = null;
     if (H.phase === 'vent') for (const vn of vents) if (vn.cd <= 0 && dist2(P.x,P.z,vn.vx,vn.vz) < 2.1) target = vn;
     if (H.phase === 'pinned' && dist2(P.x,P.z,CORE_POS.x,CORE_POS.z) < 3.2) target = 'chair';
@@ -5335,7 +5654,7 @@ const Boss = (() => {
     AudioSys.hitConfirm(); spawnSparks(at, 14, 0xff5a3a);
     if (h.part === 'sensor'){
       H.flash = 1;
-      if (H.phase === 'pinned'){ H.pinT = Math.min(16, H.pinT + .35); return; }
+      if (H.phase === 'pinned'){ H.pinT = Math.min(pinMax(), H.pinT + .35); return; }
       H.sensHP -= dmg;
       if (H.sensHP <= 0) toCannons();
     } else {
@@ -5357,6 +5676,12 @@ const Boss = (() => {
         r.rotation.set(Math.random()*3, Math.random()*3, 0); scene.add(r); rubble.push(r);
       }
       for (let i=0;i<6;i++) spawnSparks(new THREE.Vector3(BREACH.x, .5 + i*.45, BREACH.z + (i-3)), 12, 0xffaa66);
+    }
+    if (window.Waking && Waking.storyMode() && !H._scaled){
+      H._scaled = true;
+      H.sensMax = Math.round(H.sensMax * 0.58);
+      H.sensHP = H.sensMax;
+      arms.forEach(a => { a.max = Math.round(a.max * 0.58); a.hp = a.max; });
     }
     AudioSys.hunterBlast(); AudioSys.hunterRoar(); G.shakeT = .7; G.shakeAmp = .15;
     sToast('THE YARD WALL BLEW IN.', true);
@@ -5412,7 +5737,17 @@ const Boss = (() => {
     G.radioFired.add('core_enter'); setObjectiveText();
     setTimeout(() => { if (G.mode === 'play') Story.start(RESUME); }, 500);
   }
-  return { start, update, interact, ray, hit, onRespawn, dim, epilogueLight, resumeRequested, resume,
+  function aimPoint(){
+    if (!H.active || ['off','dim','done'].includes(H.phase)) return null;
+    const mark = H.phase === 'cannons'
+      ? ((arms.find(a => a.alive) || {}).mark)
+      : sensorMark;
+    if (!mark || !mark.getWorldPosition) return null;
+    const p = new THREE.Vector3();
+    mark.getWorldPosition(p);
+    return p;
+  }
+  return { start, update, interact, ray, hit, onRespawn, dim, epilogueLight, resumeRequested, resume, aimPoint,
     weakenCannons(f){ arms.forEach(a => { a.hp *= (1 - f); }); },
     fighting(){ return H.active && !['off','dim','done'].includes(H.phase); },
     H, root, arms, vents, KARA, THOM, sensorMark,
@@ -5425,7 +5760,33 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, sToast, ENDING_TEXT };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [] };
+
+if (window.Waking) Waking.mount({
+  getMode: () => G.mode,
+  setMode(m){
+    G.mode = m;
+    if ((m === 'paused' || m === 'story' || m === 'beatclip') && document.pointerLockElement) document.exitPointerLock();
+    if (m === 'play' || m === 'story') hudVisible(true);
+  },
+  chapterId: () => CH.id,
+  chapters: CHAPTERS,
+  applyQuality,
+  setVolume(v){ AudioSys.setVolume(v); MusicSys.setVolume(v); },
+  playClip,
+  playMontage,
+  playFull: playFullEpisode,
+  archive: ARCHIVE,
+  beats: BEATS,
+  clipLabel: b => clipLabel(b, CHAPTERS),
+  getPos: () => ({
+    chapter: CH.id, segment: G.currentSegment,
+    x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
+    yaw: G.yaw, hp: G.hp,
+  }),
+  Q,
+  isTouch: IS_TOUCH,
+});
 
 /* ============================================================
    Main loop
@@ -5447,10 +5808,16 @@ function loop(){
     if (window.__LATM.stepFrames > 0){ dt = 1/24; window.__LATM.stepFrames--; }
     else dt = 0;
   }
+  document.body.classList.toggle('live', G.mode === 'play' || G.mode === 'story' || G.mode === 'paused');
+  if (G.mode === 'paused'){
+    updateFX(dt);
+    renderFrame(scene, camera);
+    return;
+  }
   G.time += dt;
 
   if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
-  if (G.mode === 'intro') updateIntro(dt);
+  if (G.mode === 'beatclip' || G.mode === 'galleryclip') updateBeat(dt);
   if (G.mode === 'play'){
     updatePlayer(dt);
     tryFire(dt);
