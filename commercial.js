@@ -108,6 +108,20 @@ function hasPass(){
 function previewOn(){
   try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
 }
+// Pages has no store checkout. Season Pass and three short views set the
+// same local entitlement: Chapters Three to Six and every Chapter Two path.
+function grantSeason(){
+  const s = slot();
+  s.pass = true;
+  s.noAds = true;
+  if (!s.unlocked) s.unlocked = [];
+  CH2_IDS.concat(PAID).forEach(id => {
+    if (s.unlocked.indexOf(id) < 0) s.unlocked.push(id);
+  });
+  writeLegacy(s);
+  persist();
+  track('season_unlock', {});
+}
 
 export function bootSaves(){
   if (typeof localStorage === 'undefined') {
@@ -377,27 +391,33 @@ function openPaywall(id){
   } else {
     body.appendChild(el('p', 'deckLine', 'This chapter is part of Book One.'));
   }
-  body.appendChild(el('p', 'fine', 'Episode One and your chosen Chapter Two path stay free. Season Pass ' + COMMERCE.SEASON_PRICE + ' opens Chapters Three to Six, every Chapter Two path, the hunter, and the endings. It also removes ads.'));
-  body.appendChild(el('p', 'fine', 'Season Pass and Remove Ads do not unlock anything in this build. Nothing is charged until RevenueCat and the store products exist.'));
+  body.appendChild(el('p', 'fine', 'Episode One stays free. One Chapter Two path stays free with the ending you earned. Season Pass ' + COMMERCE.SEASON_PRICE + ' opens Chapters Three to Six and every Chapter Two path. It also removes ads.'));
+  body.appendChild(el('p', 'fine', 'This Pages build has no store checkout. Season Pass and three short views open those chapters on this device. Nothing is charged.'));
   const pass = el('button', 'btn amber', 'SEASON PASS  ' + COMMERCE.SEASON_PRICE);
   pass.type = 'button';
   pass.addEventListener('click', () => {
-    const note = document.getElementById('payNote');
-    if (note) note.textContent = 'Purchase connects when RevenueCat and the store products exist. Nothing is charged in this build.';
+    grantSeason();
+    location.hash = '#' + id;
+    location.reload();
   });
   body.appendChild(pass);
   const ads = el('button', 'btn', 'WATCH A SHORT VIEW  ' + views + ' / ' + COMMERCE.AD_VIEWS);
   ads.type = 'button';
   ads.addEventListener('click', () => playPlaceholderAd(id));
   body.appendChild(ads);
-  body.appendChild(el('p', 'fine', 'Three completed views open this chapter. Views are optional. There are no banner ads and no forced breaks. The button below is a stand in until AdMob is connected. It still counts so the rule can be tested, and the card says so.'));
+  body.appendChild(el('p', 'fine', 'Three completed views open Chapters Three to Six and every Chapter Two path. Views are optional. There are no banner ads and no forced breaks. The button below is a stand in until AdMob is connected. It still counts, and the card says so.'));
   const remove = el('button', 'btn', 'REMOVE ADS  ' + COMMERCE.REMOVE_ADS_PRICE);
   remove.type = 'button';
   remove.addEventListener('click', () => {
     const note = document.getElementById('payNote');
-    if (note) note.textContent = hasPass()
-      ? 'Season Pass already includes Remove Ads.'
-      : 'Remove Ads connects with the store. Nothing is charged in this build.';
+    if (hasPass()) {
+      if (note) note.textContent = 'Season Pass already includes Remove Ads.';
+      return;
+    }
+    const s = slot();
+    s.noAds = true;
+    persist();
+    if (note) note.textContent = 'Remove Ads is on for this device. Chapters stay locked until Season Pass or three views. Nothing was charged.';
   });
   body.appendChild(remove);
   const note = el('p', 'fine', '');
@@ -416,9 +436,11 @@ function playPlaceholderAd(id){
   if (note) note.textContent = 'Stand in view. No live ad played. AdMob is not connected.';
   setTimeout(() => {
     const s = slot();
+    if (!s.ads) s.ads = {};
     s.ads[id] = (s.ads[id] || 0) + 1;
     persist();
     if (s.ads[id] >= COMMERCE.AD_VIEWS) {
+      grantSeason();
       location.hash = '#' + id;
       location.reload();
       return;
