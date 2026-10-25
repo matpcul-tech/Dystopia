@@ -113,9 +113,25 @@ Single file, no build step. Serve `index.html` from anywhere
 (GitHub Pages works as-is). Three.js loads from the jsdelivr CDN.
 
 - **Desktop:** WASD move · mouse look (click to lock) · click/Space fire
-  · E interacts · during story beats: Space advances, 1–3 picks.
-- **Mobile:** left stick to move · right side drag to look · FIRE button
-  · tap to advance story, tap choices.
+  · Shift sprint · C crouch (duck a flare, and in the Counting House
+  drop under a cone) · E reads a scrap or works a console · Esc pauses.
+  The pause screen holds look sensitivity, music, sound, difficulty
+  (Story / Standard / Relentless), and a graphics preset. Shoot the
+  glowing eye: it is the core, and it ends a crawler in one round.
+- **Mobile:** left stick to move (push it to the edge to sprint) · right
+  side drag to look · FIRE · LOW to crouch · HOLD to pause · tap a scrap
+  to read it.
+- **Graphics:** the game boots Balanced on a desk machine and Low on a
+  phone or a small laptop, with no bloom and no full-scene shadows.
+  Cinematic is one click on the title if the machine can hold it. If a
+  preset cannot keep up, the picture steps itself down.
+  Story beats still use Space to advance and 1–3 to choose. Silence, if
+  you let the timer run out, is an answer.
+
+Scraps in the rooms file themselves into a **field manual** that
+persists, along with what you learn about crawlers, sentries, wardens,
+Reyes, Kara, and the ledger. The end card keeps the run: time, frames
+broken, eye shots.
 
 ## Author config
 

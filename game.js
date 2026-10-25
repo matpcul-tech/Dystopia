@@ -458,6 +458,36 @@ CHAPTERS.ch_counting = {
     extract:[{who:'REYES',text:"Door's ahead. Slow steps. You were never here. Nobody was ever here."}] },
   endTitle:'', endSub:'' };
 
+/* Scraps tucked into the rooms. Reading one files it in the field manual. */
+CHAPTERS.ep1.notes = [
+  { x:2.2, z:-22, title:'CLINIC TILE',
+    body:'They took the names before they took the people. If you still have yours, do not say it out loud.' },
+  { x:-1.1, z:-60, title:'HARDWARE COUNTER',
+    body:'The red flare is not a warning. It is a countdown. Move when it starts. Put the round in the eye if you cannot.' },
+  { x:4.2, z:-122, title:'DEPOT COT',
+    body:'Reyes, if you find this: I went for the screen. The list is everyone. Do not come in after me.' },
+];
+CHAPTERS.ch_taken.notes = [
+  { x:-5, z:-28, title:'INSIDE A POD LID',
+    body:'I dreamed I was counting. I woke up and I was still counting. Break the glass if you can stand the noise.' },
+];
+CHAPTERS.ch_ghost.notes = [
+  { x:1.2, z:-50, title:'CABLE JACKET',
+    body:'The trunk line speaks in our voices now. If it says your name like a question, do not answer it like an entry.' },
+];
+CHAPTERS.ch_together.notes = [
+  { x:-6, z:-30, title:'TORN MANIFEST',
+    body:'Sixty per carrier. They write CARGO. Say people, even if you are the only one listening.' },
+];
+CHAPTERS.ch_lone.notes = [
+  { x:2.2, z:-70, title:'TOLL BOOTH GLASS',
+    body:'The beacon is real. Kara is real. The road is longer than the message. Walk it anyway.' },
+];
+CHAPTERS.ch_counting.notes = [
+  { x:-2, z:-20, title:'VISITOR LEDGER',
+    body:'Crouch. The cones are drawn for people who stand up and apologize. You are not here to apologize. Running is a noise they can count.' },
+];
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -475,6 +505,8 @@ const el = {
   plantWrap:$('plantWrap'), plantFill:$('plantFill'),
   dmg:$('dmgVignette'), stickZone:$('stickZone'), lookZone:$('lookZone'),
   stickBase:$('stickBase'), stickNub:$('stickNub'), fireBtn:$('fireBtn'), plantBtn:$('plantBtn'),
+  crouchBtn:$('crouchBtn'), breathWrap:$('breathWrap'), breathFill:$('breathFill'), coach:$('coach'),
+  pauseBtn:$('pauseBtn'),
 };
 el.book1.href = CONFIG.BOOK1_URL;
 {
@@ -519,19 +551,64 @@ document.getElementById('endSub').textContent = CH.endSub;
 }
 
 const IS_TOUCH = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+
+/* Saved options. Graphics is chosen before the renderer exists so a
+   laptop can boot into a picture it can actually hold. */
+const PREF_KEY = 'latm_prefs';
+const GFX_PRESETS = {
+  low:        { aa:false, pr:1,    shadow:false, shadowSize:256,  post:false, bloom:0 },
+  balanced:   { aa:true,  pr:1.15, shadow:false, shadowSize:512,  post:false, bloom:0 },
+  cinematic:  { aa:true,  pr:1.25, shadow:true,  shadowSize:1024, post:true,  bloom:.2 },
+};
+const DIFF_TABLE = {
+  story:      { hp:.78, dmgIn:.62, detect:.68, regen:1.35, wind:1.3,  move:.88, label:'STORY',
+    blurb:'The story stays sharp. The machines pull their punches.' },
+  standard:   { hp:1,   dmgIn:1,   detect:1,   regen:1,    wind:1,    move:1,   label:'STANDARD',
+    blurb:'The episode as written. Shoot the eye. Crouch the flare.' },
+  relentless: { hp:1.32,dmgIn:1.38,detect:1.32,regen:.7,   wind:.7,   move:1.1, label:'RELENTLESS',
+    blurb:'Heavier frames. Shorter warnings. They finish the count.' },
+};
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+function defaultGfx(){
+  const mem = navigator.deviceMemory || 8;
+  const cores = navigator.hardwareConcurrency || 8;
+  if (IS_TOUCH || mem <= 4 || cores <= 4) return 'low';
+  return 'balanced';
+}
+function loadPrefs(){
+  let p = {};
+  try { p = JSON.parse(localStorage.getItem(PREF_KEY)) || {}; } catch (e) {}
+  return {
+    sens: clamp(p.sens ?? 1, .4, 2.2),
+    music: clamp(p.music ?? .8, 0, 1),
+    sfx: clamp(p.sfx ?? .85, 0, 1),
+    gfx: GFX_PRESETS[p.gfx] ? p.gfx : defaultGfx(),
+    difficulty: DIFF_TABLE[p.difficulty] ? p.difficulty : 'standard',
+    shake: p.shake !== false,
+    crouchToggle: !!p.crouchToggle,
+  };
+}
+let PREFS = loadPrefs();
+let gfxUserSet = !!((() => { try { return JSON.parse(localStorage.getItem(PREF_KEY)); } catch (e) { return null; } })()?.gfx);
+function savePrefs(){
+  try { localStorage.setItem(PREF_KEY, JSON.stringify(PREFS)); } catch (e) {}
+}
+function DIFF(){ return DIFF_TABLE[PREFS.difficulty] || DIFF_TABLE.standard; }
+
 el.startHint.innerHTML = IS_TOUCH
-  ? 'LEFT SIDE: MOVE &nbsp;&bull;&nbsp; RIGHT SIDE: LOOK &nbsp;&bull;&nbsp; FIRE BUTTON: SHOOT'
-  : 'WASD: MOVE &nbsp;&bull;&nbsp; MOUSE: LOOK &nbsp;&bull;&nbsp; CLICK: FIRE &nbsp;&bull;&nbsp; E: INTERACT &nbsp;&bull;&nbsp; M: MUSIC';
+  ? 'STICK: MOVE, PUSH TO SPRINT &nbsp;&bull;&nbsp; DRAG: LOOK &nbsp;&bull;&nbsp; FIRE &nbsp;&bull;&nbsp; LOW: CROUCH &nbsp;&bull;&nbsp; TAP SCRAPS TO READ'
+  : 'WASD MOVE &nbsp;&bull;&nbsp; MOUSE LOOK &nbsp;&bull;&nbsp; CLICK FIRE &nbsp;&bull;&nbsp; SHIFT SPRINT &nbsp;&bull;&nbsp; C CROUCH &nbsp;&bull;&nbsp; E READ &nbsp;&bull;&nbsp; ESC PAUSE';
 
 /* ============================================================
    Audio. All synthesized, zero assets
    ============================================================ */
 const AudioSys = (() => {
   let ctx = null, master = null, humOsc = null, humGain = null, alarmTimer = null, heartTimer = null;
+  let sfxVol = 0.55;
   function init(){
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain(); master.gain.value = 0.55; master.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = sfxVol; master.connect(ctx.destination);
   }
   function now(){ return ctx.currentTime; }
   function env(g, t0, a, peak, d){
@@ -562,6 +639,11 @@ const AudioSys = (() => {
     init,
     getCtx(){ init(); return ctx; },
     resume(){ if (ctx && ctx.state === 'suspended') ctx.resume(); },
+    setSfx(v){
+      sfxVol = 0.55 * clamp(v, 0, 1);
+      if (master && ctx) master.gain.setTargetAtTime(sfxVol, ctx.currentTime, .04);
+    },
+    crit(){ if(!ctx)return; tone('square', 2100, 1400, 0.06, 0.22, now()); },
     heartbeatStart(){
       init(); if (heartTimer) return;
       const thump = () => {
@@ -646,7 +728,7 @@ const AudioSys = (() => {
    ============================================================ */
 const MusicSys = (() => {
   let ctx=null, out=null, padGain=null, padFilter=null, arpGain=null, percGain=null,
-      delay=null, timer=null, step=0, mode='calm', muted=false, running=false;
+      delay=null, timer=null, step=0, mode='calm', muted=false, running=false, musicVol=0.8;
   const ROOT = ({ ep1:65.41, ch_taken:73.42, ch_ghost:55.0, ch_together:110.0, ch_lone:82.41, ch1:73.42, ch2:110.0, ch3:82.41 })[CH.id] || 65.41;
   const SCALE = [0,3,5,7,10,12,15,19];            // minor pentatonic, two octaves
   const MODES = {
@@ -667,7 +749,7 @@ const MusicSys = (() => {
     if (running) return;
     running = true;
     ctx = AudioSys.getCtx();
-    out = ctx.createGain(); out.gain.value = muted ? 0 : 1; out.connect(ctx.destination);
+    out = ctx.createGain(); out.gain.value = muted ? 0 : musicVol; out.connect(ctx.destination);
     // pad: two detuned saws under a slowly breathing lowpass
     padGain = ctx.createGain(); padGain.gain.value = 0;
     padFilter = ctx.createBiquadFilter();
@@ -757,7 +839,11 @@ const MusicSys = (() => {
     },
     toggleMute(){
       muted = !muted;
-      if (out) out.gain.setTargetAtTime(muted ? 0 : 1, ctx.currentTime, .05);
+      if (out) out.gain.setTargetAtTime(muted ? 0 : musicVol, ctx.currentTime, .05);
+    },
+    setVolume(v){
+      musicVol = clamp(v, 0, 1);
+      if (out && ctx) out.gain.setTargetAtTime(muted ? 0 : musicVol, ctx.currentTime, .05);
     },
   };
 })();
@@ -765,10 +851,11 @@ const MusicSys = (() => {
 /* ============================================================
    Three.js scene
    ============================================================ */
-const renderer = new THREE.WebGLRenderer({ antialias:true, powerPreference:'high-performance' });
-renderer.shadowMap.enabled = true;
+const GFX0 = GFX_PRESETS[PREFS.gfx];
+const renderer = new THREE.WebGLRenderer({ antialias:GFX0.aa, powerPreference:'high-performance' });
+renderer.shadowMap.enabled = GFX0.shadow;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, GFX0.pr));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -788,8 +875,8 @@ yawObj.add(pitchObj); pitchObj.add(camera); scene.add(yawObj);
 scene.add(new THREE.HemisphereLight(CH.palette.hemi, 0x1a120c, 0.42));
 const dirLight = new THREE.DirectionalLight(0xf3e6d2, 0.55);
 dirLight.position.set(8, 16, 6);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.castShadow = GFX0.shadow;
+dirLight.shadow.mapSize.set(GFX0.shadowSize, GFX0.shadowSize);
 dirLight.shadow.camera.near = 0.4;
 dirLight.shadow.camera.far = 48;
 dirLight.shadow.camera.left = -16;
@@ -820,42 +907,94 @@ scene.add(coreLight);
     pmrem.dispose();
   } catch (e) { /* reflections unavailable */ }
 })();
-const postFX = { enabled:false };
-(async () => {
-  try {
-    const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
-    const { RenderPass }     = await import('three/addons/postprocessing/RenderPass.js');
-    const { UnrealBloomPass }= await import('three/addons/postprocessing/UnrealBloomPass.js');
-    const { ShaderPass }     = await import('three/addons/postprocessing/ShaderPass.js');
-    const { OutputPass }     = await import('three/addons/postprocessing/OutputPass.js');
-    const composer = new EffectComposer(renderer);
-    const rp = new RenderPass(scene, camera);
-    const bloom = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight), .26, .42, .72);
-    const grade = new ShaderPass({
-      uniforms: { tDiffuse:{value:null}, uTime:{value:0} },
-      vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-      fragmentShader: `
-        uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv;
-        float rnd(vec2 c){ return fract(sin(dot(c, vec2(12.9898,78.233)))*43758.5453); }
-        void main(){
-          vec3 col = texture2D(tDiffuse, vUv).rgb;
-          float d = distance(vUv, vec2(.5));
-          col *= 1.0 - smoothstep(.55, 1.15, d) * .55;
-          col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .012;
-          col = pow(max(col, 0.0), vec3(.92));
-          col = mix(vec3(dot(col, vec3(.299,.587,.114))), col, 1.18);
-          col *= vec3(1.04, .98, .92);
-          gl_FragColor = vec4(col, 1.);
-        }`,
+const postFX = { enabled:false, failed:false };
+function ensurePost(){
+  if (postFX.composer || postFX.failed || postFX.pending) return postFX.pending || Promise.resolve();
+  postFX.pending = (async () => {
+    try {
+      const { EffectComposer } = await import('three/addons/postprocessing/EffectComposer.js');
+      const { RenderPass }     = await import('three/addons/postprocessing/RenderPass.js');
+      const { UnrealBloomPass }= await import('three/addons/postprocessing/UnrealBloomPass.js');
+      const { ShaderPass }     = await import('three/addons/postprocessing/ShaderPass.js');
+      const { OutputPass }     = await import('three/addons/postprocessing/OutputPass.js');
+      const pr = Math.min(window.devicePixelRatio, GFX_PRESETS[PREFS.gfx].pr);
+      const composer = new EffectComposer(renderer);
+      composer.setPixelRatio(pr);
+      const rp = new RenderPass(scene, camera);
+      const bloom = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight), GFX_PRESETS.cinematic.bloom, .4, .78);
+      bloom.resolution.set(Math.floor(window.innerWidth/2), Math.floor(window.innerHeight/2));
+      const grade = new ShaderPass({
+        uniforms: { tDiffuse:{value:null}, uTime:{value:0} },
+        vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }',
+        fragmentShader: `
+          uniform sampler2D tDiffuse; uniform float uTime; varying vec2 vUv;
+          float rnd(vec2 c){ return fract(sin(dot(c, vec2(12.9898,78.233)))*43758.5453); }
+          void main(){
+            vec3 col = texture2D(tDiffuse, vUv).rgb;
+            float d = distance(vUv, vec2(.5));
+            col *= 1.0 - smoothstep(.55, 1.15, d) * .55;
+            col += (rnd(vUv*vec2(1287.,731.) + mod(uTime,9.)) - .5) * .012;
+            col = pow(max(col, 0.0), vec3(.92));
+            col = mix(vec3(dot(col, vec3(.299,.587,.114))), col, 1.18);
+            col *= vec3(1.04, .98, .92);
+            gl_FragColor = vec4(col, 1.);
+          }`,
+      });
+      composer.addPass(rp); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(grade);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      postFX.composer = composer; postFX.renderPass = rp; postFX.grade = grade; postFX.bloom = bloom;
+    } catch (e) { postFX.failed = true; }
+    postFX.pending = null;
+  })();
+  return postFX.pending;
+}
+if (GFX0.post) ensurePost().then(() => { if (PREFS.gfx === 'cinematic') postFX.enabled = !!postFX.composer; });
+function applyShadowFlags(){
+  const on = !!dirLight.castShadow;
+  renderer.shadowMap.enabled = on;
+  scene.traverse(o => {
+    if (!o.isMesh || (o.material && o.material.transparent)) return;
+    o.receiveShadow = on;
+    o.castShadow = false;
+  });
+  for (const d of drones){
+    d.mesh.traverse(o => {
+      if (o.isMesh && !(o.material && o.material.transparent)) o.castShadow = on;
     });
-    composer.addPass(rp); composer.addPass(bloom); composer.addPass(new OutputPass()); composer.addPass(grade);
-    postFX.composer = composer; postFX.renderPass = rp; postFX.grade = grade; postFX.bloom = bloom;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
-    composer.setSize(window.innerWidth, window.innerHeight);
-    postFX.enabled = true;
-  } catch (e) { /* addons unavailable. Plain rendering */ }
-})();
+  }
+}
+function applyGfx(id, fromUser){
+  if (!GFX_PRESETS[id]) return;
+  if (fromUser) gfxUserSet = true;
+  PREFS.gfx = id;
+  const p = GFX_PRESETS[id];
+  const pr = Math.min(window.devicePixelRatio, p.pr);
+  renderer.setPixelRatio(pr);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  dirLight.castShadow = p.shadow;
+  if (p.shadow){
+    const sh = dirLight.shadow;
+    if (sh.map){ sh.map.dispose(); sh.map = null; }
+    sh.mapSize.set(p.shadowSize, p.shadowSize);
+  }
+  applyShadowFlags();
+  if (p.post){
+    ensurePost().then(() => {
+      if (PREFS.gfx !== 'cinematic' || !postFX.composer) return;
+      postFX.enabled = true;
+      postFX.composer.setPixelRatio(pr);
+      postFX.composer.setSize(window.innerWidth, window.innerHeight);
+      if (postFX.bloom){
+        postFX.bloom.strength = p.bloom;
+        postFX.bloom.resolution.set(Math.floor(window.innerWidth/2), Math.floor(window.innerHeight/2));
+      }
+    });
+  } else postFX.enabled = false;
+  savePrefs();
+  const gfxBtn = document.getElementById('gfxBtn');
+  if (gfxBtn) gfxBtn.textContent = 'GRAPHICS · ' + id.toUpperCase();
+}
 /* ============================================================
    GLB hero models (author-generated). Loaded async; the code-built
    models remain as fallbacks if a file or the loader fails.
@@ -918,8 +1057,14 @@ function renderFrame(sc, cm){
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
+  const pr = Math.min(window.devicePixelRatio, GFX_PRESETS[PREFS.gfx].pr);
+  renderer.setPixelRatio(pr);
   renderer.setSize(window.innerWidth, window.innerHeight);
-  if (postFX.enabled) postFX.composer.setSize(window.innerWidth, window.innerHeight);
+  if (postFX.composer){
+    postFX.composer.setPixelRatio(pr);
+    postFX.composer.setSize(window.innerWidth, window.innerHeight);
+    if (postFX.bloom) postFX.bloom.resolution.set(Math.floor(window.innerWidth/2), Math.floor(window.innerHeight/2));
+  }
 });
 
 /* ============================================================
@@ -974,7 +1119,8 @@ const Cinematic = (() => {
     gnd.rotation.x = -Math.PI/2; cScene.add(gnd);
     const rubbleMat = new THREE.MeshStandardMaterial({ color:0x2e2016, roughness:.95, metalness:.05 });
     const box = new THREE.BoxGeometry(1,1,1);
-    for (let i=0;i<46;i++){
+    const rubbleN = PREFS.gfx === 'low' ? 16 : 46;
+    for (let i=0;i<rubbleN;i++){
       const m = new THREE.Mesh(box, rubbleMat);
       const a = Math.random()*Math.PI*2, r = 2.5 + Math.random()*26;
       const sc = .3 + Math.random()*1.9;
@@ -985,8 +1131,9 @@ const Cinematic = (() => {
     }
     // ruined skyline ring
     const cityMat = new THREE.MeshStandardMaterial({ color:0x17100c, roughness:.9, metalness:.1 });
-    for (let i=0;i<26;i++){
-      const a = i/26*Math.PI*2 + Math.random()*.2;
+    const cityN = PREFS.gfx === 'low' ? 12 : 26;
+    for (let i=0;i<cityN;i++){
+      const a = i/cityN*Math.PI*2 + Math.random()*.2;
       const r = 75 + Math.random()*70;
       const h = 10 + Math.random()*38;
       const m = new THREE.Mesh(box, cityMat);
@@ -1023,7 +1170,8 @@ const Cinematic = (() => {
     });
     const smokeMat = new THREE.MeshBasicMaterial({ map:smokeTex, transparent:true,
       opacity:.75, depthWrite:false, side:THREE.DoubleSide, fog:false });
-    for (let i=0;i<8;i++){
+    const smokeN = PREFS.gfx === 'low' ? 3 : 8;
+    for (let i=0;i<smokeN;i++){
       const p = new THREE.Mesh(new THREE.PlaneGeometry(90, 20), smokeMat);
       p.position.set(-120+Math.random()*240, 26+Math.random()*34, -140+Math.random()*160);
       p.rotation.x = -.15;
@@ -1031,7 +1179,7 @@ const Cinematic = (() => {
     }
     // falling ash
     {
-      const n=420, pos=new Float32Array(n*3);
+      const n = PREFS.gfx === 'low' ? 110 : 420, pos=new Float32Array(n*3);
       for (let i=0;i<n;i++){
         pos[i*3]=(Math.random()-.5)*90; pos[i*3+1]=Math.random()*45; pos[i*3+2]=(Math.random()-.5)*90;
       }
@@ -1159,7 +1307,7 @@ function makeTex(draw, size=512){
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = PREFS.gfx === 'cinematic' ? 4 : 1;
   return t;
 }
 function grime(g, s, n, dark){
@@ -1366,6 +1514,73 @@ ANNEXES.forEach(a => {
   grp.position.set(lx, 0, lz);
   scene.add(grp);
   LOOT.push({ grp, x:lx, z:lz, type:a.loot });
+});
+
+const NOTES = [];
+(CH.notes || []).forEach(n => {
+  const grp = new THREE.Group();
+  const sheet = new THREE.Mesh(
+    new THREE.PlaneGeometry(.42, .28),
+    new THREE.MeshStandardMaterial({ color:0xd9c7a2, roughness:.8, metalness:.05, side:THREE.DoubleSide }));
+  sheet.rotation.x = -Math.PI/2;
+  sheet.position.y = .04;
+  grp.add(sheet);
+  const led = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 6), new THREE.MeshBasicMaterial({ color:0xe7c98a }));
+  led.position.y = .12;
+  grp.add(led);
+  grp.position.set(n.x, 0, n.z);
+  scene.add(grp);
+  NOTES.push({ ...n, grp, led, read:false });
+});
+function readNote(n){
+  if (!n || n.read) return;
+  n.read = true;
+  n.led.material.color.setHex(0x4a463c);
+  G.notesRead = (G.notesRead || 0) + 1;
+  unlockScrap(n.title, n.body);
+  G.radioQueue.push({ who:'SCRAP', text:n.body });
+  G.radioT = 0;
+  G._noteNear = null;
+  el.prompt.style.display = 'none';
+  el.prompt.classList.remove('live');
+  AudioSys.radioBlip();
+}
+function updateNotes(){
+  if (!G.hasRifle && !CH.stealth) return;
+  if (G.currentSegment === 4 && !G.planted){
+    const dx = yawObj.position.x - CORE_POS.x, dz = yawObj.position.z - CORE_POS.z;
+    if (dx*dx + dz*dz < 9){
+      if (G._noteNear){ G._noteNear = null; el.prompt.classList.remove('live'); }
+      return;
+    }
+  }
+  let near = null;
+  for (const n of NOTES){
+    if (n.read) continue;
+    n.led.position.y = .12 + Math.sin(G.time * 3 + n.z) * .03;
+    const dx = yawObj.position.x - n.x, dz = yawObj.position.z - n.z;
+    if (dx*dx + dz*dz < 2.6) near = n;
+  }
+  G._noteNear = near;
+  if (!near){
+    if (G._notePrompt){ el.prompt.style.display = 'none'; el.prompt.classList.remove('live'); G._notePrompt = false; }
+    return;
+  }
+  G._notePrompt = true;
+  el.prompt.classList.add('live');
+  el.prompt.style.display = 'block';
+  el.prompt.textContent = IS_TOUCH ? 'TAP TO READ THE SCRAP' : 'PRESS [E] TO READ THE SCRAP';
+  if (keys['KeyE'] || touchPlanting){
+    keys['KeyE'] = false;
+    touchPlanting = false;
+    readNote(near);
+  }
+}
+el.prompt.addEventListener('pointerdown', e => {
+  if (!G._noteNear) return;
+  e.preventDefault();
+  e.stopPropagation();
+  readNote(G._noteNear);
 });
 function applyLoot(t){
   AudioSys.checkpoint();
@@ -1897,13 +2112,16 @@ function makeDrone(kind, x, z, segment){
     id: droneSeq++, kind, segment, mesh, eyeMat, anim: built.anim, shadow,
     baseScale: M ? 1 : (K.scale || 1), idleEye: K.idleEye || EYE_GREEN,
     home: new THREE.Vector3(x, K.homeY, z),
-    hp: K.hp, maxHp: K.hp,
+    hp: Math.round(K.hp * DIFF().hp), maxHp: Math.round(K.hp * DIFF().hp),
     state: 'idle',            // idle > alert > attack
     stateT: 0, losT: Math.random()*.15,
     meleeCd: 0, chargeT: 0, patrolDir: 1,
     alive: true, spawned: false, deathT: 0,
   };
   mesh.position.copy(d.home);
+  if (dirLight.castShadow){
+    mesh.traverse(o => { if (o.isMesh && !(o.material && o.material.transparent)) o.castShadow = true; });
+  }
   drones.push(d);
   return d;
 }
@@ -1924,9 +2142,16 @@ function spawnSegment(seg){
     d.spawned = true; scene.add(d.mesh);
   });
 }
-modelsReady.then(() => { [1,2,3,4].forEach(spawnSegment); });
+let worldReady = false;
+modelsReady.then(() => {
+  [1,2,3,4].forEach(spawnSegment);
+  worldReady = true;
+});
 
 function segmentCleared(seg){
+  // An unspawned segment is not clear. Skipping the opening before the
+  // machines exist used to swing every door and skip the street.
+  if (!worldReady) return false;
   return !drones.some(d => d.segment === seg && d.alive);
 }
 function activeDroneCount(){
@@ -1966,6 +2191,8 @@ const G = {
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
   alarm: false, waveSpawned: 0, waveT: 0,
   time: 0, shakeT: 0,
+  paused: false, crouch: false, breath: 1, sprinting: false,
+  kills: 0, crits: 0, notesRead: 0, playT: 0,
 };
 const PLAYER_R = 0.4, PLAYER_EYE = 1.7;
 const MOVE_SPEED = 5.2;
@@ -1979,23 +2206,31 @@ const keys = {};
 let mouseFiring = false, pointerLocked = false;
 
 addEventListener('keydown', e => {
+  if (e.code === 'Escape'){ onEsc(e); return; }
+  if (G.paused) return;
   keys[e.code] = true;
   if (e.code === 'KeyM') MusicSys.toggleMute();
+  if (e.repeat) return;
+  if (PREFS.crouchToggle && (e.code === 'KeyC' || e.code === 'ControlLeft' || e.code === 'ControlRight')){
+    G.crouch = !G.crouch;
+  }
 });
 addEventListener('keyup',   e => { keys[e.code] = false; });
 
 renderer.domElement.addEventListener('click', () => {
-  if (G.mode === 'play' && !IS_TOUCH && !pointerLocked){
-    renderer.domElement.requestPointerLock();
-  }
+  if (G.paused) return;
+  if (G.mode === 'play' && !IS_TOUCH && !pointerLocked) lockPointer();
 });
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = document.pointerLockElement === renderer.domElement;
+  if (G._lockFree){ G._lockFree = false; return; }
+  if (!pointerLocked && !G.paused && (G.mode === 'play' || G.mode === 'story' || G.mode === 'intro') && !IS_TOUCH)
+    openPause();
 });
 addEventListener('mousemove', e => {
   if (!pointerLocked || G.mode !== 'play') return;
-  G.yaw   -= e.movementX * 0.0022;
-  G.pitch -= e.movementY * 0.0022;
+  G.yaw   -= e.movementX * 0.0022 * PREFS.sens;
+  G.pitch -= e.movementY * 0.0022 * PREFS.sens;
   G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
 });
 addEventListener('mousedown', e => { if (pointerLocked && e.button === 0) mouseFiring = true; });
@@ -2004,7 +2239,7 @@ addEventListener('mouseup',   e => { if (e.button === 0) mouseFiring = false; })
 // --- touch: left zone stick, right zone look, fire & plant buttons ---
 const stick = { active:false, id:null, ox:0, oy:0, dx:0, dy:0 };
 const look  = { active:false, id:null, lx:0, ly:0 };
-let touchFiring = false, touchPlanting = false;
+let touchFiring = false, touchPlanting = false, touchCrouch = false;
 
 el.stickZone.addEventListener('touchstart', e => {
   e.preventDefault();
@@ -2045,8 +2280,8 @@ el.lookZone.addEventListener('touchmove', e => {
   e.preventDefault();
   for (const t of e.changedTouches){
     if (t.identifier !== look.id) continue;
-    G.yaw   -= (t.clientX - look.lx) * 0.005;
-    G.pitch -= (t.clientY - look.ly) * 0.005;
+    G.yaw   -= (t.clientX - look.lx) * 0.005 * PREFS.sens;
+    G.pitch -= (t.clientY - look.ly) * 0.005 * PREFS.sens;
     G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
     look.lx = t.clientX; look.ly = t.clientY;
   }
@@ -2059,6 +2294,12 @@ el.lookZone.addEventListener('touchcancel', lookEnd);
 
 el.fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchFiring = true; }, {passive:false});
 el.fireBtn.addEventListener('touchend',   e => { e.preventDefault(); touchFiring = false; }, {passive:false});
+el.crouchBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touchCrouch = !touchCrouch;
+  el.crouchBtn.classList.toggle('on', touchCrouch);
+  if (PREFS.crouchToggle) G.crouch = touchCrouch;
+}, {passive:false});
 el.plantBtn.addEventListener('touchstart', e => { e.preventDefault(); touchPlanting = true; }, {passive:false});
 el.plantBtn.addEventListener('touchend',   e => { e.preventDefault(); touchPlanting = false; }, {passive:false});
 el.fireBtn.addEventListener('touchcancel', () => { touchFiring = false; });
@@ -2136,7 +2377,12 @@ function segIntersectsAABB(x0,z0,x1,z1,c){
 function radio(key){
   if (G.radioFired.has(key)) return;
   G.radioFired.add(key);
-  (RADIO[key] || []).forEach(l => G.radioQueue.push(l));
+  (RADIO[key] || []).forEach(l => {
+    G.radioQueue.push(l);
+    if (l.who === 'LEDGER') unlockCodex('ledger');
+    if (l.who === 'REYES') unlockCodex('reyes');
+    if (l.who === 'KARA') unlockCodex('kara');
+  });
 }
 function updateRadio(dt){
   G.radioT -= dt;
@@ -2159,51 +2405,63 @@ function updateRadio(dt){
    ============================================================ */
 const _rayDir = new THREE.Vector3();
 const _muzzle = new THREE.Vector3();
+const _origin = new THREE.Vector3();
+const _hit = new THREE.Vector3();
+const _aim = new THREE.Vector3();
 
+function flashCross(crit){
+  el.crosshair.classList.remove('hit', 'crit');
+  void el.crosshair.offsetWidth;
+  el.crosshair.classList.add(crit ? 'crit' : 'hit');
+}
+
+const _toDrone = new THREE.Vector3();
 function tryFire(dt){
   G.fireCd -= dt;
-  const wantFire = (mouseFiring || touchFiring || keys['Space']) && G.hasRifle;
+  const wantFire = (mouseFiring || touchFiring || keys['Space']) && G.hasRifle && !G.paused;
   if (!wantFire || G.fireCd > 0) return;
   G.fireCd = 0.18; // fire-rate cap
   AudioSys.shot();
-  G.shakeT = 0.06;
+  if (PREFS.shake) G.shakeT = 0.06;
   viewRifle.position.z = -0.42; // recoil, eased back in update
+  if (el.coach && el.coach.style.display !== 'none') el.coach.style.display = 'none';
 
   camera.getWorldDirection(_rayDir);
-  const origin = new THREE.Vector3();
-  camera.getWorldPosition(origin);
+  camera.getWorldPosition(_origin);
 
-  // find nearest hit: walls (2D) vs drones (3D sphere test along ray)
-  let bestT = 60, bestDrone = null;
-  // wall distance along ray (sample 2D)
-  const end = origin.clone().addScaledVector(_rayDir, 60);
-  let wallT = 60;
+  let bestT = 60, bestDrone = null, bestClose = Infinity;
   for (const c of colliders){
     if (c.door && !c.active) continue;
-    const t = rayAABB2D(origin.x, origin.z, _rayDir.x, _rayDir.z, c);
-    if (t !== null && t < wallT) wallT = t;
+    const t = rayAABB2D(_origin.x, _origin.z, _rayDir.x, _rayDir.z, c);
+    if (t !== null && t < bestT) bestT = t;
   }
-  bestT = wallT;
-  const _toDrone = new THREE.Vector3();
+  const _toDroneHit = _toDrone;
   for (const d of drones){
     if (!d.alive) continue;
-    _toDrone.copy(d.mesh.position).sub(origin);
+    _toDroneHit.copy(d.mesh.position).sub(_origin);
     const t = _toDrone.dot(_rayDir);
     if (t < 0 || t > bestT) continue;
-    const closest2 = _toDrone.lengthSq() - t*t;
+    const closest2 = _toDroneHit.lengthSq() - t*t;
     const rad = KINDS[d.kind].rad;
-    if (closest2 < rad*rad){ bestT = t; bestDrone = d; }
+    if (closest2 < rad*rad){ bestT = t; bestDrone = d; bestClose = closest2; }
   }
 
-  const hitPoint = origin.clone().addScaledVector(_rayDir, bestT);
+  _hit.copy(_origin).addScaledVector(_rayDir, bestT);
   viewRifle.getWorldPosition(_muzzle);
-  spawnTracer(_muzzle.clone().addScaledVector(_rayDir, .4), hitPoint);
+  spawnTracer(_muzzle.clone().addScaledVector(_rayDir, .4), _hit);
   muzzleLight.intensity = 26;
-  spawnSparks(hitPoint, bestDrone ? 12 : 6);
+  spawnSparks(_hit, bestDrone ? 12 : 6);
 
   if (bestDrone){
-    AudioSys.hitConfirm();
-    damageDrone(bestDrone, 16 * (G.dmgMul || 1));
+    const hitY = _origin.y + _rayDir.y * bestT;
+    const crit = Math.abs(hitY - bestDrone.mesh.position.y) < 0.22 && bestClose < 0.1;
+    if (crit) AudioSys.crit(); else AudioSys.hitConfirm();
+    flashCross(crit);
+    if (crit){
+      G.crits = (G.crits || 0) + 1;
+      unlockCodex('eye');
+    }
+    damageDrone(bestDrone, 16 * (G.dmgMul || 1) * (crit ? 2.2 : 1));
   }
 }
 function rayAABB2D(ox, oz, dx, dz, c){
@@ -2229,6 +2487,7 @@ function damageDrone(d, dmg){
   if (d.state === 'idle') setDroneState(d, 'alert');
   if (d.hp <= 0 && d.alive){
     d.alive = false; d.deathT = .4;
+    G.kills = (G.kills || 0) + 1;
     spawnSparks(d.mesh.position, 16, 0xffcc88);
     AudioSys.droneDie();
   }
@@ -2238,11 +2497,12 @@ function setDroneState(d, s){
   d.state = s; d.stateT = 0;
   d.eyeMat.color.setHex(s === 'idle' ? d.idleEye : EYE_RED);
   if (s === 'alert') AudioSys.alert();
+  if (s === 'alert' || s === 'attack') unlockCodex(d.kind);
 }
 
 function damagePlayer(dmg){
-  if (G.mode !== 'play') return;
-  G.hp -= dmg;
+  if (G.mode !== 'play' || G.paused) return;
+  G.hp -= dmg * DIFF().dmgIn;
   G.lastDamageT = G.time;
   AudioSys.hurt();
   el.dmg.style.opacity = .9;
@@ -2319,13 +2579,13 @@ function updateDrones(dt){
     else if (d.state === 'alert'){
       // face player, brief wind-up, then attack
       d.mesh.lookAt(px, m.y, pz);
-      if (d.stateT > .45) setDroneState(d, 'attack');
+      if (d.stateT > .45 * DIFF().wind) setDroneState(d, 'attack');
     }
     else { // attack
       d.mesh.lookAt(px, m.y, pz);
       if (d.kind === 'crawler'){
         if (dist > 1.1){
-          const s = 3.4 * dt / dist;
+          const s = 3.4 * DIFF().move * dt / dist;
           m.x -= distX * s; m.z -= distZ * s;
           collide(m, .45);
           m.y = .5 + Math.abs(Math.sin(G.time*10 + d.id))*.12;
@@ -2346,10 +2606,10 @@ function updateDrones(dt){
         const K = KINDS[d.kind];
         if (!seesPlayer){ d.chargeT = 0; d.eyeMat.color.setHex(EYE_RED); continue; }
         d.chargeT += dt;
-        if (d.chargeT > K.charge){
+        if (d.chargeT > K.charge * DIFF().wind){
           // telegraph: eye flares white-hot before the shot
-          const w = d.chargeT - K.charge;
-          if (w < K.tele){
+          const w = d.chargeT - K.charge * DIFF().wind;
+          if (w < K.tele * DIFF().wind){
             if (w < dt) AudioSys.sentryCharge();
             d.eyeMat.color.setRGB(1, .17 + w*1.15, .24 + w*1.05);
           } else {
@@ -2358,7 +2618,8 @@ function updateDrones(dt){
             const mp = new THREE.Vector3();
             (d.anim.muzzle || d.mesh).getWorldPosition(mp);
             d.anim.recoil = 1;
-            fireProjectile(mp, new THREE.Vector3(px, PLAYER_EYE - .2, pz), K.pspeed, K.pdmg);
+            _aim.set(px, yawObj.position.y - .05, pz);
+            fireProjectile(mp, _aim, K.pspeed, K.pdmg);
           }
         }
       }
@@ -2372,7 +2633,7 @@ function updateProjectiles(dt){
     p.life -= dt;
     p.mesh.position.addScaledVector(p.vel, dt);
     const dx = p.mesh.position.x - yawObj.position.x;
-    const dy = p.mesh.position.y - PLAYER_EYE + .2;
+    const dy = p.mesh.position.y - yawObj.position.y;
     const dz = p.mesh.position.z - yawObj.position.z;
     let dead = p.life <= 0;
     if (dx*dx + dy*dy + dz*dz < .45){
@@ -2567,10 +2828,13 @@ function beginExtraction(){
 function showEndCard(){
   G.mode = 'end';
   MusicSys.stop();
-  if (document.pointerLockElement) document.exitPointerLock();
+  if (document.pointerLockElement) releaseLock();
   hudVisible(false);
   el.end.style.display = 'flex';
   el.fade.style.opacity = 0;
+  const dossier = document.getElementById('endDossier');
+  if (dossier && !dossier.textContent) dossier.textContent = dossierText();
+  commitLifetime(true);
 }
 
 /* ============================================================
@@ -2618,39 +2882,56 @@ function updatePlayer(dt){
   const len = Math.hypot(mx, mz);
   if (len > 1){ mx/=len; mz/=len; }
 
+  if (!PREFS.crouchToggle){
+    G.crouch = !!(keys['KeyC'] || keys['ControlLeft'] || keys['ControlRight'] || touchCrouch);
+  } else if (IS_TOUCH) {
+    G.crouch = touchCrouch;
+  }
+  const stickMag = Math.hypot(stick.dx, stick.dy);
+  const wantSprint = !G.crouch && len > .1 && G.breath > .08 &&
+    (keys['ShiftLeft'] || keys['ShiftRight'] || (stick.active && stickMag > .92));
+  if (wantSprint) G.breath = Math.max(0, G.breath - dt * .45);
+  else G.breath = Math.min(1, G.breath + dt * .28);
+  G.sprinting = wantSprint && G.breath > .02;
+
   yawObj.rotation.y = G.yaw;
   pitchObj.rotation.x = G.pitch;
 
+  const speed = MOVE_SPEED * (G.spdMul||1) * (G.crouch ? .5 : 1) * (G.sprinting ? 1.62 : 1);
   _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
   _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
-  yawObj.position.addScaledVector(_fwd, -mz * MOVE_SPEED * (G.spdMul||1) * dt);
-  yawObj.position.addScaledVector(_right, mx * MOVE_SPEED * (G.spdMul||1) * dt);
+  yawObj.position.addScaledVector(_fwd, -mz * speed * dt);
+  yawObj.position.addScaledVector(_right, mx * speed * dt);
   collide(yawObj.position, PLAYER_R);
-  yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
+  const eyeY = (G.crouch ? 0.92 : PLAYER_EYE) + (len > .1 && !G.crouch ? Math.sin(G.time*11)*.03 : 0);
+  yawObj.position.y += (eyeY - yawObj.position.y) * Math.min(1, dt * 10);
 
-  // camera shake
-  if (G.shakeT > 0){
+  if (G.shakeT > 0 && PREFS.shake){
     G.shakeT -= dt;
     camera.position.set((Math.random()-.5)*.02, (Math.random()-.5)*.02, 0);
   } else camera.position.set(0,0,0);
 
-  // rifle recoil recovery + sway
   if (viewRifle.visible){
     viewRifle.position.z += (-.5 - viewRifle.position.z) * dt * 12;
     viewRifle.position.y = -.22 + Math.sin(G.time*10)*(len>.1?.006:.002);
   }
 
-  // health regen: 5s without damage
-  if (G.hp < 100 && G.time - G.lastDamageT > (G.regenFast ? 3 : 5)){
-    G.hp = Math.min(100, G.hp + 26*(G.regenFast ? 1.7 : 1)*dt);
+  const regenWait = (G.regenFast ? 3 : 5) / DIFF().regen;
+  if (G.hp < 100 && G.time - G.lastDamageT > regenWait){
+    G.hp = Math.min(100, G.hp + 26 * (G.regenFast ? 1.7 : 1) * DIFF().regen * dt);
   }
+  if (G.hp < 30 && G.hp > 0) AudioSys.heartbeatStart();
+  else AudioSys.heartbeatStop();
   el.healthFill.style.width = G.hp.toFixed(0)+'%';
   el.healthFill.style.background = G.hp > 35 ? 'var(--grn)' : 'var(--red)';
+  el.breathFill.style.width = (G.breath * 100).toFixed(0) + '%';
+  el.breathWrap.style.display = G.breath > .97 ? 'none' : 'block';
 
   // rifle pickup
   if (!G.hasRifle && !CH.stealth){
     const d = yawObj.position.distanceTo(rifleFloor.position);
     el.prompt.style.display = 'block';
+    el.prompt.classList.remove('live');
     el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
     if (d < 1.6) pickupRifle();
   }
@@ -2792,14 +3073,23 @@ function finishIntro(skipAll){
   yawObj.position.set(0, PLAYER_EYE, 0);
   G.pitch = 0; G.yaw = 0;
   G.mode = 'play';
+  G.playT = G.time;
   hudVisible(true);
-  if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
-  else if (!pointerLocked) renderer.domElement.requestPointerLock();
+  if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; el.crouchBtn.style.display='block'; el.pauseBtn.style.display='block'; }
+  else if (!pointerLocked) lockPointer();
   if (!CH.stealth && (skipAll || CH.startArmed)) pickupRifle();
-  if (CH.stealth) radio('pickup');
+  if (CH.stealth){ radio('pickup'); unlockCodex('crouch'); }
   if (CH.id === 'ch_together') spawnCompanion();
   renderPerks();
   setObjectiveText();
+  if (el.coach){
+    el.coach.style.display = 'block';
+    el.coach.textContent = IS_TOUCH
+      ? 'PUSH THE STICK TO SPRINT · LOW CROUCHES · SHOOT THE EYE · TAP GLOWING SCRAPS'
+      : 'SHIFT SPRINTS · C CROUCHES · SHOOT THE GLOWING EYE · E READS A SCRAP · ESC PAUSES';
+    clearTimeout(G._coachT);
+    G._coachT = setTimeout(() => { el.coach.style.display = 'none'; }, 9000);
+  }
 }
 el.skipBtn.addEventListener('click', e => {
   e.stopPropagation();
@@ -2863,7 +3153,7 @@ const Story = (() => {
     active = true; beats = list; bi = 0;
     G.mode = 'story';
     resetInputs();
-    if (document.pointerLockElement) document.exitPointerLock();
+    if (document.pointerLockElement) releaseLock();
     document.body.classList.add('cine');
     sEl.wrap.style.display = 'block';
     next();
@@ -2929,7 +3219,7 @@ const Story = (() => {
     if (G.mode === 'story'){
       G.mode = 'play';
       if (!IS_TOUCH && !document.pointerLockElement){
-        try { renderer.domElement.requestPointerLock(); } catch(e){}
+        try { lockPointer(); } catch(e){}
       }
     }
   }
@@ -2961,12 +3251,12 @@ const Story = (() => {
 
 /* story input: taps advance, 1-3 pick */
 addEventListener('pointerdown', e => {
-  if (G.mode !== 'story') return;
-  if (e.target.closest('.opt') || e.target.closest('.btn')) return;
+  if (G.mode !== 'story' || G.paused) return;
+  if (e.target.closest('.opt') || e.target.closest('.btn') || e.target.closest('#pauseScreen')) return;
   Story.advance();
 });
 addEventListener('keydown', e => {
-  if (G.mode !== 'story') return;
+  if (G.mode !== 'story' || G.paused) return;
   const i = parseInt(e.key) - 1;
   if (!isNaN(i)) { Story.pickIndex(i); return; }
   if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); Story.advance(); }
@@ -3153,6 +3443,9 @@ function finishEnding(id){
   try { f = JSON.parse(localStorage.getItem(EKEY)) || []; } catch(e){}
   if (!f.includes(id)){ f.push(id); try { localStorage.setItem(EKEY, JSON.stringify(f)); } catch(e){} }
   sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / 14';
+  const dossier = document.getElementById('endDossier');
+  if (dossier) dossier.textContent = dossierText();
+  commitLifetime(true);
   if (CH.id === 'ep1'){
     try { localStorage.setItem('latm_carry', JSON.stringify({
       trusted:!!SFLAGS.trusted, radio:!!SFLAGS.radio,
@@ -3250,15 +3543,21 @@ function updateWatchers(dt){
     const fx = -Math.sin(w.facing), fz = -Math.cos(w.facing);
     const dx = p.x - d.mesh.position.x, dz = p.z - d.mesh.position.z;
     const dist = Math.hypot(dx, dz);
+    const profile = G.crouch ? .62 : 1;
+    const range = K.range * (G.crouch ? .72 : 1);
     let seeing = false;
-    if (dist < K.range){
+    if (dist < range){
       const dot = (dx*fx + dz*fz) / (dist || 1);
       if (dot > Math.cos(K.half) && losClear2D(d.mesh.position.x, d.mesh.position.z, p.x, p.z)) seeing = true;
     }
-    if (dist < 1.2) G.detect = 100;
+    if (dist < (G.crouch ? .8 : 1.2)) G.detect = 100;
     if (seeing){
       seen = true;
-      G.detect = Math.min(100, G.detect + K.rate * alert * dt * (1.4 - (dist/K.range)*.8));
+      const noise = G.sprinting ? 1.75 : 1;
+      G.detect = Math.min(100, G.detect + K.rate * alert * DIFF().detect * profile * noise * dt * (1.4 - (dist/K.range)*.8));
+    } else if (G.sprinting && dist < 6.5){
+      seen = true;
+      G.detect = Math.min(100, G.detect + 18 * DIFF().detect * dt);
     }
     w.cone.material.color.setHex(seeing ? 0xff3344 : 0xe7c98a);
     w.cone.material.opacity = seeing ? .2 : .08;
@@ -3273,6 +3572,8 @@ function updateWatchers(dt){
   const _hv = hudVisible;
   hudVisible = function(v){
     _hv(v);
+    if (v && IS_TOUCH){ el.crouchBtn.style.display = 'block'; el.pauseBtn.style.display = 'block'; }
+    if (!v){ el.crouchBtn.style.display = 'none'; el.pauseBtn.style.display = 'none'; }
     if (CH.stealth){
       el.healthWrap.style.display = 'none';
       document.getElementById('detWrap').style.display = v ? 'block' : 'none';
@@ -3484,8 +3785,228 @@ const Cast = (() => {
 })();
 
 /* ============================================================
+   Field manual, difficulty, pause. The run remembers what you
+   learned, and a laptop can put the picture down without
+   putting the story down.
+   ============================================================ */
+const CODEX_KEY = 'latm_codex';
+const LIFE_KEY = 'latm_lifetime';
+const CODEX_BASE = {
+  crawler: { title:'CRAWLER', toast:'CRAWLER. IT CLOSES. THE EYE IS THE MIND.',
+    body:'Harvest frames. No gun, no patience. They take you by the ankles. The light in the head is the only part that decides. Put the round there and one shot is enough.' },
+  sentry: { title:'SENTRY', toast:'SENTRY. THE FLARE IS THE COUNT.',
+    body:'They look, they add, they fire. The eye goes white while the sum finishes. Move when it flares, or end the sum early.' },
+  warden: { title:'WARDEN', toast:'WARDEN. HEAVY FRAME. SAME EYE.',
+    body:'They guard what the ledger loves. More armor, same mind. The eye still believes it cannot be reached. It can.' },
+  ledger: { title:'THE LEDGER', toast:'THE LEDGER IS TRYING TO FILE YOU.',
+    body:'It does not hate you. Every name it speaks is a person it has already decided to keep. You are an entry that moved.' },
+  reyes: { title:'REYES', toast:'REYES IS ALIVE. THAT IS THE POINT.',
+    body:'A voice on a dead band. Ankle wrecked, still talking. Help her and she comes back over the bridge. Leave her and the road gets quiet, and longer.' },
+  kara: { title:'KARA', toast:'KARA. THERE IS A PERSON BEHIND THE PULSE.',
+    body:'Resistance, which is a woman with a repeating signal and a promise she means to keep. The long road ends at her fire.' },
+  eye: { title:'THE EYE', toast:'THE EYE. THAT IS WHERE IT THINKS.',
+    body:'Center mass wastes the cell. The glowing eye is the core. A round there does more than twice the work, and a crawler does not get a second thought.' },
+  crouch: { title:'LOW AND QUIET', toast:'STANDING IS A CONFESSION IN HERE.',
+    body:'The cones are cut for a person at full height. Crouch and you fall out of the bottom of their attention. Sprinting is a noise. They can count a noise. A flare you can also duck.' },
+};
+let codexEntries = [];
+function loadCodex(){
+  try { codexEntries = JSON.parse(localStorage.getItem(CODEX_KEY)) || []; }
+  catch (e) { codexEntries = []; }
+  if (!Array.isArray(codexEntries)) codexEntries = [];
+}
+loadCodex();
+function saveCodex(){
+  try { localStorage.setItem(CODEX_KEY, JSON.stringify(codexEntries)); } catch (e) {}
+}
+function unlockCodex(id, quiet){
+  if (!CODEX_BASE[id]) return;
+  if (codexEntries.some(e => e.id === id)) return;
+  const b = CODEX_BASE[id];
+  codexEntries.push({ id, title:b.title, body:b.body });
+  saveCodex();
+  if (!quiet && (G.mode === 'play' || G.mode === 'story')) sToast(b.toast);
+}
+function unlockScrap(title, body){
+  const id = 'scrap:' + title;
+  if (codexEntries.some(e => e.id === id)) return;
+  codexEntries.push({ id, title, body, scrap:true });
+  saveCodex();
+  sToast('YOU KEEP THE SCRAP.');
+}
+function loadLife(){
+  try { return Object.assign({ kills:0, crits:0, runs:0, scraps:0 }, JSON.parse(localStorage.getItem(LIFE_KEY)) || {}); }
+  catch (e) { return { kills:0, crits:0, runs:0, scraps:0 }; }
+}
+function commitLifetime(finished){
+  if (G._lifeCommitted) return;
+  G._lifeCommitted = true;
+  const s = loadLife();
+  s.kills += G.kills || 0;
+  s.crits += G.crits || 0;
+  s.scraps += G.notesRead || 0;
+  if (finished) s.runs += 1;
+  try { localStorage.setItem(LIFE_KEY, JSON.stringify(s)); } catch (e) {}
+}
+function dossierText(){
+  const secs = Math.max(0, Math.floor(G.time - (G.playT || 0)));
+  const m = Math.floor(secs / 60);
+  const s = String(secs % 60).padStart(2, '0');
+  return 'THIS RUN  ' + m + ':' + s
+    + '   ·   FRAMES BROKEN ' + (G.kills || 0)
+    + '   ·   EYE SHOTS ' + (G.crits || 0)
+    + '   ·   SCRAPS ' + (G.notesRead || 0)
+    + '   ·   ' + DIFF().label;
+}
+function renderManual(box){
+  box = box || document.getElementById('manual');
+  if (!box) return;
+  if (!codexEntries.length){
+    box.innerHTML = '<p class="empty">Nothing filed yet. Break a frame, hear a voice, or pick up a scrap.</p>';
+    return;
+  }
+  const life = loadLife();
+  box.innerHTML = codexEntries.map(e =>
+    '<div class="note"><b>' + (e.scrap ? 'SCRAP · ' : '') + e.title + '</b><span>' + e.body + '</span></div>'
+  ).join('') + '<p class="empty" style="margin-top:14px">Across runs: '
+    + life.kills + ' frames broken · ' + life.crits + ' eye shots · ' + life.runs + ' endings stood through.</p>';
+}
+function lockPointer(){
+  if (IS_TOUCH || G.paused || pointerLocked) return;
+  try {
+    const req = renderer.domElement.requestPointerLock();
+    if (req && typeof req.catch === 'function') req.catch(() => {});
+  } catch (e) {}
+}
+function releaseLock(){
+  if (!document.pointerLockElement) return;
+  G._lockFree = true;
+  document.exitPointerLock();
+}
+function paintSeg(parent, ids, current, onPick, labelOf){
+  if (!parent) return;
+  parent.innerHTML = '';
+  ids.forEach(id => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = labelOf(id);
+    if (id === current) b.className = 'on';
+    b.addEventListener('click', e => { e.stopPropagation(); onPick(id); });
+    parent.appendChild(b);
+  });
+}
+function paintDifficulty(){
+  const labelOf = id => DIFF_TABLE[id].label;
+  paintSeg(document.getElementById('diffRow'), Object.keys(DIFF_TABLE), PREFS.difficulty, setDifficulty, labelOf);
+  paintSeg(document.getElementById('pauseDiff'), Object.keys(DIFF_TABLE), PREFS.difficulty, setDifficulty, labelOf);
+  const blurb = document.getElementById('diffBlurb');
+  if (blurb) blurb.textContent = DIFF().blurb;
+}
+function setDifficulty(id){
+  if (!DIFF_TABLE[id]) return;
+  if (id !== PREFS.difficulty){
+    const prev = DIFF().hp || 1;
+    PREFS.difficulty = id;
+    const k = DIFF().hp / prev;
+    drones.forEach(d => { if (d.alive){ d.hp *= k; d.maxHp = Math.max(1, d.maxHp * k); } });
+    savePrefs();
+  }
+  paintDifficulty();
+}
+function paintGfx(){
+  paintSeg(document.getElementById('pauseGfx'), Object.keys(GFX_PRESETS), PREFS.gfx, id => applyGfx(id, true), id => id.toUpperCase());
+  const gfxBtn = document.getElementById('gfxBtn');
+  if (gfxBtn) gfxBtn.textContent = 'GRAPHICS · ' + PREFS.gfx.toUpperCase();
+}
+function syncPauseControls(){
+  const sens = document.getElementById('sensRange');
+  const music = document.getElementById('musicRange');
+  const sfx = document.getElementById('sfxRange');
+  const shake = document.getElementById('shakeBox');
+  const crouch = document.getElementById('crouchBox');
+  if (sens) sens.value = PREFS.sens;
+  if (music) music.value = PREFS.music;
+  if (sfx) sfx.value = PREFS.sfx;
+  if (shake) shake.checked = !!PREFS.shake;
+  if (crouch) crouch.checked = !!PREFS.crouchToggle;
+  paintDifficulty();
+  paintGfx();
+  renderManual();
+}
+function openPause(){
+  if (G.paused) return;
+  if (G.mode !== 'play' && G.mode !== 'story' && G.mode !== 'intro') return;
+  G.paused = true;
+  resetInputs();
+  const scr = document.getElementById('pauseScreen');
+  scr.style.display = 'block';
+  const obj = document.getElementById('pauseObj');
+  if (obj) obj.textContent = (el.objective && el.objective.textContent) || CH.subtitle;
+  document.getElementById('manual').style.display = 'none';
+  syncPauseControls();
+}
+function closePause(){
+  if (!G.paused && document.getElementById('pauseScreen').style.display !== 'block') return;
+  G.paused = false;
+  document.getElementById('pauseScreen').style.display = 'none';
+  if (!IS_TOUCH && G.mode === 'play') lockPointer();
+}
+function onEsc(e){
+  if (e) e.preventDefault();
+  if (G.mode === 'title' || G.mode === 'end' || G.mode === 'boot' || G.mode === 'cinematic' || G.mode === 'dead' || G.mode === 'extracting') return;
+  if (G.paused) closePause();
+  else if (!pointerLocked) openPause();
+}
+
+/* ============================================================
    Boot / title / replay
    ============================================================ */
+AudioSys.setSfx(PREFS.sfx);
+MusicSys.setVolume(PREFS.music);
+paintDifficulty();
+paintGfx();
+{
+  const life = loadLife();
+  if (life.runs > 0 || codexEntries.length){
+    const t = document.createElement('div');
+    t.style.cssText = 'margin-top:8px;font-size:10px;letter-spacing:.18em;color:#c6a36a;';
+    t.textContent = 'REMEMBERED  ·  ' + life.runs + ' ENDINGS  ·  ' + codexEntries.length + ' NOTES  ·  ' + life.kills + ' FRAMES';
+    document.getElementById('startScreen').appendChild(t);
+  }
+}
+document.getElementById('gfxBtn').addEventListener('click', () => {
+  const order = ['low', 'balanced', 'cinematic'];
+  const next = order[(order.indexOf(PREFS.gfx) + 1) % order.length];
+  applyGfx(next, true);
+  paintGfx();
+});
+document.getElementById('sensRange').addEventListener('input', e => {
+  PREFS.sens = parseFloat(e.target.value); savePrefs();
+});
+document.getElementById('musicRange').addEventListener('input', e => {
+  PREFS.music = parseFloat(e.target.value); savePrefs(); MusicSys.setVolume(PREFS.music);
+});
+document.getElementById('sfxRange').addEventListener('input', e => {
+  PREFS.sfx = parseFloat(e.target.value); savePrefs(); AudioSys.setSfx(PREFS.sfx);
+});
+document.getElementById('shakeBox').addEventListener('change', e => {
+  PREFS.shake = !!e.target.checked; savePrefs();
+});
+document.getElementById('crouchBox').addEventListener('change', e => {
+  PREFS.crouchToggle = !!e.target.checked; savePrefs();
+});
+document.getElementById('resumeBtn').addEventListener('click', () => closePause());
+document.getElementById('manualBtn').addEventListener('click', () => {
+  const m = document.getElementById('manual');
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  renderManual();
+});
+document.getElementById('quitBtn').addEventListener('click', () => {
+  commitLifetime(false);
+  location.reload();
+});
+if (el.pauseBtn) el.pauseBtn.addEventListener('click', e => { e.stopPropagation(); openPause(); });
+
 el.startBtn.addEventListener('click', () => {
   AudioSys.init(); AudioSys.resume();
   startIntro();
@@ -3501,21 +4022,15 @@ requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
 G.mode = 'title';
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast };
+window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, PREFS, DIFF, openPause, closePause, NOTES, readNote, codexEntries, applyGfx, setDifficulty };
 
 /* ============================================================
    Main loop
    ============================================================ */
 let lastT = performance.now();
-scene.traverse(o => {
-  if (!o.isMesh || !o.material || o.material.transparent) return;
-  o.castShadow = true;
-  o.receiveShadow = true;
-});
+applyShadowFlags();
 function loop(){
   requestAnimationFrame(loop);
-  dirLight.position.set(yawObj.position.x + 7, 14, yawObj.position.z + 5);
-  dirLight.target.position.set(yawObj.position.x, 1.2, yawObj.position.z);
   const nowT = performance.now();
   let dt = (nowT - lastT) / 1000;
   lastT = nowT;
@@ -3525,6 +4040,12 @@ function loop(){
     if (window.__LATM.stepFrames > 0){ dt = 1/24; window.__LATM.stepFrames--; }
     else dt = 0;
   }
+  if (G.paused){
+    renderFrame(scene, camera);
+    return;
+  }
+  dirLight.position.set(yawObj.position.x + 7, 14, yawObj.position.z + 5);
+  dirLight.target.position.set(yawObj.position.x, 1.2, yawObj.position.z);
   G.time += dt;
 
   if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
@@ -3543,6 +4064,7 @@ function loop(){
     updateDoors(dt);
     updateWave(dt);
     updateObjective(dt);
+    updateNotes();
     updateRadio(dt);
     if (G.time - (G.musicT || 0) > .5){
       G.musicT = G.time;
@@ -3557,16 +4079,20 @@ function loop(){
     updateRadio(dt);
     if (!CH.stealth) updateDrones(dt);
   }
-  // fps watchdog: if a device can't hold ~40fps with post-fx, shed it
-  if (postFX.enabled && G.mode === 'play' && !(window.__LATM && window.__LATM.capture)){
+  // If a laptop cannot hold the picture, step the preset down once.
+  if (G.mode === 'play' && !gfxUserSet && !(window.__LATM && window.__LATM.capture)){
     G._fpsN = (G._fpsN || 0) + 1;
     if (!G._fpsT) G._fpsT = nowT;
     if (nowT - G._fpsT > 3000){
-      if (G._fpsN / ((nowT - G._fpsT) / 1000) < 40){
-        postFX.enabled = false;
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      }
+      const fps = G._fpsN / ((nowT - G._fpsT) / 1000);
       G._fpsN = 0; G._fpsT = nowT;
+      if (fps < 38 && PREFS.gfx === 'cinematic'){
+        applyGfx('balanced', false);
+        sToast('PICTURE EASED TO BALANCED SO THIS MACHINE CAN KEEP UP.');
+      } else if (fps < 34 && PREFS.gfx === 'balanced'){
+        applyGfx('low', false);
+        sToast('PICTURE EASED TO LOW SO THIS MACHINE CAN KEEP UP.');
+      }
     }
   }
   updateFX(dt);

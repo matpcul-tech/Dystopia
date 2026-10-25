@@ -21,6 +21,8 @@
   </div>
   <div id="perks"></div>
   <div id="objective"></div>
+  <div id="coach"></div>
+  <div id="breathWrap"><div id="breathFill"></div></div>
   <div id="radio"></div>
   <div id="prompt"></div>
   <div id="plantWrap">
@@ -33,6 +35,8 @@
 <div id="lookZone"></div>
 <div id="stickBase"><div id="stickNub"></div></div>
 <button id="fireBtn" type="button">FIRE</button>
+<button id="crouchBtn" type="button">LOW</button>
+<button id="pauseBtn" type="button">HOLD</button>
 <button id="plantBtn" type="button">PLANT</button>
 <div class="sbar" id="sbarTop"></div>
 <div class="sbar" id="sbarBot"></div>
@@ -63,8 +67,11 @@
     <p class="novel">A NOVEL</p>
     <h2>EPISODE ONE: THE WAKING</h2>
     <p class="tag">Humanity is not being exterminated. It is being harvested.</p>
+    <div id="diffRow" class="segRow" role="group" aria-label="Difficulty"></div>
+    <p id="diffBlurb"></p>
     <button class="btn" id="startBtn" type="button">ENTER</button>
     <div id="startHint"></div>
+    <button id="gfxBtn" type="button">GRAPHICS</button>
   </div>
   <div class="screen" id="intro">
     <div id="introText"></div>
@@ -85,11 +92,34 @@
     </div>
     <div id="endSub"></div>
     <div id="endSummary"></div>
+    <div id="endDossier"></div>
     <div id="endTracker"></div>
     <div id="endBtns" style="margin-top:22px">
       <a class="btn amber" id="book1Btn" target="_blank" rel="noopener">READ BOOK 1</a>
       <button class="btn" id="replayBtn" type="button">REPLAY</button>
     </div>
+  </div>
+</div>
+<div id="pauseScreen">
+  <div class="pauseCard">
+    <div class="kicker"><i></i>HOLD<i></i></div>
+    <h2>THE WORLD WAITS</h2>
+    <p id="pauseObj"></p>
+    <div class="tune">
+      <label>LOOK<input id="sensRange" type="range" min="0.4" max="2.2" step="0.05" aria-label="Look sensitivity"></label>
+      <label>MUSIC<input id="musicRange" type="range" min="0" max="1" step="0.05" aria-label="Music volume"></label>
+      <label>SOUND<input id="sfxRange" type="range" min="0" max="1" step="0.05" aria-label="Sound volume"></label>
+    </div>
+    <div class="segRow" id="pauseDiff" role="group" aria-label="Difficulty"></div>
+    <div class="segRow" id="pauseGfx" role="group" aria-label="Graphics"></div>
+    <label class="check"><input type="checkbox" id="shakeBox"> CAMERA SHAKE</label>
+    <label class="check"><input type="checkbox" id="crouchBox"> TOGGLE CROUCH</label>
+    <div id="pauseBtns">
+      <button class="btn" id="resumeBtn" type="button">RESUME</button>
+      <button class="btn" id="manualBtn" type="button">FIELD MANUAL</button>
+      <button class="btn" id="quitBtn" type="button">TITLE</button>
+    </div>
+    <div id="manual"></div>
   </div>
 </div>
 <script src="people.js"></script>
