@@ -31,6 +31,9 @@ export const ARCHIVE = [
   { id:'game_ch2_lone_highway', n:'G4', title:'GAME SHORT: THE DEAD HIGHWAY', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_highway.mp4', poster:'media/shorts/game/game_ch2_lone_highway.jpg', status:'ready', game:true },
   { id:'game_ch2_lone_toll', n:'G5', title:'GAME SHORT: THE TOLL PLAZA', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_toll.mp4', poster:'media/shorts/game/game_ch2_lone_toll.jpg', status:'ready', game:true },
   { id:'game_ch2_lone_beacon', n:'G6', title:'GAME SHORT: THE BEACON', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_beacon.mp4', poster:'media/shorts/game/game_ch2_lone_beacon.jpg', status:'ready', game:true },
+  { id:'game_ch2_hive_pods', n:'G7', title:'GAME SHORT: THE POD GALLERY', chapter:'ch_taken', url:'media/shorts/game/game_ch2_hive_pods.mp4', poster:'media/shorts/game/game_ch2_hive_pods.jpg', status:'ready', game:true },
+  { id:'game_ch2_ghost_trunk', n:'G8', title:'GAME SHORT: THE TRUNK LINE', chapter:'ch_ghost', url:'media/shorts/game/game_ch2_ghost_trunk.mp4', poster:'media/shorts/game/game_ch2_ghost_trunk.jpg', status:'ready', game:true },
+  { id:'game_ch3_counting_hall', n:'G9', title:'GAME SHORT: THE RECORDS HALL', chapter:'ch_counting', url:'media/shorts/game/game_ch3_counting_hall.mp4', poster:'media/shorts/game/game_ch3_counting_hall.jpg', status:'ready', game:true },
 ];
 
 // at: 'open' plays once when the chapter starts, then gameplay.
@@ -45,13 +48,13 @@ export const BEATS = [
   { id:'ep1_street', episode:'game_ep1_street', chapter:'ep1', at:'room', room:2, max:10, cue:[0, 10], labelFrom:'segs:0' },
   { id:'ep1_depot', episode:'game_ep1_depot', chapter:'ep1', at:'room', room:5, max:10, cue:[0, 10], labelFrom:'final' },
 
-  // Inside the Hive
-  { id:'taken_pod', episode:'rsa2', chapter:'ch_taken', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
+  // Inside the Hive. The open is a game short. Later rooms stay lines until a file exists.
+  { id:'taken_pod', episode:'game_ch2_hive_pods', chapter:'ch_taken', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'taken_gallery', episode:'rsa2', chapter:'ch_taken', at:'room', room:1, intro:[3], max:10, cue:[14, 24], labelFrom:'segs:0' },
   { id:'taken_nursery', episode:'rsa2', chapter:'ch_taken', at:'room', room:3, intro:[4], max:12, cue:[24, 36], labelFrom:'segs:2' },
 
-  // The Listening Dark
-  { id:'ghost_well', episode:'rsa3', chapter:'ch_ghost', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
+  // The Listening Dark. The open is a game short. The cable room stays lines.
+  { id:'ghost_well', episode:'game_ch2_ghost_trunk', chapter:'ch_ghost', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'ghost_cable', episode:'rsa3', chapter:'ch_ghost', at:'room', room:3, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:2' },
 
   // The Convoy
@@ -65,8 +68,8 @@ export const BEATS = [
   { id:'road_toll', episode:'game_ch2_lone_toll', chapter:'ch_lone', at:'room', room:2, intro:[3], max:10, cue:[0, 10], labelFrom:'segs:1' },
   { id:'road_climb', episode:'game_ch2_lone_beacon', chapter:'ch_lone', at:'room', room:3, intro:[4], max:10, cue:[0, 10], labelFrom:'segs:2' },
 
-  // Counting House entry, then the records hall. Not one long open.
-  { id:'count_entry', episode:'rsa6', chapter:'ch_counting', at:'open', intro:[1, 2], max:14, cue:[0, 14], labelFrom:'advance' },
+  // Counting House. The open is a game short. The records hall room stays lines.
+  { id:'count_entry', episode:'game_ch3_counting_hall', chapter:'ch_counting', at:'open', intro:[1, 2], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'count_hall', episode:'rsa6', chapter:'ch_counting', at:'room', room:1, intro:[3, 4], max:14, cue:[14, 28], labelFrom:'segs:0' },
 
   // Conduits. Forty-Three Left stays the bunker opener.

@@ -48,20 +48,28 @@ No game_ep1_door clip. The vestibule and the side hatch are the story choice `Tw
 
 Twenty Feet of Machine stays in the gallery as PLAY FULL SHORT. It is not an Episode One level opener.
 
-## Inside the Hive, rsa2, ch_taken
+## Inside the Hive, ch_taken
 
-| Clip | When | Cap | Cue | What the player hits |
+The open is a game short. `rsa2` stays on the archive row with no file. Later rooms keep their lines. If the mp4 is missing, the open skips to control.
+
+| Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| taken_pod | open | 14s | 0 to 14 | Warm light. Ten thousand people breathing. Then the pod gallery. |
-| taken_gallery | room 1 | 10s | 14 to 24 | CROSS THE POD GALLERY. The pod seal line. |
-| taken_nursery | room 3 | 12s | 24 to 36 | CROSS THE NURSERY. Reyes, far above. |
+| taken_pod | open | 10s | media/shorts/game/game_ch2_hive_pods.mp4 (cue 0 to 10) | Warm light. Ten thousand people breathing. Then ESCAPE THE POD GALLERY. |
+| taken_gallery | room 1 | 10s | lines | CROSS THE POD GALLERY. The pod seal line. |
+| taken_nursery | room 3 | 12s | lines | CROSS THE NURSERY. Reyes, far above. |
 
-## The Listening Dark, rsa3, ch_ghost
+Poster: media/shorts/game/game_ch2_hive_pods.jpg
 
-| Clip | When | Cap | Cue | What the player hits |
+## The Listening Dark, ch_ghost
+
+The open is a game short. `rsa3` stays on the archive row with no file. The cable room keeps its lines. If the mp4 is missing, the open skips to control.
+
+| Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| ghost_well | open | 14s | 0 to 14 | The dark under the depot, and the trunk line. |
-| ghost_cable | room 3 | 14s | 14 to 28 | CROSS THE CABLE RUN. The radio says MARCUS. |
+| ghost_well | open | 10s | media/shorts/game/game_ch2_ghost_trunk.mp4 (cue 0 to 10) | The dark under the depot, and the trunk line. FOLLOW THE TRUNK LINE. |
+| ghost_cable | room 3 | 14s | lines | CROSS THE CABLE RUN. The radio says MARCUS. |
+
+Poster: media/shorts/game/game_ch2_ghost_trunk.jpg
 
 ## The Convoy, rsa4, ch_together
 
@@ -87,12 +95,16 @@ Posters, same folder:
 - media/shorts/game/game_ch2_lone_toll.mp4 and media/shorts/game/game_ch2_lone_toll.jpg
 - media/shorts/game/game_ch2_lone_beacon.mp4 and media/shorts/game/game_ch2_lone_beacon.jpg
 
-## Counting House, rsa6, ch_counting
+## Counting House, ch_counting
 
-| Clip | When | Cap | Cue | What the player hits |
+The open is a game short. `rsa6` stays on the archive row with no file. The records hall room keeps its lines. If the mp4 is missing, the open skips to control.
+
+| Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| count_entry | open | 14s | 0 to 14 | Counting House entry. Every copy. The building where names are made permanent. |
-| count_hall | room 1 | 14s | 14 to 28 | CROSS THE RECORDS HALL UNSEEN. No rifle. Stay out of the light. |
+| count_entry | open | 10s | media/shorts/game/game_ch3_counting_hall.mp4 (cue 0 to 10) | Every copy of the ledger. SLIP INTO THE RECORDS HALL. |
+| count_hall | room 1 | 14s | lines | CROSS THE RECORDS HALL UNSEEN. No rifle. Stay out of the light. |
+
+Poster: media/shorts/game/game_ch3_counting_hall.jpg
 
 ## The Conduits, rsa7, ch_conduits
 

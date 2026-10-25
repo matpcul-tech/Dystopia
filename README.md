@@ -118,7 +118,7 @@ LABORATORY YARD**, which reloads straight into the boss fight.
 
 ## Cinematics: the Dystopia Shorts episodes
 
-All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Episode One and Long Road level openers use `media/shorts/game/` (origin, ruined street, depot, highway, toll, beacon). Book files stay in the gallery. If a game mp4 is missing, play continues. On the train open, the two origin lines still play. The map is `CINEMATIC_PLAN.md`.
+All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Episode One, Long Road, Hive, Listening Dark, and Counting House opens use `media/shorts/game/` (origin, street, depot, highway, toll, beacon, pods, trunk, records hall). Book files stay in the gallery. If a game mp4 is missing, play continues. On the train open, the two origin lines still play. The map is `CINEMATIC_PLAN.md`.
 
 The older `cinematics/` files and `episodes.json` are the previous full-episode intros. The level does not play those.
 
