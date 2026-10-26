@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DYSTOPIA: The Waking</string>
+    <string name="title_activity_main">DYSTOPIA: The Waking</string>
+    <string name="package_name">com.matthewculwell.thewaking</string>
+    <string name="custom_url_scheme">com.matthewculwell.thewaking</string>
+</resources>
