@@ -276,6 +276,15 @@ no CDN.
 - **Mobile:** left stick to move · right side drag to look · FIRE button
   · tap to advance story, tap choices.
 
+## iOS and Android
+
+GitHub Pages still serves this folder with no build step. The store shells
+are Capacitor projects in `android/` and `ios/`. They load a generated
+`www/` copy of this game, including the vendored Three.js build and fonts,
+so core play does not need a network. See `docs/capacitor.md` for sync,
+Android Studio, Xcode, and signing. Season Pass, ads, and Steam are not
+part of that shell.
+
 ## Author config
 
 - `CONFIG.BOOK1_URL`, the Kindle store URL for Book One.

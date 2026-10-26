@@ -1,8 +1,0 @@
-{
-  "appId": "com.matthewculwell.thewaking",
-  "appName": "Dystopia: The Waking",
-  "webDir": "..",
-  "server": {
-    "androidScheme": "https"
-  }
-}
