@@ -312,7 +312,7 @@ function buildSettings(host){
     row.appendChild(input);
     box.appendChild(row);
   });
-  box.appendChild(el('p', 'fine', 'Story Mode aims for you, softens hits, and shortens the hunter. Action Mode is the desktop fight. Timer off keeps every option on screen until you choose. Portrait cards are placeholders, not finished art.'));
+  box.appendChild(el('p', 'fine', 'Story Mode softens hits and shortens the hunter. On a phone, Story Mode nudges a shot that is already close to a target. Mouse and keyboard do not lock on. Action Mode is the desktop fight. Timer off keeps every option on screen until you choose. Portrait cards are placeholders, not finished art.'));
   box.appendChild(el('p', 'fine', 'Choice counts and chapter events are anonymous. No account. No name is sent.'));
   const close = el('button', 'btn', 'CLOSE');
   close.type = 'button';
