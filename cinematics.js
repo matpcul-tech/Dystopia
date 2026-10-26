@@ -22,13 +22,10 @@ export const ARCHIVE = [
   { id:'rsa9', n:9, title:'CHAPTER SIX: FIRE AND STEEL', chapter:'ch_steel', url:'', status:'hook' },
   // Episode One level clips. Book RSA files stay in the gallery.
   // A missing file still skips to control.
-  // Origin is the New Game open. Drop the locked RSA Shorts Marcus clip at
-  // media/shorts/game/game_ep1_origin_v2.mp4 (wake, run, train look).
-  // Do not point this slot back at game_ep1_origin.mp4.
-  // status stays pending until that file is in the tree. New Game still
-  // tries the path: if the file is there it plays, if not the two intro lines do.
-  // Flip status to ready once the file is committed so the checker requires it.
-  { id:'game_ep1_origin', n:'G1', title:'GAME SHORT: WHY THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_origin_v2.mp4', poster:'media/shorts/game/game_ep1_origin_v2.jpg', status:'pending', game:true },
+  // Origin is the New Game open. Locked RSA Shorts Marcus clip
+  // (wake, run, train look). Do not point this slot back at game_ep1_origin.mp4.
+  // If the file fails to load, the two intro lines still hand over the car.
+  { id:'game_ep1_origin', n:'G1', title:'GAME SHORT: WHY THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_origin_v2.mp4', poster:'media/shorts/game/game_ep1_origin_v2.jpg', status:'ready', game:true },
   { id:'game_ep1_train', n:'G1b', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
   { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true },
   { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'ready', game:true },

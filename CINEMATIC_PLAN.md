@@ -42,7 +42,7 @@ Posters, same folder:
 - media/shorts/game/game_ep1_street.mp4 and media/shorts/game/game_ep1_street.jpg
 - media/shorts/game/game_ep1_depot.mp4 and media/shorts/game/game_ep1_depot.jpg
 
-Drop in: put the new origin clip at `media/shorts/game/game_ep1_origin_v2.mp4`. Optional poster: `media/shorts/game/game_ep1_origin_v2.jpg`. The face in that clip has to be the RSA Shorts Marcus (the Ep1 wake, run, and train look). Not a new actor. Not the human avatar built in this game. New Game plays cue 0 to 15 as soon as the file is there. While it is absent, the two train intro lines play and control returns in the car. The archive row stays `pending` until the file is in the tree. After it lands, set that row to `ready` in `cinematics.js` so the checker requires the file and PLAY FULL SHORT turns on.
+The origin clip is in: `media/shorts/game/game_ep1_origin_v2.mp4`, poster `media/shorts/game/game_ep1_origin_v2.jpg`. The face is the RSA Shorts Marcus (the Ep1 wake, run, and train look). Not a new actor. Not the human avatar built in this game. New Game plays cue 0 to 15. If that file fails to load, the two train intro lines still play and control returns in the car. The archive row is `ready`, so the checker requires the file and PLAY FULL SHORT is on.
 
 `media/shorts/game/game_ep1_origin.mp4` is retired. It is not the New Game open and not an archive row. That cut deletes the car wall so a hatch can appear. Do not point ep1_wake at it.
 
