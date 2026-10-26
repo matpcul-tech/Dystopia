@@ -551,6 +551,26 @@
       '  if (kM > .7){ float kE = kM - .7; outgoingLight *= (.7 + kE / (1.0 + kE * 3.0)) / kM; } }\n#include <opaque_fragment>');
   }
   function knee(m){ if (m && m.isMeshStandardMaterial && !m.onBeforeCompile.__knee){ m.onBeforeCompile = sleeperKnee; m.customProgramCacheKey = function(){ return 'humanKnee'; }; } return m; }
+  function flatTier(){
+    var q = global.__WAKING_Q;
+    return !!(q && q.p && q.p.basic);
+  }
+  // Potato uses Lambert so a face still takes the portrait key light
+  // without a PBR shader. Other tiers stay on Standard.
+  function skinMat(params){
+    if (!flatTier()) return new (T.MeshStandardMaterial)(params);
+    var p = params || {}, o = { color: p.color, map: p.map, vertexColors: p.vertexColors };
+    if (p.emissive !== undefined) o.emissive = p.emissive;
+    if (p.emissiveIntensity !== undefined) o.emissiveIntensity = p.emissiveIntensity;
+    if (p.emissiveMap) o.emissiveMap = p.emissiveMap;
+    if (p.transparent) o.transparent = true;
+    if (p.opacity !== undefined) o.opacity = p.opacity;
+    if (p.side !== undefined) o.side = p.side;
+    if (p.depthWrite !== undefined) o.depthWrite = p.depthWrite;
+    if (p.alphaMap) o.alphaMap = p.alphaMap;
+    if (p.alphaTest !== undefined) o.alphaTest = p.alphaTest;
+    return new T.MeshLambertMaterial(o);
+  }
   sleeperKnee.__knee = true;
   function emis(m, sleeper){
     if (sleeper){ m.color = new T.Color(0x8a6640); m.emissive = new T.Color(0x3a2208); m.emissiveIntensity = .5;
@@ -567,13 +587,13 @@
       parts.push({ geo: new T.SphereGeometry(1, segS, segS - 2), m: TRS(ep.x + s2*.001, ep.y, ep.z - .006, 0, s2*-.3, s2*.06, .0068, .027, .017), uv: faceUV(s2*1.57, 1.6) });
     }
     geo = appendParts(geo, parts);
-    var mat = emis(new T.MeshStandardMaterial({ map: paintFace(def, lod, sleeper), roughness: def.clean ? .5 : .62, metalness: 0 }), sleeper);
+    var mat = emis(skinMat({ map: paintFace(def, lod, sleeper), roughness: def.clean ? .5 : .62, metalness: 0 }), sleeper);
     var head = new T.Mesh(geo, mat);
     head.morphTargetInfluences = [0, 0, 0];
     grp.add(head);
     var R = { group: grp, head: head, eyes: [], lidU: null, lidL: null, brows: [], hair: null, hairExtra: null, beard: null };
     if (lod.eyes && !sleeper){
-      var er = .0122, emat = new T.MeshStandardMaterial({ map: eyeTex(def.eyes || 0x3a2a1c), roughness: .15, metalness: 0 });
+      var er = .0122, emat = skinMat({ map: eyeTex(def.eyes || 0x3a2a1c), roughness: .15, metalness: 0 });
       var eg = new T.SphereGeometry(er, 20, 14), eyeY = 0, eyeZ = 0;
       for (var s3 = -1; s3 <= 1; s3 += 2){
         var c = headPoint(s3*EYE_A, EYE_TH, sh, new T.Vector3());
@@ -584,7 +604,7 @@
       }
       if (lod.lids){
         // one mesh pivots both upper lids: the eye centres share an x-axis line
-        var lidMat = new T.MeshStandardMaterial({ vertexColors: true, roughness: .6 });
+        var lidMat = skinMat({ vertexColors: true, roughness: .6 });
         var lidGeo = function(upper){
           var b = new Builder();
           for (var s4 = -1; s4 <= 1; s4 += 2){
@@ -601,7 +621,7 @@
       }
     }
     if (lod.brows && !sleeper){
-      var bmat = new T.MeshStandardMaterial({ color: browCol(def), roughness: .9 });
+      var bmat = skinMat({ color: browCol(def), roughness: .9 });
       for (var s5 = -1; s5 <= 1; s5 += 2){
         var pts = [];
         for (var k = 0; k <= 4; k++){
@@ -626,7 +646,7 @@
         return thick * m * vol + .0016 * m - .0022 * (1 - m);
       });
       hg.morphAttributes = {};
-      var hmat = emis(new T.MeshStandardMaterial({ map: strandTex(hcol, 0x9b968f, def.hairGray || 0, def.id), roughness: style === 'silver' ? .45 : .62, alphaMap: hairMask(def), alphaTest: .5 }), sleeper);
+      var hmat = emis(skinMat({ map: strandTex(hcol, 0x9b968f, def.hairGray || 0, def.id), roughness: style === 'silver' ? .45 : .62, alphaMap: hairMask(def), alphaTest: .5 }), sleeper);
       var hair = new T.Mesh(hg, hmat); grp.add(hair); R.hair = hair;
       var ex = new Builder(), has = false;
       if (style === 'braid'){
@@ -647,7 +667,7 @@
         }
         has = true;
       }
-      if (has){ var hx = new T.Mesh(ex.geometry(false), emis(new T.MeshStandardMaterial({ vertexColors: true, roughness: .62 }), sleeper)); grp.add(hx); R.hairExtra = hx; }
+      if (has){ var hx = new T.Mesh(ex.geometry(false), emis(skinMat({ vertexColors: true, roughness: .62 }), sleeper)); grp.add(hx); R.hairExtra = hx; }
     }
     if (def.beard && lod.hair){
       var bg = headGeo(def, lod, function(a, th){
@@ -659,7 +679,7 @@
         if (th > 2.75) m *= 1 - sstep(2.75, 2.95, th);
         return m > .02 ? .0075 * m : -.003;
       });
-      var beard = new T.Mesh(bg, new T.MeshStandardMaterial({ map: strandTex(def.beardCol || def.hair, 0xa8a49c, def.beardGray || 0, def.id + 'b'), roughness: .75 }));
+      var beard = new T.Mesh(bg, skinMat({ map: strandTex(def.beardCol || def.hair, 0xa8a49c, def.beardGray || 0, def.id + 'b'), roughness: .75 }));
       beard.morphTargetInfluences = [0, 0, 0];
       grp.add(beard); R.beard = beard;
     }
@@ -670,7 +690,7 @@
       hb.addGeo(new T.CylinderGeometry(.0018, .0018, .085, 5), metal, 0, TRS(.072, -.04, .04, -1.0, 0, -.35));
       hb.addGeo(new T.SphereGeometry(.005, 6, 6), 0x111111, 0, TRS(.05, -.062, .078));
       hb.addGeo(new T.SphereGeometry(.0022, 6, 6), 0x3cff9a, 0, TRS(.091, 0, .003));
-      grp.add(new T.Mesh(hb.geometry(false), new T.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .5 })));
+      grp.add(new T.Mesh(hb.geometry(false), skinMat({ vertexColors: true, roughness: .45, metalness: .5 })));
     }
     return R;
   }
@@ -705,8 +725,8 @@
   }
   var MATS = {};
   function bodyMat(sleeper){
-    var k = sleeper ? 'bodyS' : 'body';
-    if (!MATS[k]) MATS[k] = emis(new T.MeshStandardMaterial({ vertexColors: true, roughness: sleeper ? .7 : .86, metalness: 0 }), sleeper);
+    var k = (sleeper ? 'bodyS' : 'body') + (flatTier() ? 'L' : '');
+    if (!MATS[k]) MATS[k] = emis(skinMat({ vertexColors: true, roughness: sleeper ? .7 : .86, metalness: 0 }), sleeper);
     return MATS[k];
   }
 
@@ -882,13 +902,13 @@
       b.addGeo(new T.BoxGeometry(.1, .07, .24), shade(body, .7), ft, TRS(lx, .035, .04));
     }
     limb(1); limb(-1);
-    var R = skin(b.geometry(true), new T.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .25 }), joints(S));
+    var R = skin(b.geometry(true), skinMat({ vertexColors: true, roughness: .45, metalness: .25 }), joints(S));
     var hg = new T.Group();
-    var shell = new T.Mesh(new T.SphereGeometry(.105, 28, 20), new T.MeshStandardMaterial({ color: shade(body, 1.08), roughness: .35, metalness: .3 }));
+    var shell = new T.Mesh(new T.SphereGeometry(.105, 28, 20), skinMat({ color: shade(body, 1.08), roughness: .35, metalness: .3 }));
     shell.scale.set(.82, 1.08, .98); shell.position.set(0, .085, 0);
-    var visor = new T.Mesh(new T.SphereGeometry(.1, 24, 10, -.9, 1.8, Math.PI*.38, Math.PI*.22), new T.MeshStandardMaterial({ color: 0x0a0b0c, roughness: .12, metalness: .9 }));
+    var visor = new T.Mesh(new T.SphereGeometry(.1, 24, 10, -.9, 1.8, Math.PI*.38, Math.PI*.22), skinMat({ color: 0x0a0b0c, roughness: .12, metalness: .9 }));
     visor.scale.set(.86, 1.08, 1.04); visor.position.set(0, .085, .004); visor.rotation.y = Math.PI/2;
-    var seam = new T.Mesh(new T.TorusGeometry(.087, .0025, 4, 32), new T.MeshStandardMaterial({ color: shade(trim, .7), roughness: .5, metalness: .6 }));
+    var seam = new T.Mesh(new T.TorusGeometry(.087, .0025, 4, 32), skinMat({ color: shade(trim, .7), roughness: .5, metalness: .6 }));
     seam.rotation.y = Math.PI/2; seam.position.set(0, .085, 0); seam.scale.set(1, 1.18, 1.05);
     hg.add(shell, visor, seam);
     var sensors = [], ns = def.sensors || 2;
@@ -906,7 +926,7 @@
     b.addGeo(new T.BoxGeometry(.13, .19, .014), 0x1e2125, 0, null);
     b.addGeo(new T.BoxGeometry(.112, .15, .002), 0x6fd6e8, 0, TRS(0, .008, .0075));
     for (var k = 0; k < 2; k++) b.addGeo(new T.TorusGeometry(.07, .004, 4, 18), 0x9a9a96, 0, TRS(0, -.05 + k*.1, 0, 0, 0, Math.PI/2, 1, 1, .22));
-    return new T.Mesh(b.geometry(false), new T.MeshStandardMaterial({ vertexColors: true, roughness: .4, metalness: .4, emissive: 0x0c3a44, emissiveIntensity: .6 }));
+    return new T.Mesh(b.geometry(false), skinMat({ vertexColors: true, roughness: .4, metalness: .4, emissive: 0x0c3a44, emissiveIntensity: .6 }));
   }
 
   /* ---------- the character ---------- */
@@ -1131,10 +1151,13 @@
   function buildTubes(list, o){
     three(); o = o || {};
     var q = o.quality || 'med';
-    var segs = q === 'high' ? 28 : q === 'med' ? 20 : 14;
+    var potato = q === 'potato';
+    var segs = q === 'high' ? 28 : q === 'med' ? 20 : potato ? 8 : 14;
     var grp = new T.Group(), hw = new Builder(), glass = new Builder();
     var fpos = [], fuv = [], fhi = [], fidx = [];
-    var bubbleN = q === 'high' ? 26 : q === 'med' ? 16 : 9;
+    var bubbleN = potato ? 0 : q === 'high' ? 26 : q === 'med' ? 16 : 9;
+    var cableSteps = potato ? 5 : q === 'low' ? 8 : 16;
+    var hoseSteps = potato ? 6 : q === 'low' ? 10 : 20;
     var bpos = [], bseed = [], bhi = [], plates = [];
     var R0 = .45, GY0 = .34, GY1 = 2.62;
     var metal = 0x3b454b, dark = 0x1d2226, cable = 0x15181a, brass = 0x8a7448;
@@ -1159,11 +1182,11 @@
        [[x + bx*2.4, GY0 + .02, z], [x + bx*2.6, .8, z + .05], [x + bx*1.6, 1.25, z], [x + bx, 1.4, z]]
       ].forEach(function(c){
         var cv = new T.CatmullRomCurve3(c.map(function(p){ return new T.Vector3(p[0], p[1], p[2]); }));
-        hw.addGeo(new T.TubeGeometry(cv, q === 'low' ? 8 : 16, .011, 5, false), cable, 0, null);
+        hw.addGeo(new T.TubeGeometry(cv, cableSteps, .011, 5, false), cable, 0, null);
       });
       var hc = new T.CatmullRomCurve3([new T.Vector3(x, GY1 + .5, z), new T.Vector3(x - side*.2, GY1 + .7, z - .1),
         new T.Vector3(x - side*.66, 2.0, z - .2), new T.Vector3(x - side*.72, .1, z - .25)]);
-      hw.addGeo(new T.TubeGeometry(hc, q === 'low' ? 10 : 20, .03, 6, false), cable, 0, null);
+      hw.addGeo(new T.TubeGeometry(hc, hoseSteps, .03, 6, false), cable, 0, null);
       hw.addGeo(new T.BoxGeometry(.02, .03, .1), ang ? 0xffb347 : 0x8ad7a8, 0, TRS(x + side*.6, .2, z));
       glass.addGeo(new T.CylinderGeometry(R0, R0, GY1 - GY0, segs, 1, true), 0xffffff, 0, TRS(x, (GY0 + GY1)/2, z));
       var fg = new T.CylinderGeometry(R0 - .02, R0 - .02, GY1 - GY0 - .03, segs, 3, false);
@@ -1179,9 +1202,9 @@
       plates.push({ x: x, z: z, side: side, name: ang ? 'ANGELA M.' : TAKEN[i % TAKEN.length], hi: ang });
       hw.addGeo(new T.BoxGeometry(.05, .5, .05), metal, 0, TRS(x + side*.6 - side*.035, .45, z));
     });
-    var hwMesh = new T.Mesh(hw.geometry(false), new T.MeshStandardMaterial({ vertexColors: true, roughness: .5, metalness: .6 }));
+    var hwMesh = new T.Mesh(hw.geometry(false), skinMat({ vertexColors: true, roughness: .5, metalness: .6 }));
     hwMesh.receiveShadow = true;
-    var glassMesh = new T.Mesh(glass.geometry(false), new T.MeshStandardMaterial({ color: 0x000000, roughness: .08, metalness: .1,
+    var glassMesh = new T.Mesh(glass.geometry(false), skinMat({ color: 0x000000, roughness: .08, metalness: .1,
       transparent: true, opacity: .16, depthWrite: false, side: T.DoubleSide }));
     // black albedo: glass reflects, it does not scatter (a pale albedo turned the tube white under the flashlight)
     knee(glassMesh.material);
@@ -1221,11 +1244,13 @@
       ].join('\n')
     });
     var fluid = new T.Mesh(fgeo, fMat); fluid.renderOrder = 2;
+    var bubbles = null, bMat = null;
+    if (bubbleN > 0){
     var bgeo = new T.BufferGeometry();
     bgeo.setAttribute('position', new T.Float32BufferAttribute(bpos, 3));
     bgeo.setAttribute('aSeed', new T.Float32BufferAttribute(bseed, 1));
     bgeo.setAttribute('aHi', new T.Float32BufferAttribute(bhi, 1));
-    var bMat = new T.ShaderMaterial({
+    bMat = new T.ShaderMaterial({
       transparent: true, depthWrite: false, blending: T.AdditiveBlending,
       uniforms: { uTime: { value: 0 }, uH: { value: GY1 - GY0 - .1 }, uScale: { value: 800 } },
       vertexShader: [
@@ -1241,7 +1266,8 @@
         '  float ring = smoothstep(.5, .38, d) * (.3 + smoothstep(.2, .44, d) * .7); gl_FragColor = vec4(vec3(1.0, .86, .62) * ring * vA, 1.0); }'
       ].join('\n')
     });
-    var bubbles = new T.Points(bgeo, bMat); bubbles.renderOrder = 4; bubbles.frustumCulled = false;
+    bubbles = new T.Points(bgeo, bMat); bubbles.renderOrder = 4; bubbles.frustumCulled = false;
+    }
     // name plates: one atlas texture, one mesh
     var cols = 2, rows = Math.ceil(plates.length / cols), PW = 256, PH = 56;
     var cv = document.createElement('canvas'); cv.width = PW*cols; cv.height = PH*rows;
@@ -1268,21 +1294,25 @@
     pgeo.setIndex(pi);
     var plateMesh = new T.Mesh(pgeo, new T.MeshBasicMaterial({ map: ptex, side: T.DoubleSide, toneMapped: false, color: 0xd8d8d8 }));
     grp.add(hwMesh, plateMesh);
-    var occ = [], occLod = q === 'high' ? 'med' : 'low';
+    var occ = [], occLod = potato ? 'tiny' : q === 'high' ? 'med' : 'low';
     list.forEach(function(e, i){
       var face = e[0] > 0 ? -Math.PI/2 : Math.PI/2;   // face the aisle
-      var s = createSleeper({ angela: !!e[2], index: i, lod: e[2] && q !== 'low' ? 'med' : occLod, baseY: .44, baseRot: face + (rnd() - .5) * .5 });
+      var s = createSleeper({ angela: !!e[2], index: i, lod: e[2] && q !== 'low' && !potato ? 'med' : occLod, baseY: .44, baseRot: face + (rnd() - .5) * .5 });
       s.scale.setScalar(.92);
       s.position.set(e[0], .44, e[1]);
       grp.add(s); occ.push(s);
     });
-    grp.add(glassMesh, fluid, bubbles);
+    grp.add(glassMesh, fluid);
+    if (bubbles) grp.add(bubbles);
     return {
       group: grp, occupants: occ, plates: plateMesh, fluid: fluid,
       animate: function(dt, t, cam, fog, pixelH){
-        fMat.uniforms.uTime.value = t; bMat.uniforms.uTime.value = t;
+        fMat.uniforms.uTime.value = t;
+        if (bMat){
+          bMat.uniforms.uTime.value = t;
+          bMat.uniforms.uScale.value = pixelH || 800;
+        }
         if (fog){ fMat.uniforms.uFogColor.value.copy(fog.color); fMat.uniforms.uFogDensity.value = fog.density || 0; }
-        bMat.uniforms.uScale.value = pixelH || 800;
         for (var i = 0; i < occ.length; i++){
           var s = occ[i];
           var d2 = cam ? (s.position.x - cam.x) * (s.position.x - cam.x) + (s.position.z - cam.z) * (s.position.z - cam.z) : 0;
