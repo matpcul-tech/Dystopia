@@ -101,7 +101,11 @@ function applySettings(){
   root.dataset.mode = st.mode || 'action';
   root.dataset.portraits = st.portraits || 'cards';
   if (api && api.setVolume) api.setVolume(st.volume);
-  if (api && api.applyQuality && st.quality && st.quality !== 'auto') api.applyQuality(st.quality);
+  // ?q= on the URL is the playtest override. Do not let a saved
+  // settings tier clobber it after the world has already been built.
+  var urlQ = '';
+  try { urlQ = new URLSearchParams(location.search).get('q') || ''; } catch (e) {}
+  if (api && api.applyQuality && st.quality && st.quality !== 'auto' && !urlQ) api.applyQuality(st.quality);
   const line = typeof document !== 'undefined' && document.getElementById('modeLine');
   if (line) line.textContent = st.mode === 'story' ? 'STORY MODE' : 'ACTION MODE';
 }
@@ -280,7 +284,7 @@ function buildSettings(host){
     ['TEXT SPEED', 'select', 'textSpeed', null, null, null, [0.6, 1, 1.6]],
     ['CHOICE TIMER', 'select', 'timer', null, null, null, ['on', 'long', 'off']],
     ['MOTION', 'select', 'motion', null, null, null, ['full', 'reduced']],
-    ['QUALITY', 'select', 'quality', null, null, null, ['auto', 'low', 'med', 'high']],
+    ['QUALITY', 'select', 'quality', null, null, null, ['auto', 'potato', 'low', 'med', 'high']],
     ['MODE', 'select', 'mode', null, null, null, ['story', 'action']],
     ['PORTRAITS', 'select', 'portraits', null, null, null, ['cards', 'blocks']],
     ['GAMEPAD', 'select', 'gamepad', null, null, null, [true, false]],
@@ -297,7 +301,9 @@ function buildSettings(host){
       opts.forEach(o => {
         const op = document.createElement('option');
         op.value = String(o);
-        op.textContent = key === 'mode' ? (String(o) === 'story' ? 'STORY MODE' : 'ACTION MODE') : String(o).toUpperCase();
+        op.textContent = key === 'mode'
+          ? (String(o) === 'story' ? 'STORY MODE' : 'ACTION MODE')
+          : (o === 'potato' ? 'POTATO / ULTRA LOW' : String(o).toUpperCase());
         if (String(st[key]) === String(o)) op.selected = true;
         input.appendChild(op);
       });

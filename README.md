@@ -185,13 +185,12 @@ The renderer uses the same modern, gritty look as
 
 | Tier | Intended for | What it does |
 |------|--------------|--------------|
+| potato | software WebGL (SwiftShader, llvmpipe, softpipe, Microsoft Basic Render Driver) | direct render, pixel ratio hard-capped at 0.65 (governor can scale to 0.4), no shadows, no post, no ash, dust, or light shafts, decorative meshes hidden, Lambert materials, tiniest human LOD |
 | low  | phones, weak GPUs | direct render (no post), pixel ratio capped at 1.15, no shadows, 256px textures |
 | med  | mid laptops | bloom + color grade, pixel ratio 1.35, no shadows |
 | high | desktops | shadow-casting flashlight, FXAA, pixel ratio up to 1.75, full particles |
 
-Touch phones start on **low**. A governor steps down on poor frame rate and
-promotes a coasting phone one tier, once. Override with `?q=low|med|high` or
-the GRAPHICS button on the title screen (AUTO, LOW, MED, HIGH).
+Software renderers start on **potato**. Touch phones start on **low**. A governor steps down on poor frame rate, and a low tier that is still under the floor drops into potato. It promotes a coasting phone one tier, once. Override with `?q=potato` (alias `?q=ultralow`), `?q=low|med|high`, or the GRAPHICS button on the title screen (AUTO, POTATO / ULTRA LOW, LOW, MED, HIGH).
 
 ### Loading
 

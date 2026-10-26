@@ -230,6 +230,7 @@ body.cine #storyWrap{padding-bottom:calc(9vh + 16px + env(safe-area-inset-bottom
 
 /* graphics tier selector on the title screen */
 .btn.small{font-size:11px;padding:9px 18px;margin-top:10px;opacity:.85;}
+#gfxBtn{white-space:normal;max-width:min(92vw, 320px);line-height:1.35;}
 /* low-tier stand-in for the post stack vignette (hidden when the grade pass runs) */
 #vig{position:fixed;inset:0;pointer-events:none;z-index:1;
   background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.66) 100%);}
