@@ -32,19 +32,23 @@ Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay
 
 | Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
-| ep1_wake | open | 15s | media/shorts/game/game_ep1_origin.mp4 (cue 0 to 15) | No memory. A twenty foot hunter under a blood sky. He dives into the dead rail car and goes still. Then control, and CHOOSE A WAY OFF THE TRAIN. |
+| ep1_wake | open | 15s | media/shorts/game/game_ep1_origin_v2.mp4 (cue 0 to 15) | No memory. A twenty foot hunter under a blood sky. He dives into the dead rail car and goes still. Then control, and CHOOSE A WAY OFF THE TRAIN. |
 | ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
 | ep1_depot | room 5 | 10s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 10) | PULL THE LEDGER AT THE DEPOT SCREEN. |
 
 Posters, same folder:
 
-- media/shorts/game/game_ep1_origin.mp4 and media/shorts/game/game_ep1_origin.jpg
+- media/shorts/game/game_ep1_origin_v2.mp4 and media/shorts/game/game_ep1_origin_v2.jpg
 - media/shorts/game/game_ep1_street.mp4 and media/shorts/game/game_ep1_street.jpg
 - media/shorts/game/game_ep1_depot.mp4 and media/shorts/game/game_ep1_depot.jpg
 
+Drop in: put the new origin clip at `media/shorts/game/game_ep1_origin_v2.mp4`. Optional poster: `media/shorts/game/game_ep1_origin_v2.jpg`. The face in that clip has to be the RSA Shorts Marcus (the Ep1 wake, run, and train look). Not a new actor. Not the human avatar built in this game. New Game plays cue 0 to 15 as soon as the file is there. While it is absent, the two train intro lines play and control returns in the car. The archive row stays `pending` until the file is in the tree. After it lands, set that row to `ready` in `cinematics.js` so the checker requires the file and PLAY FULL SHORT turns on.
+
+`media/shorts/game/game_ep1_origin.mp4` is retired. It is not the New Game open and not an archive row. That cut deletes the car wall so a hatch can appear. Do not point ep1_wake at it.
+
 `media/shorts/game/game_ep1_train.mp4` stays on the archive row as a rewatch of the rail car. New Game does not play it.
 
-No game_ep1_door clip. The vestibule and the side hatch are the story choice `Two ways off the train`. Kicking the hatch sets `hatchScar`.
+No game_ep1_door clip. The vestibule and the side hatch are the story choice `Two ways off the train`. The vestibule is the quiet path: no face, a calm line. Kicking the hatch plays one machine face scare (the Shorts hunter: dark plate, red sensor cluster, not a person) for about a second, then the scar line `HATCH OPENED. THEY HEARD YOU.` `hatchScar` still lowers vitals, adds the street crawler, and changes Reyes later in Episode One.
 
 Twenty Feet of Machine stays in the gallery as PLAY FULL SHORT. It is not an Episode One level opener.
 

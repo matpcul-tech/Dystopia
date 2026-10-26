@@ -879,6 +879,12 @@ const AudioSys = (() => {
       tone('sine', 523, 523, 0.1, 0.25, t); tone('sine', 784, 784, 0.16, 0.25, t+0.11); },
     doorOpen(){ if(!ctx)return; const t=now();
       tone('sawtooth', 90, 55, 0.9, 0.25, t); noise(0.8, 0.12, t, 400, 0.4); },
+    hatchStinger(){ if(!ctx)return; const t=now();
+      noise(0.16, 0.85, t, 2200, 0.55);
+      noise(0.5, 0.7, t, 110, 0.4);
+      tone('sawtooth', 96, 32, 0.55, 0.62, t);
+      tone('square', 880, 140, 0.09, 0.22, t);
+      tone('sine', 52, 28, 0.7, 0.75, t); },
     plantTick(){ if(!ctx)return; tone('square', 988, 988, 0.03, 0.12, now()); },
     planted(){ if(!ctx)return; const t=now();
       [523,659,784,1046].forEach((f,i)=>tone('sine',f,f,0.14,0.25,t+i*0.09)); },
@@ -2198,7 +2204,8 @@ ANNEXES.forEach(a => {
 });
 
 // Episode One's first room is a rail car: seats, broken windows, a side hatch.
-// The hatch does not open. The story choice does, and it can scar the run.
+// The hatch plate stays shut until the story choice. Kicking it scars the run.
+let trainHatch = null;
 function dressTrain(){
   if (!CH.train) return;
   const r = ROOMS[0];
@@ -2245,6 +2252,7 @@ function dressTrain(){
   const stripe = new THREE.Mesh(new THREE.BoxGeometry(.02, .16, .72), new THREE.MeshBasicMaterial({ color:0xc9731f }));
   stripe.position.set(hx + .04, 1.28, 8.2);
   scene.add(stripe);
+  trainHatch = { x:hx, y:1.02, z:8.2, parts:[hatch, stripe] };
   const grab = new THREE.Mesh(new THREE.CylinderGeometry(.035, .035, 2.35, 8), metal);
   grab.position.set(.72, 1.2, 9.4);
   scene.add(grab);
@@ -3955,8 +3963,11 @@ function cueVideo(clip){
   const hide = () => { v.style.display = 'none'; };
   if (!ep || !ep.url || !clip.cue || clip.textOnly){ hide(); return; }
   const dur = Math.min(20, clip.max || 20, clip.cue[1] - clip.cue[0]);
-  v.style.display = 'block';
-  if (ep.poster) v.poster = ep.poster;
+  // Stay hidden until the file actually plays. A missing origin file must
+  // not cover the fallback lines with a black frame.
+  v.style.display = 'none';
+  v.removeAttribute('poster');
+  if (ep.poster && ep.status !== 'pending') v.poster = ep.poster;
   let failed = false;
   const fail = () => {
     if (failed) return;
@@ -3968,6 +3979,17 @@ function cueVideo(clip){
     }
   };
   v.onerror = fail;
+  v.onplaying = () => {
+    if (failed || !beatState || beatState.clipId !== clip.id) return;
+    v.style.display = 'block';
+    beatState.missing = false;
+    beatState.video = true;
+    // The origin clip is the picture. Lines are only the fallback.
+    if (clip.id === 'ep1_wake'){
+      beatState.phase = 'hold';
+      el.introText.style.opacity = 0;
+    }
+  };
   v.src = ep.url;
   // play() has to run in the ENTER click. A later metadata callback
   // loses the gesture and the short sits on its poster.
@@ -4053,6 +4075,8 @@ function updateBeat(dt){
   if (s.phase === 'lines'){
     const line = s.lines[s.i];
     if (!line){ s.phase = 'hold'; return; }
+    // Give a dropped-in origin file a moment to start before the fallback lines.
+    if (s.clipId === 'ep1_wake' && s.video && !s.missing && s.elapsed < 0.7) return;
     if (!s.shown){
       el.introText.textContent = line.who ? line.text : line.text;
       el.introText.style.opacity = 1;
@@ -4087,7 +4111,7 @@ function endClip(skipped){
   clipReturn = null;
   beatState = null;
   const v = document.getElementById('beatVideo');
-  if (v){ try { v.pause(); } catch (e) {} v.style.display = 'none'; v.ontimeupdate = null; v.onended = null; }
+  if (v){ try { v.pause(); } catch (e) {} v.style.display = 'none'; v.ontimeupdate = null; v.onended = null; v.onplaying = null; v.onerror = null; }
   el.intro.style.display = 'none';
   el.intro.style.background = '';
   el.introText.style.opacity = 0;
@@ -4311,15 +4335,15 @@ const sEl = {
   endTracker: document.getElementById('endTracker'),
 };
 let sToastTimer = null;
-function sToast(text, ember){
+function sToast(text, ember, loud){
   sEl.toast.textContent = '◆ ' + text;
-  sEl.toast.className = 'show' + (ember ? ' ember' : '');
+  sEl.toast.className = 'show' + (ember ? ' ember' : '') + (loud ? ' scar' : '');
   clearTimeout(sToastTimer);
-  sToastTimer = setTimeout(()=>{ sEl.toast.className=''; }, 3600);
+  sToastTimer = setTimeout(()=>{ sEl.toast.className=''; }, loud ? 5200 : 3600);
 }
 
 const Story = (() => {
-  let beats = [], bi = 0, sayT = 0, cState = null, active = false;
+  let beats = [], bi = 0, sayT = 0, cState = null, active = false, scareLock = false;
   let sayFull = '', sayShown = 0, typeOn = false;
   function start(list){
     if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return;
@@ -4364,7 +4388,7 @@ const Story = (() => {
     sEl.opts.innerHTML = '';
     const opts = c.options;
     function pick(o){
-      if (o.locked) return;
+      if (o.locked || scareLock) return;
       sEl.choice.style.display = 'none';
       cState = null;
       const clean = o.label.replace(/[\[\]]/g,'');
@@ -4373,14 +4397,26 @@ const Story = (() => {
       if (o.apply) o.apply();
       let world = '';
       if (window.Waking) world = Waking.onChoice(CH.id, c.record, clean) || '';
-      if (o.toast) sToast(world ? (o.toast + '  ' + world) : o.toast, o.ember);
-      else if (world) sToast(world);
       renderPerks();
       if (Cast && !o.silent) Cast.nod('MARCUS');
+      const finishPick = () => {
+        if (o.toast) sToast(world ? (o.toast + '  ' + world) : o.toast, o.ember, o.loud);
+        else if (world) sToast(world);
+        if (o.end){ finishEnding(o.end === 'RUNCHECK' ? (SFLAGS.trusted ? 'together' : 'lone') : o.end); return; }
+        if (o.goto){ beats = o.goto; bi = 0; }
+        next();
+      };
+      if (o.scare === 'hatch'){
+        scareLock = true;
+        playHatchScare(() => {
+          scareLock = false;
+          AudioSys.doorOpen();
+          finishPick();
+        });
+        return;
+      }
       AudioSys.doorOpen();
-      if (o.end){ finishEnding(o.end === 'RUNCHECK' ? (SFLAGS.trusted ? 'together' : 'lone') : o.end); return; }
-      if (o.goto){ beats = o.goto; bi = 0; }
-      next();
+      finishPick();
     }
     opts.forEach((o, i) => {
       const locked = o.req && !SFLAGS[o.req];
@@ -4414,7 +4450,7 @@ const Story = (() => {
     }
   }
   function advance(){
-    if (G.mode !== 'story' || cState) return;
+    if (scareLock || G.mode !== 'story' || cState) return;
     if (typeOn && sayFull){
       typeOn = false;
       sEl.text.textContent = sayFull;
@@ -4424,7 +4460,7 @@ const Story = (() => {
     next();
   }
   function update(dt){
-    if (G.mode !== 'story') return;
+    if (G.mode !== 'story' || scareLock) return;
     if (cState){
       if (cState.off) return;
       cState.t -= dt;
@@ -4492,15 +4528,165 @@ const VOICE_BEATS = [
   ]}},
 ];
 
+/* Side hatch scare. One machine face, the Shorts hunter sensor plate,
+   not a person. Fills the hatch, then the screen, then control returns. */
+let hatchFaced = false;
+let hatchScareT = 0;
+let hunterFaceMesh = null;
+function paintHunterFace(c){
+  const g = c.getContext('2d');
+  const s = c.width;
+  g.fillStyle = '#050607';
+  g.fillRect(0, 0, s, s);
+  g.fillStyle = '#1a1c20';
+  g.fillRect(s * .06, s * .08, s * .88, s * .84);
+  g.fillStyle = '#101214';
+  g.fillRect(s * .08, s * .1, s * .84, s * .22);
+  g.fillStyle = '#2a2c30';
+  for (let i = 0; i < 7; i++){
+    g.fillRect(s * (.12 + i * .11), s * .14, s * .015, s * .12);
+  }
+  g.fillStyle = '#040404';
+  g.fillRect(s * .14, s * .36, s * .72, s * .4);
+  const lights = [
+    [.28, .46, .04], [.40, .44, .034], [.50, .48, .16], [.64, .45, .038],
+    [.34, .64, .032], [.50, .66, .046], [.66, .63, .034],
+  ];
+  lights.forEach(([x, y, r]) => {
+    const cx = x * s, cy = y * s, rr = r * s;
+    const grd = g.createRadialGradient(cx, cy, 1, cx, cy, rr * 2.4);
+    grd.addColorStop(0, '#fff4ee');
+    grd.addColorStop(.18, '#ff3a28');
+    grd.addColorStop(.55, '#8a140e');
+    grd.addColorStop(1, 'rgba(20,0,0,0)');
+    g.fillStyle = grd;
+    g.beginPath();
+    g.arc(cx, cy, rr * 2.4, 0, Math.PI * 2);
+    g.fill();
+  });
+  g.strokeStyle = 'rgba(180,186,192,.28)';
+  g.lineWidth = 3;
+  g.strokeRect(s * .1, s * .12, s * .8, s * .76);
+  g.strokeStyle = 'rgba(0,0,0,.55)';
+  g.lineWidth = 2;
+  for (let i = 0; i < 9; i++){
+    const y = s * (.2 + i * .07);
+    g.beginPath();
+    g.moveTo(s * .12, y);
+    g.lineTo(s * .88, y + s * .012);
+    g.stroke();
+  }
+}
+function hunterFaceSource(){
+  const c = document.createElement('canvas');
+  c.width = c.height = 768;
+  paintHunterFace(c);
+  return c;
+}
+function ensureHunterFace(){
+  if (hunterFaceMesh) return hunterFaceMesh;
+  const src = hunterFaceSource();
+  const tex = new THREE.CanvasTexture(src);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(.78, .9), mat);
+  const glow = new THREE.PointLight(0xff2a22, 4, 3.2, 2);
+  glow.position.set(0, 0, .15);
+  const grp = new THREE.Group();
+  grp.add(mesh, glow);
+  grp.visible = false;
+  grp.userData.src = src;
+  scene.add(grp);
+  hunterFaceMesh = grp;
+  return grp;
+}
+function ensureHatchFlash(){
+  let n = document.getElementById('hatchScare');
+  if (n) return n;
+  n = document.createElement('div');
+  n.id = 'hatchScare';
+  n.setAttribute('aria-hidden', 'true');
+  // A canvas here would be stolen by the global canvas rule (position fixed,
+  // z-index 0) and would sit under the WebGL view. A plain plate does not.
+  const src = ensureHunterFace().userData.src;
+  n.style.backgroundImage = 'url(' + src.toDataURL('image/jpeg', 0.86) + ')';
+  document.body.appendChild(n);
+  return n;
+}
+function aimAtHatch(){
+  const h = trainHatch || { x:1.65, y:1.02, z:8.2 };
+  const P = yawObj.position;
+  G.yaw = Math.atan2(-(h.x - P.x), -(h.z - P.z));
+  const dist = Math.hypot(h.x - P.x, h.z - P.z);
+  G.pitch = Math.atan2(h.y - P.y, Math.max(.2, dist));
+  yawObj.rotation.y = G.yaw;
+  pitchObj.rotation.x = G.pitch;
+}
+function openHatchHole(){
+  const h = trainHatch;
+  if (!h || h.opened) return;
+  h.opened = true;
+  h.parts.forEach(p => { p.visible = false; });
+  const hole = new THREE.Mesh(
+    new THREE.PlaneGeometry(.7, .9),
+    new THREE.MeshBasicMaterial({ color:0x140604, side:THREE.DoubleSide })
+  );
+  hole.position.set(h.x - .04, h.y, h.z);
+  hole.rotation.y = -Math.PI / 2;
+  scene.add(hole);
+  h.hole = hole;
+}
+function playHatchScare(done){
+  if (hatchFaced){ done(); return; }
+  hatchFaced = true;
+  AudioSys.resume();
+  aimAtHatch();
+  openHatchHole();
+  const h = trainHatch || { x:1.65, y:1.02, z:8.2 };
+  const face = ensureHunterFace();
+  face.visible = true;
+  face.position.set(h.x - .16, h.y, h.z);
+  face.rotation.set(0, -Math.PI / 2, 0);
+  face.scale.setScalar(1);
+  const reduced = window.Waking && Waking.reducedMotion();
+  hatchScareT = reduced ? .45 : .9;
+  if (!reduced){ G.shakeAmp = .1; }
+  el.redFade.style.transition = 'none';
+  el.redFade.style.opacity = .28;
+  const flash = ensureHatchFlash();
+  flash.classList.remove('on');
+  flash.style.animation = 'none';
+  const slamAt = reduced ? 40 : 180;
+  const endAt = reduced ? 620 : 1120;
+  setTimeout(() => {
+    flash.style.animation = '';
+    flash.classList.add('on');
+    AudioSys.hatchStinger();
+    el.redFade.style.opacity = .5;
+    face.position.x = h.x - .42;
+    face.scale.setScalar(1.35);
+  }, slamAt);
+  setTimeout(() => {
+    flash.classList.remove('on');
+    face.visible = false;
+    hatchScareT = 0;
+    camera.position.set(0, 0, 0);
+    el.redFade.style.transition = 'opacity .25s';
+    el.redFade.style.opacity = 0;
+    if (done) done();
+  }, endAt);
+}
+
 const TRAIN_BEATS = [
   { say:[null, 'The vestibule door is at the end of the car. A hatch is cut into the side wall.'] },
   { say:['REYES', 'Quiet gets you onto the gravel. Kick the hatch and they hear you.'] },
   { choice:{ record:'Two ways off the train', timer:10, options:[
     { label:'Open the vestibule door', sub:'Quieter. Toward the signal.', flags:{ leftTrain:true, hatchScar:false },
-      toast:'THE VESTIBULE GIVES. THE RIFLE IS OUT ON THE GRAVEL.' },
+      toast:'VESTIBULE OPEN. THE PLATFORM STAYS QUIET.' },
     { label:'Kick the side hatch', silent:true, sub:'Loud. They will hear it.', flags:{ leftTrain:true, hatchScar:true },
+      scare:'hatch',
       apply(){ G.hp = Math.min(G.hp, 70); G.lastDamageT = G.time; addHatchCrawler(); },
-      toast:'THE HATCH SCREAMS. A CRAWLER TURNS TOWARD THE NOISE.', ember:true },
+      toast:'HATCH OPENED. THEY HEARD YOU.', ember:true, loud:true },
   ]}},
   { fx(){ setObjectiveText(); } },
 ];
@@ -6069,7 +6255,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [] };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS };
 
 if (window.Waking) Waking.mount({
   getMode: () => G.mode,
@@ -6158,6 +6344,14 @@ function loop(){
     if (!CH.stealth) updateDrones(dt);
   }
   if (Boss && G.mode !== 'title' && G.mode !== 'end') Boss.update(dt, G.mode !== 'play');
+  if (hatchScareT > 0){
+    hatchScareT -= dt;
+    if (window.Waking && Waking.reducedMotion()) hatchScareT = 0;
+    if (hatchScareT > 0){
+      const sa = .07 * Math.min(1, hatchScareT / .4);
+      camera.position.set((Math.random() - .5) * sa, (Math.random() - .5) * sa, 0);
+    } else camera.position.set(0, 0, 0);
+  }
   // quality governor (disabled during scripted capture)
   if (G.mode === 'play' && !(window.__LATM && window.__LATM.capture)) governor(nowT);
   updateFX(dt);

@@ -186,6 +186,23 @@ body.cine #storyWrap{padding-bottom:calc(9vh + 16px + env(safe-area-inset-bottom
   padding:10px 16px;opacity:0;transform:translateX(-12px);transition:all .45s;max-width:76vw;}
 #sToast.show{opacity:1;transform:translateX(0);}
 #sToast.ember{border-left-color:var(--red);}
+#sToast.scar{top:max(16vh, 64px);left:50%;right:auto;width:min(92vw, 720px);max-width:min(92vw, 720px);
+  text-align:center;font-size:clamp(15px, 4vw, 26px);letter-spacing:.14em;line-height:1.35;
+  color:#fff6f4;background:rgba(48,6,6,.94);border:1px solid #ff3a2a;
+  box-shadow:0 0 32px rgba(255,40,30,.55);padding:16px 18px;z-index:82;}
+#sToast.scar.show{opacity:1;transform:translate(-50%, 0);}
+#hatchScare{position:fixed;inset:0;z-index:100;display:none;pointer-events:auto;
+  background:#050607 center/cover no-repeat;transform-origin:50% 46%;}
+#hatchScare.on{display:block;animation:hatchLunge 1.02s ease-out forwards;}
+@keyframes hatchLunge{
+  0%{transform:scale(1.85);filter:brightness(2.6);}
+  16%{transform:scale(1.02);filter:brightness(1.35);}
+  72%{transform:scale(1.05);filter:brightness(1);}
+  100%{transform:scale(1.12);filter:brightness(.85);}
+}
+@media (prefers-reduced-motion: reduce){
+  #hatchScare.on{animation:none;}
+}
 /* speaker bust is composited by Cast into this box */
 #castStage{position:relative;left:auto;bottom:auto;transform:none;
   width:min(440px,76vw);height:min(220px,28vh);pointer-events:none;}
