@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait } from './portraits.js';
+import { typedCount, swallowLook, integrateMove } from './feel.js';
 
 window.THREE = THREE; // humans.js is a classic script that reads global THREE at call time
 
@@ -752,7 +753,8 @@ const TEXN = Q.p.tex;
     try { if (next === 'auto'){ localStorage.removeItem('waking_q'); localStorage.removeItem('waking_qcap'); } else localStorage.setItem('waking_q', next); } catch(e){}
     applyQuality(next === 'auto' ? Q.auto : next);
   };
-  el.startBtn.insertAdjacentElement('afterend', gb);
+  const modeLine = document.getElementById('modeLine');
+  (modeLine || el.startBtn).insertAdjacentElement('afterend', gb);
 }
 function refreshGfxButton(){
   const b = document.getElementById('gfxBtn');
@@ -1040,11 +1042,51 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = CH.palette.exposure || 1.24;
+let glLost = false;
+let glLostTimer = 0;
+function showLoad(text){
+  let n = document.getElementById('loadBanner');
+  if (!n){
+    n = document.createElement('div');
+    n.id = 'loadBanner';
+    n.className = 'ctxBanner';
+    n.setAttribute('role', 'status');
+    document.body.appendChild(n);
+  }
+  n.textContent = text;
+  n.style.display = 'block';
+}
+function hideLoad(){
+  const n = document.getElementById('loadBanner');
+  if (n) n.style.display = 'none';
+}
+let hideLoadOnFrame = false;
 renderer.domElement.addEventListener('webglcontextlost', e => {
   e.preventDefault();
+  glLost = true;
+  showLoad('DISPLAY RESET. HOLD ON. PUTTING YOU BACK WHERE YOU WERE.');
   if (window.Waking) Waking.onContextLost();
+  const playing = G.mode === 'play' || G.mode === 'story' || G.mode === 'paused' || G.mode === 'dead';
+  if (playing){
+    try {
+      const pos = capturePos();
+      sessionStorage.setItem('latm_resume', JSON.stringify(pos));
+      sessionStorage.setItem('latm_autoload', '1');
+    } catch (err) {}
+  }
+  clearTimeout(glLostTimer);
+  glLostTimer = setTimeout(() => {
+    if (!glLost) return;
+    location.reload();
+  }, 7000);
 }, false);
-renderer.domElement.addEventListener('webglcontextrestored', () => { location.reload(); });
+renderer.domElement.addEventListener('webglcontextrestored', () => {
+  glLost = false;
+  clearTimeout(glLostTimer);
+  try { sessionStorage.removeItem('latm_autoload'); } catch (err) {}
+  showLoad('DISPLAY BACK. ONE MOMENT.');
+  hideLoadOnFrame = true;
+}, false);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.prepend(renderer.domElement);
@@ -2952,6 +2994,7 @@ function makeDrone(kind, x, z, segment){
 }
 
 const INITIAL_DRONES = CH.drones;
+const spawnedSegs = new Set();
 
 function spawnSegment(seg){
   // (re)create the initial drones of a segment; used at load + on respawn
@@ -2966,6 +3009,7 @@ function spawnSegment(seg){
     const d = makeDrone(k,x,z,s);
     d.spawned = true; scene.add(d.mesh);
   });
+  spawnedSegs.add(seg);
   if (seg === 2) addHatchCrawler();
 }
 function addHatchCrawler(){
@@ -2982,6 +3026,9 @@ modelsReady.then(() => {
 });
 
 function segmentCleared(seg){
+  // Models arrive a moment after the title. An unspawned segment is not clear,
+  // or Continue would open the next door and start its story early.
+  if (!spawnedSegs.has(seg)) return false;
   return !drones.some(d => d.segment === seg && d.alive);
 }
 function activeDroneCount(){
@@ -3043,12 +3090,57 @@ yawObj.position.set(0, PLAYER_EYE, 0);
    ============================================================ */
 const keys = {};
 let mouseFiring = false, pointerLocked = false;
+let lockAt = 0;
+const MOVE_AXIS = {
+  KeyW:[0,-1], ArrowUp:[0,-1], KeyS:[0,1], ArrowDown:[0,1],
+  KeyA:[-1,0], ArrowLeft:[-1,0], KeyD:[1,0], ArrowRight:[1,0],
+};
+const moveDown = {};
+const moveEdges = [];
+let moveFrameStart = performance.now();
+
+function noteMoveDown(code, now){
+  if (!MOVE_AXIS[code] || moveDown[code] != null) return;
+  moveDown[code] = now;
+}
+function noteMoveUp(code, now){
+  if (moveDown[code] == null) return;
+  moveEdges.push({ code, t0: moveDown[code], t1: now });
+  moveDown[code] = null;
+}
+function releaseMoveKeys(now){
+  for (const code in moveDown) noteMoveUp(code, now);
+}
+function sampleMoveSeconds(now){
+  const t0 = moveFrameStart;
+  moveFrameStart = now;
+  const frame = Math.max(0, (now - t0) / 1000);
+  let x = 0, z = 0;
+  const add = (code, a, b) => {
+    const sign = MOVE_AXIS[code];
+    if (!sign) return;
+    const sec = Math.max(0, (b - a) / 1000);
+    x += sign[0] * sec;
+    z += sign[1] * sec;
+  };
+  for (const code in moveDown){
+    if (moveDown[code] == null) continue;
+    add(code, Math.max(moveDown[code], t0), now);
+  }
+  for (const edge of moveEdges) add(edge.code, Math.max(edge.t0, t0), Math.min(edge.t1, now));
+  moveEdges.length = 0;
+  return { x, z, frame };
+}
 
 addEventListener('keydown', e => {
+  if (!keys[e.code]) noteMoveDown(e.code, performance.now());
   keys[e.code] = true;
   if (e.code === 'KeyM') MusicSys.toggleMute();
 });
-addEventListener('keyup',   e => { keys[e.code] = false; });
+addEventListener('keyup', e => {
+  noteMoveUp(e.code, performance.now());
+  keys[e.code] = false;
+});
 
 renderer.domElement.addEventListener('click', () => {
   if (G.mode === 'play' && !IS_TOUCH && !pointerLocked){
@@ -3057,9 +3149,11 @@ renderer.domElement.addEventListener('click', () => {
 });
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = document.pointerLockElement === renderer.domElement;
+  if (pointerLocked) lockAt = performance.now();
 });
 addEventListener('mousemove', e => {
   if (!pointerLocked || G.mode !== 'play') return;
+  if (swallowLook(performance.now() - lockAt, e.movementX, e.movementY)) return;
   G.yaw   -= e.movementX * 0.0022;
   G.pitch -= e.movementY * 0.0022;
   G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
@@ -3133,6 +3227,7 @@ el.plantBtn.addEventListener('touchcancel', () => { touchPlanting = false; });
 /* stuck-input failsafes: clear everything when no fingers remain,
    on tab-hide/window-blur, and on any hard mode change */
 function resetInputs(){
+  releaseMoveKeys(performance.now());
   stick.active = false; stick.dx = 0; stick.dy = 0;
   look.active = false;
   touchFiring = false; touchPlanting = false;
@@ -3145,7 +3240,11 @@ const allFingersUp = e => { if (e.touches.length === 0) resetInputs(); };
 addEventListener('touchend', allFingersUp, { passive: true });
 addEventListener('touchcancel', allFingersUp, { passive: true });
 addEventListener('blur', resetInputs);
-document.addEventListener('visibilitychange', () => { if (document.hidden) resetInputs(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  resetInputs();
+  maybeAutosave(true);
+});
 
 /* ============================================================
    Collision: circle vs AABB list
@@ -3479,6 +3578,73 @@ function updateProjectiles(dt){
 function progIndex(roomIndex){
   return CH.train ? roomIndex - 1 : roomIndex;
 }
+function placeLabel(){
+  const ep1 = ['ON THE TRAIN','THE GRAVEL','THE RUINED STREET','THE HARDWARE DISTRICT','THE RAIL BRIDGE','THE DEPOT'];
+  if (CH.id === 'ep1'){
+    if (G.currentSegment === 0 && !SFLAGS.leftTrain) return 'ON THE TRAIN';
+    return ep1[G.currentSegment] || 'IN THE FIELD';
+  }
+  return 'AREA ' + ((G.currentSegment || 0) + 1);
+}
+function capturePos(){
+  return {
+    chapter: CH.id, segment: G.currentSegment,
+    x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
+    yaw: G.yaw, hp: G.hp,
+    leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
+    hasRifle: !!G.hasRifle,
+    trusted: !!SFLAGS.trusted, radio: !!SFLAGS.radio,
+    freed: !!SFLAGS.freed, spoke: !!SFLAGS.spoke,
+    dmgMul: G.dmgMul || 1, regenFast: !!G.regenFast, spdMul: G.spdMul || 1,
+    label: placeLabel(),
+  };
+}
+let nextSaveAt = 0;
+function maybeAutosave(force){
+  if (!window.Waking || !Waking.autosave) return;
+  const mode = G.mode;
+  if (mode !== 'play' && mode !== 'story' && mode !== 'paused' && mode !== 'dead') return;
+  const now = performance.now();
+  if (!force && now < nextSaveAt) return;
+  nextSaveAt = now + 4000;
+  Waking.autosave(capturePos());
+}
+function openDoorNow(dr){
+  dr.open = true;
+  dr.anim = 1;
+  dr.mesh.position.y = WALL_H/2 - (WALL_H - .05);
+  dr.collider.active = false;
+  if (dr.lock) dr.lock.material.color.setHex(0xe7c98a);
+}
+let playHintUntil = 0;
+function showPlayHint(){
+  const msg = IS_TOUCH
+    ? 'LEFT SIDE MOVES. RIGHT SIDE LOOKS. FIRE SHOOTS.'
+    : 'WASD MOVES. MOUSE LOOKS. CLICK SHOOTS. E USES.';
+  el.prompt.style.display = 'block';
+  el.prompt.dataset.kind = 'move';
+  el.prompt.textContent = msg;
+  playHintUntil = performance.now() + 6500;
+}
+function tickPlayHint(){
+  if (!playHintUntil) return;
+  if (performance.now() < playHintUntil){
+    if (el.prompt.dataset.kind !== 'move'){
+      el.prompt.style.display = 'block';
+      el.prompt.dataset.kind = 'move';
+      el.prompt.textContent = IS_TOUCH
+        ? 'LEFT SIDE MOVES. RIGHT SIDE LOOKS. FIRE SHOOTS.'
+        : 'WASD MOVES. MOUSE LOOKS. CLICK SHOOTS. E USES.';
+    }
+    return;
+  }
+  playHintUntil = 0;
+  if (el.prompt.dataset.kind === 'move'){
+    el.prompt.style.display = 'none';
+    el.prompt.textContent = '';
+    delete el.prompt.dataset.kind;
+  }
+}
 function updateDoors(dt){
   doors.forEach(dr => {
     if (!dr.open){
@@ -3512,12 +3678,7 @@ function updateDoors(dt){
     G.checkpoint.yaw = 0; // yaw 0 faces -z, deeper into the hive
     G.checkpoint.segment = seg;
     AudioSys.checkpoint();
-    if (window.Waking) Waking.autosave({
-      chapter: CH.id, segment: seg,
-      x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
-      yaw: G.yaw, hp: G.hp,
-      leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
-    });
+    maybeAutosave(true);
     const clip = roomBeat(CH.id, seg);
     const arrive = () => {
       const prog = progIndex(seg);
@@ -3812,23 +3973,23 @@ function pollGamepad(dt){
 }
 function updatePlayer(dt){
   const pad = pollGamepad(dt);
-  let mx = 0, mz = 0;
-  if (keys['KeyW'] || keys['ArrowUp'])    mz -= 1;
-  if (keys['KeyS'] || keys['ArrowDown'])  mz += 1;
-  if (keys['KeyA'] || keys['ArrowLeft'])  mx -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
-  if (stick.active){ mx += stick.dx; mz += stick.dy; }
-  mx += pad.x; mz += pad.y;
-  const len = Math.hypot(mx, mz);
-  if (len > 1){ mx/=len; mz/=len; }
+  const nowMove = performance.now();
+  const sampled = sampleMoveSeconds(nowMove);
+  const analog = {
+    x: (stick.active ? stick.dx : 0) + pad.x,
+    z: (stick.active ? stick.dy : 0) + pad.y,
+  };
+  const mv = integrateMove(sampled, analog, sampled.frame, 0.2);
+  const len = sampled.frame > 0 ? Math.hypot(mv.x, mv.z) / sampled.frame : 0;
 
   yawObj.rotation.y = G.yaw;
   pitchObj.rotation.x = G.pitch;
 
   _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
   _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
-  yawObj.position.addScaledVector(_fwd, -mz * MOVE_SPEED * (G.spdMul||1) * dt);
-  yawObj.position.addScaledVector(_right, mx * MOVE_SPEED * (G.spdMul||1) * dt);
+  const spd = MOVE_SPEED * (G.spdMul || 1);
+  yawObj.position.addScaledVector(_fwd, -mv.z * spd);
+  yawObj.position.addScaledVector(_right, mv.x * spd);
   collide(yawObj.position, PLAYER_R);
   yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
 
@@ -3855,16 +4016,22 @@ function updatePlayer(dt){
 
   // rifle pickup. The prompt only shows when the rifle is close,
   // so the rail car does not ask for a gun that is still on the gravel.
+  let riflePrompt = false;
   if (!G.hasRifle && !CH.stealth && rifleFloor.parent){
     const d = yawObj.position.distanceTo(rifleFloor.position);
     if (d < 3.2){
+      riflePrompt = true;
       el.prompt.style.display = 'block';
+      el.prompt.dataset.kind = 'rifle';
       el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
       if (d < 1.6) pickupRifle();
-    } else if (el.prompt.textContent === 'RETRIEVE THE PULSE RIFLE'){
+    } else if (el.prompt.dataset.kind === 'rifle'){
       el.prompt.style.display = 'none';
+      el.prompt.textContent = '';
+      delete el.prompt.dataset.kind;
     }
   }
+  if (!riflePrompt) tickPlayHint();
 }
 function pickupRifle(){
   if (G.hasRifle) return;
@@ -4231,18 +4398,54 @@ function considerClip(clip, after){
   if (G.storyQueued || G.mode === 'story') setTimeout(go, 200);
   else go();
 }
+let resumeOverride = null;
 function peekResume(){
-  try { return sessionStorage.getItem('latm_resume'); } catch (e) { return null; }
-}
-function takeResume(){
+  if (resumeOverride) return resumeOverride;
   try {
     const raw = sessionStorage.getItem('latm_resume');
     if (!raw) return null;
-    sessionStorage.removeItem('latm_resume');
-    const mid = JSON.parse(raw);
-    if (!mid || mid.chapter !== CH.id) return null;
-    return mid;
+    return JSON.parse(raw);
   } catch (e) { return null; }
+}
+function takeResume(){
+  let mid = resumeOverride;
+  resumeOverride = null;
+  if (!mid){
+    try {
+      const raw = sessionStorage.getItem('latm_resume');
+      if (raw) mid = JSON.parse(raw);
+    } catch (e) { mid = null; }
+  }
+  try { sessionStorage.removeItem('latm_resume'); } catch (e) {}
+  if (!mid || mid.chapter !== CH.id) return null;
+  if (typeof mid.x !== 'number' || typeof mid.z !== 'number') return null;
+  return mid;
+}
+function armResume(mid){
+  if (!mid || mid.chapter !== CH.id) return false;
+  if (typeof mid.x !== 'number' || typeof mid.z !== 'number') return false;
+  resumeOverride = mid;
+  try { sessionStorage.setItem('latm_resume', JSON.stringify(mid)); } catch (e) {}
+  return true;
+}
+let leavingTitle = false;
+function beginFromTitle(resume){
+  if (leavingTitle) return;
+  if (G.mode !== 'title' && G.mode !== 'boot') return;
+  if (window.Waking && Waking.isLocked(CH.id)){ Waking.openPaywall(CH.id); return; }
+  if (!resume){
+    resumeOverride = null;
+    try {
+      sessionStorage.removeItem('latm_resume');
+      sessionStorage.removeItem('latm_autoload');
+    } catch (e) {}
+  }
+  leavingTitle = true;
+  AudioSys.init();
+  AudioSys.resume();
+  showLoad(resume ? 'RESTORING YOUR PLACE' : 'LOADING EPISODE');
+  el.start.style.display = 'none';
+  requestAnimationFrame(() => requestAnimationFrame(() => startIntro()));
 }
 function startIntro(){
   el.start.style.display = 'none';
@@ -4255,7 +4458,9 @@ function startIntro(){
   if (peekResume()){ finishIntro(true); return; }
   const open = openBeat(CH.id);
   if (!open){ finishIntro(true); return; }
+  hideLoadOnFrame = false;
   playClip(open, { then:'play' });
+  hideLoad();
 }
 function finishIntro(skipAll){
   beatState = null;
@@ -4275,17 +4480,31 @@ function finishIntro(skipAll){
     yawObj.position.set(0, PLAYER_EYE, CH.spawnZ || 0);
     G.pitch = 0; G.yaw = 0;
   } else {
-    yawObj.position.set(mid.x || 0, PLAYER_EYE, mid.z || 0);
+    yawObj.position.set(mid.x, PLAYER_EYE, mid.z);
     G.yaw = mid.yaw || 0; G.pitch = 0;
-    G.hp = mid.hp || 100;
-    G.currentSegment = mid.segment || 0;
-    G.checkpoint.segment = mid.segment || 0;
-    G.checkpoint.pos.set(mid.x || 0, 0, mid.z || 0);
+    G.hp = (typeof mid.hp === 'number' && mid.hp > 0) ? mid.hp : 100;
+    let seg = mid.segment || 0;
+    ROOMS.forEach((r, i) => { if (mid.z <= r.z2 && mid.z >= r.z1) seg = i; });
+    G.currentSegment = seg;
+    G.checkpoint.segment = seg;
+    G.checkpoint.pos.set(mid.x, 0, mid.z);
+    G.checkpoint.yaw = mid.yaw || 0;
     if (mid.leftTrain) SFLAGS.leftTrain = true;
     if (mid.hatchScar) SFLAGS.hatchScar = true;
+    if (mid.trusted) SFLAGS.trusted = true;
+    if (mid.radio) SFLAGS.radio = true;
+    if (mid.freed) SFLAGS.freed = true;
+    if (mid.spoke) SFLAGS.spoke = true;
+    if (mid.dmgMul) G.dmgMul = mid.dmgMul;
+    if (mid.regenFast) G.regenFast = true;
+    if (mid.spdMul) G.spdMul = mid.spdMul;
     G._resumed = true;
+    doors.forEach(dr => {
+      if (dr.index < G.currentSegment) openDoorNow(dr);
+      else if (dr.index === 0 && SFLAGS.leftTrain) openDoorNow(dr);
+    });
     BEATS.forEach(b => {
-      if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= mid.segment))) G.firedClips.add(b.id);
+      if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= seg))) G.firedClips.add(b.id);
     });
   }
   pitchObj.rotation.x = G.pitch;
@@ -4300,7 +4519,8 @@ function finishIntro(skipAll){
   if (!CH.stealth && (CH.startArmed || (skipAll && G._resumed))) pickupRifle();
   if (CH.stealth) radio('pickup');
   if (CH.id === 'ch_together') spawnCompanion();
-  if (SFLAGS.hatchScar) addHatchCrawler();
+  if (SFLAGS.hatchScar){ openHatchHole(); addHatchCrawler(); }
+  hideLoadOnFrame = true;
   renderPerks();
   setObjectiveText();
   if (CH.boss && Boss && Boss.resumeRequested()) { Boss.resume(); return; }
@@ -4390,8 +4610,14 @@ function sToast(text, ember, loud){
 }
 
 const Story = (() => {
-  let beats = [], bi = 0, sayT = 0, cState = null, active = false, scareLock = false;
-  let sayFull = '', sayShown = 0, typeOn = false;
+  let beats = [], bi = 0, sayDeadline = 0, cState = null, active = false, scareLock = false;
+  let sayFull = '', sayStartMs = 0, typeOn = false;
+  const TYPE_CPS = 42;
+  function shownCount(now){
+    if (!typeOn || !sayFull) return sayFull.length;
+    const speed = (window.Waking && Waking.textSpeed()) || 1;
+    return typedCount(now - sayStartMs, sayFull.length, TYPE_CPS * speed);
+  }
   function start(list){
     if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return;
     active = true; beats = list; bi = 0;
@@ -4423,10 +4649,11 @@ const Story = (() => {
     sEl.text.className = who ? '' : 'narr';
     const speed = (window.Waking && Waking.textSpeed()) || 1;
     sayFull = text;
-    sayShown = 0;
+    sayStartMs = performance.now();
     typeOn = true;
     sEl.text.textContent = '';
-    sayT = Math.max(3.4, text.length * .06) / speed;
+    sayDeadline = sayStartMs + (Math.max(3.4, text.length * .06) / speed) * 1000;
+    if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK FINISHES THE LINE';
     if (Cast) Cast.speak(who, text);
   }
   function showChoice(c){
@@ -4442,6 +4669,7 @@ const Story = (() => {
       SCHOICES.push({ q: c.record, a: clean });
       if (o.flags) Object.assign(SFLAGS, o.flags);
       if (o.apply) o.apply();
+      maybeAutosave(true);
       let world = '';
       if (window.Waking) world = Waking.onChoice(CH.id, c.record, clean) || '';
       renderPerks();
@@ -4480,7 +4708,7 @@ const Story = (() => {
     const total = mode === 'long' ? base * 2 : base;
     const timerEl = document.getElementById('sTimer');
     if (timerEl) timerEl.style.display = mode === 'off' ? 'none' : '';
-    cState = { opts, pick, t: total, total, off: mode === 'off', locked: o => o.req && !SFLAGS[o.req] };
+    cState = { opts, pick, t: total, total, off: mode === 'off', locked: o => o.req && !SFLAGS[o.req], deadline: performance.now() + total * 1000 };
   }
   function finish(){
     active = false;
@@ -4496,25 +4724,33 @@ const Story = (() => {
       }
     }
   }
+  let advanceAt = -1;
   function advance(){
+    const now = performance.now();
+    if (now === advanceAt) return;
+    advanceAt = now;
     if (scareLock || G.mode !== 'story' || cState) return;
-    if (typeOn && sayFull){
+    if (typeOn && sayFull && shownCount(now) < sayFull.length){
       typeOn = false;
       sEl.text.textContent = sayFull;
-      sayT = Math.min(sayT, 0.45);
+      sayDeadline = performance.now() + 400;
+      if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK TO CONTINUE';
       return;
     }
     next();
   }
-  function update(dt){
+  function update(){
     if (G.mode !== 'story' || scareLock) return;
     if (cState){
       if (cState.off) return;
-      cState.t -= dt;
-      const k = Math.max(0, cState.t / cState.total);
+      const now = performance.now();
+      if (!cState.deadline) cState.deadline = now + cState.t * 1000;
+      const left = Math.max(0, (cState.deadline - now) / 1000);
+      cState.t = left;
+      const k = cState.total > 0 ? left / cState.total : 0;
       sEl.timerFill.style.width = (k*100) + '%';
       sEl.timerFill.className = k < .33 ? 'hot' : '';
-      if (cState.t <= 0){
+      if (left <= 0){
         const usable = cState.opts.filter(o => !cState.locked(o));
         const def = usable.find(o => o.silent) || usable[usable.length-1];
         cState.pick(def);
@@ -4522,14 +4758,14 @@ const Story = (() => {
       return;
     }
     if (typeOn && sayFull){
-      const speed = (window.Waking && Waking.textSpeed()) || 1;
-      sayShown += dt * 42 * speed;
-      const n = Math.min(sayFull.length, Math.floor(sayShown));
-      sEl.text.textContent = sayFull.slice(0, n);
-      if (n >= sayFull.length) typeOn = false;
+      const n = shownCount(performance.now());
+      if (sEl.text.textContent.length !== n) sEl.text.textContent = sayFull.slice(0, n);
+      if (n >= sayFull.length){
+        typeOn = false;
+        if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK TO CONTINUE';
+      }
     }
-    sayT -= dt;
-    if (sayT <= 0) advance();
+    if (performance.now() >= sayDeadline) advance();
   }
   return { start, advance, update, finish,
     pickIndex(i){ if (cState && cState.opts[i] && !cState.locked(cState.opts[i])) cState.pick(cState.opts[i]); },
@@ -4539,11 +4775,17 @@ const Story = (() => {
 /* story input: taps advance, 1-3 pick */
 addEventListener('pointerdown', e => {
   if (G.mode !== 'story') return;
-  if (e.target.closest('.opt') || e.target.closest('.btn')) return;
+  if (e.target.closest && (e.target.closest('.opt') || e.target.closest('.btn') || e.target.closest('#pauseBtn') || e.target.closest('#fireBtn') || e.target.closest('#plantBtn'))) return;
+  Story.advance();
+});
+sEl.dlg.addEventListener('pointerdown', e => {
+  if (G.mode !== 'story') return;
+  e.stopPropagation();
   Story.advance();
 });
 addEventListener('keydown', e => {
-  if (G.mode !== 'story') return;
+  if (G.mode !== 'story' || e.repeat) return;
+  if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
   const i = parseInt(e.key) - 1;
   if (!isNaN(i)) { Story.pickIndex(i); return; }
   if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); Story.advance(); }
@@ -4735,7 +4977,7 @@ const TRAIN_BEATS = [
       apply(){ G.hp = Math.min(G.hp, 70); G.lastDamageT = G.time; addHatchCrawler(); },
       toast:'HATCH OPENED. THEY HEARD YOU.', ember:true, loud:true },
   ]}},
-  { fx(){ setObjectiveText(); } },
+  { fx(){ setObjectiveText(); showPlayHint(); } },
 ];
 
 const FINALE_BEATS = [
@@ -5620,11 +5862,7 @@ const Cast = (() => {
 /* ============================================================
    Boot / title / replay
    ============================================================ */
-el.startBtn.addEventListener('click', () => {
-  if (window.Waking && Waking.isLocked(CH.id)){ Waking.openPaywall(CH.id); return; }
-  AudioSys.init(); AudioSys.resume();
-  startIntro();
-});
+el.startBtn.addEventListener('click', () => beginFromTitle(false));
 el.replay.addEventListener('click', () => location.reload());
 
 document.addEventListener('visibilitychange', () => {
@@ -6368,12 +6606,9 @@ if (window.Waking) Waking.mount({
   archive: ARCHIVE,
   beats: BEATS,
   clipLabel: b => clipLabel(b, CHAPTERS),
-  getPos: () => ({
-    chapter: CH.id, segment: G.currentSegment,
-    x: yawObj.position.x, y: yawObj.position.y, z: yawObj.position.z,
-    yaw: G.yaw, hp: G.hp,
-    leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
-  }),
+  getPos: () => capturePos(),
+  armResume,
+  startFromTitle: resume => beginFromTitle(!!resume),
   Q,
   isTouch: IS_TOUCH,
 });
@@ -6389,10 +6624,11 @@ scene.traverse(o => {
 });
 function loop(){
   requestAnimationFrame(loop);
+  if (glLost) return;
   const nowT = performance.now();
   let dt = (nowT - lastT) / 1000;
   lastT = nowT;
-  dt = Math.min(dt, 0.05); // clamp tab-switch spikes
+  dt = Math.min(dt, 0.05); // clamp tab-switch spikes. Player move and typing use the clock instead.
   if (window.__LATM && window.__LATM.fixedDt) dt = window.__LATM.fixedDt; // offline capture
   if (window.__LATM && window.__LATM.capture){ // frame-stepped capture
     if (window.__LATM.stepFrames > 0){ dt = 1/24; window.__LATM.stepFrames--; }
@@ -6434,6 +6670,7 @@ function loop(){
     }
   }
   if (G.mode === 'story'){ Story.update(dt); updateRadio(dt); }
+  if (G.mode === 'play' || G.mode === 'story' || G.mode === 'paused') maybeAutosave(false);
   if (G.mode === 'dead' || G.mode === 'extracting'){
     updateRadio(dt);
     if (!CH.stealth) updateDrones(dt);
@@ -6453,9 +6690,17 @@ function loop(){
   if (G.mode === 'title' || G.mode === 'end' || G.mode === 'cinema') return;   // opaque screens cover the level
   if (TUBES) TUBES.animate(dt, G.time, yawObj.position, scene.fog, renderer.domElement.height);
   renderFrame(scene, camera);
+  if (hideLoadOnFrame){ hideLoadOnFrame = false; hideLoad(); }
   if (Cast) Cast.render(dt);
 }
 loop();
+
+try {
+  if (sessionStorage.getItem('latm_autoload') === '1' && peekResume()){
+    sessionStorage.removeItem('latm_autoload');
+    beginFromTitle(true);
+  }
+} catch (e) {}
 
 export function bootWaking() {
   return true;
