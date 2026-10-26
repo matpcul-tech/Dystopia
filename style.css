@@ -110,6 +110,10 @@ canvas{display:block;position:fixed;inset:0;z-index:0;}
 .btn:hover{background:rgba(244,236,223,.08);}
 .btn.amber{border-color:var(--brass);color:var(--brass-hot);}
 #startHint{margin-top:18px;font-size:11px;letter-spacing:.18em;color:var(--cream-dim);line-height:1.7;max-width:560px;}
+.modeLine{margin-top:10px;font-size:12px;letter-spacing:.34em;color:var(--brass-hot);}
+.slotNote{flex:1 0 100%;margin-top:14px;max-width:560px;font-size:15px;line-height:1.4;color:var(--cream-dim);
+  font-family:"Cormorant Garamond",Georgia,serif;}
+#loadBanner{z-index:120;}
 
 #intro{background:#000;display:none;}
 #introText{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;
@@ -157,7 +161,7 @@ body.cine #sbarTop,body.cine #sbarBot{height:9vh;}
   padding:calc(8px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));}
 body.cine #storyWrap{padding-bottom:calc(9vh + 16px + env(safe-area-inset-bottom));}
 #storyDlg{position:relative;left:auto;bottom:auto;transform:none;
-  width:min(720px,92vw);text-align:center;}
+  width:min(720px,92vw);text-align:center;pointer-events:auto;cursor:pointer;}
 #sSpeaker{font-size:12px;letter-spacing:.32em;margin-bottom:6px;color:var(--brass-hot);}
 #sSpeaker.ledger{color:var(--red);}
 #sSpeaker.marcus{color:var(--cream);}
@@ -277,7 +281,8 @@ html[data-portraits="cards"] #castStage{display:none;height:0;}
 .epBlock{margin:14px 0 18px;padding-top:8px;border-top:1px solid rgba(244,236,223,.16);}
 .epHead{font-size:12px;letter-spacing:.14em;margin-bottom:6px;}
 .beatRow{display:block;text-align:left;max-width:100%;}
-.titleTools,.slotRow,.slotTools{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;}
+.titleTools{display:flex;flex-direction:column;align-items:center;width:min(640px,100%);margin-top:8px;}
+.slotRow,.slotTools{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;}
 .slotBtn.on{border-color:var(--brass);color:var(--brass-hot);}
 #backupCode{width:100%;margin:8px 0;background:#100e0c;color:var(--cream);border:1px solid var(--line);
   font-family:inherit;font-size:12px;padding:8px;}

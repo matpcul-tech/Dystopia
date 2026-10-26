@@ -2,6 +2,8 @@
 // anonymous choice counts, share card, light analytics.
 // Purchases and live ads stay unwired until Matthew connects the stores.
 
+import { resumePlan } from './feel.js';
+
 const SAVE_KEY = 'latm_save_v1';
 const CH2 = { together:'ch_together', lone:'ch_lone', ghost:'ch_ghost', taken:'ch_taken' };
 const CH2_IDS = Object.values(CH2);
@@ -100,6 +102,8 @@ function applySettings(){
   root.dataset.portraits = st.portraits || 'cards';
   if (api && api.setVolume) api.setVolume(st.volume);
   if (api && api.applyQuality && st.quality && st.quality !== 'auto') api.applyQuality(st.quality);
+  const line = typeof document !== 'undefined' && document.getElementById('modeLine');
+  if (line) line.textContent = st.mode === 'story' ? 'STORY MODE' : 'ACTION MODE';
 }
 function hasPass(){
   try { if (sessionStorage.getItem('latm_preview') === '1') return true; } catch (e) {}
@@ -293,7 +297,7 @@ function buildSettings(host){
       opts.forEach(o => {
         const op = document.createElement('option');
         op.value = String(o);
-        op.textContent = String(o).toUpperCase();
+        op.textContent = key === 'mode' ? (String(o) === 'story' ? 'STORY MODE' : 'ACTION MODE') : String(o).toUpperCase();
         if (String(st[key]) === String(o)) op.selected = true;
         input.appendChild(op);
       });
@@ -321,19 +325,68 @@ function buildSettings(host){
   host.appendChild(box);
 }
 
+function chapterShort(id){
+  const c = api && api.chapters && api.chapters[id];
+  const s = (c && c.subtitle) || 'EPISODE';
+  const i = s.indexOf(':');
+  return (i > 0 ? s.slice(0, i) : s).trim();
+}
+function slotPlace(s){
+  if (!s || !s.mid || !s.mid.chapter) return 'EMPTY';
+  const where = s.mid.label ? String(s.mid.label) : 'CHECKPOINT';
+  return chapterShort(s.mid.chapter) + '  ' + where;
+}
+function setSlotStatus(text){
+  const n = document.getElementById('slotStatus');
+  if (n) n.textContent = text;
+}
+function describeSlot(){
+  const s = slot();
+  const n = (memory.active || 0) + 1;
+  const plan = resumePlan(s && s.mid, api ? api.chapterId() : 'ep1', (api && api.chapters) || {});
+  if (!plan.ok) return 'Slot ' + n + ' is empty. New Game starts Episode One here.';
+  return 'Slot ' + n + '  ' + slotPlace(s) + '. Continue resumes this place.';
+}
+function continueActive(){
+  const mid = slot().mid;
+  const here = api ? api.chapterId() : 'ep1';
+  const plan = resumePlan(mid, here, (api && api.chapters) || {});
+  if (!plan.ok){
+    setSlotStatus('This slot is empty. New Game starts Episode One here.');
+    return;
+  }
+  if (Waking.isLocked(plan.chapter)){ openPaywall(plan.chapter); return; }
+  try { sessionStorage.setItem('latm_resume', JSON.stringify(mid)); } catch (e) {}
+  if (plan.action === 'switch'){
+    try { sessionStorage.setItem('latm_autoload', '1'); } catch (e) {}
+    location.hash = '#' + plan.chapter;
+    location.reload();
+    return;
+  }
+  if (api && api.armResume) api.armResume(mid);
+  if (api && api.startFromTitle) api.startFromTitle(true);
+}
 function buildSlots(host){
+  host.appendChild(el('p', 'slotNote', 'Three save slots. The highlighted slot is the one New Game and Continue use. Settings chooses Story Mode or Action Mode.'));
   const box = el('div', 'slotRow');
   memory.slots.forEach((s, i) => {
     const b = el('button', 'btn small slotBtn', '');
     b.type = 'button';
-    const mid = s && s.mid && s.mid.chapter ? s.mid.chapter : '';
-    b.textContent = (s && s.name ? s.name : 'SLOT ' + (i + 1)) + (mid ? '  ' + mid : '');
+    b.textContent = 'SLOT ' + (i + 1) + '  ' + slotPlace(s);
     if (i === memory.active) b.classList.add('on');
     b.addEventListener('click', () => {
+      if (i === memory.active){
+        setSlotStatus(describeSlot());
+        return;
+      }
       pullLegacy(slot());
       memory.active = i;
       writeLegacy(slot());
       persist();
+      try {
+        sessionStorage.removeItem('latm_resume');
+        sessionStorage.removeItem('latm_autoload');
+      } catch (e) {}
       location.reload();
     });
     box.appendChild(b);
@@ -345,15 +398,13 @@ function buildSlots(host){
   exp.addEventListener('click', () => openBackup());
   const cont = el('button', 'btn small', 'CONTINUE');
   cont.type = 'button';
-  cont.addEventListener('click', () => {
-    const mid = slot().mid;
-    if (!mid || mid.chapter !== api.chapterId()) return;
-    try { sessionStorage.setItem('latm_resume', JSON.stringify(mid)); } catch (e) {}
-    const start = document.getElementById('startBtn');
-    if (start) start.click();
-  });
+  cont.id = 'continueBtn';
+  cont.addEventListener('click', () => continueActive());
   tools.append(cont, exp);
   host.appendChild(tools);
+  const status = el('p', 'slotNote', describeSlot());
+  status.id = 'slotStatus';
+  host.appendChild(status);
 }
 
 function openBackup(){
@@ -576,16 +627,12 @@ export const Waking = window.Waking = {
     persist();
   },
   onContextLost(){
+    const mode = api && api.getMode && api.getMode();
+    if (mode !== 'play' && mode !== 'story' && mode !== 'paused' && mode !== 'dead') return;
     const s = slot();
     pullLegacy(s);
     if (api && api.getPos) s.mid = api.getPos();
     persist();
-    let banner = document.getElementById('ctxBanner');
-    if (!banner) {
-      banner = el('div', 'ctxBanner', 'Display reset. Restoring your save.');
-      banner.id = 'ctxBanner';
-      document.body.appendChild(banner);
-    }
   },
   onGalleryReturn(){ buildArchive(panels.archiveSheet); show('archiveSheet'); },
   mount(next){
@@ -649,7 +696,9 @@ export const Waking = window.Waking = {
       const setb = el('button', 'btn small', 'SETTINGS');
       setb.type = 'button';
       setb.addEventListener('click', () => show('pauseSheet'));
-      bar.append(chb, arch, setb);
+      const nav = el('div', 'slotTools');
+      nav.append(chb, arch, setb);
+      bar.appendChild(nav);
       start.appendChild(bar);
     }
     const pauseBtn = el('button', 'hudBtn', 'PAUSE');
@@ -687,7 +736,12 @@ export const Waking = window.Waking = {
       track('crash', { message: String(e.reason && e.reason.message || e.reason || 'rejection').slice(0, 180) });
     });
     window.addEventListener('pagehide', () => {
-      if (api && api.getMode && api.getMode() === 'play' && api.getPos) Waking.noteDrop(api.getPos().segment);
+      if (!api || !api.getMode || !api.getPos) return;
+      const mode = api.getMode();
+      if (mode !== 'play' && mode !== 'story' && mode !== 'paused' && mode !== 'dead') return;
+      const pos = api.getPos();
+      Waking.autosave(pos);
+      if (mode === 'play') Waking.noteDrop(pos.segment);
     });
     if (previewOn()) {
       const hint = document.getElementById('startHint');
