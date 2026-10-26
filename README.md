@@ -11,9 +11,12 @@ Every path funnels to Book One.
 **You fight like a shooter and choose like a story.** Marcus comes to
 under a blood sky with no memory. A twenty foot machine finds him. He
 dives into an abandoned rail car and goes still. A short game opener
-hands back control in that car, then a timed choice: the vestibule
-door, or the side hatch. The hatch leaves a scar
-(`hatchScar`) that Reyes remembers and that puts an extra crawler on the
+(the locked Shorts Marcus clip when `media/shorts/game/game_ep1_origin_v2.mp4`
+is present, otherwise two lines) hands back control in that car, then a
+timed choice: the vestibule door, or the side hatch. The vestibule stays
+quiet. The hatch is one machine face scare, then the line
+`HATCH OPENED. THEY HEARD YOU.` The scar
+(`hatchScar`) is what Reyes remembers, and it puts an extra crawler on the
 street. He takes the dead man's rifle and fights crawlers, sentries, and
 a warden through the ruined street, the hardware district, and the rail
 bridge to the depot, where pulling the ledger of taken names springs the trap.
@@ -22,8 +25,9 @@ Between combat segments the game drops into **cinematic story beats**:
 letterboxed, timed choices with a draining timer, freeze and your
 silence is the answer. Choices have teeth:
 
-- **The train**: open the vestibule (quiet, on toward the rifle) or kick
-  the side hatch (a scar: lower vitals, an extra crawler, Reyes changes
+- **The train**: open the vestibule (quiet, on toward the rifle, no scare) or kick
+  the side hatch (one hunter face in the hatch, then `HATCH OPENED. THEY HEARD YOU.`
+  A scar: lower vitals, an extra crawler, Reyes changes
   her radio lines, and the depot net remembers it).
 - **The cache**: rig the weapon (more damage), field-dress your wounds
   (faster regen), or take everything (both, but slower).
