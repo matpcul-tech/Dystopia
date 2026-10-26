@@ -8,7 +8,7 @@ Planned shell, matching the household plan:
 - iOS and Android wrap the same `index.html` (offline vendor bundle).
 - RevenueCat products: Season Pass $6.99, Remove Ads $2.99.
 - AdMob rewarded only, plus UMP and ATT. Three completed views can unlock one locked chapter. No banners. No forced breaks.
-- Story Mode is the phone default (auto aim, softer hits, shorter hunter).
+- Story Mode is the phone default (a close shot nudge, softer hits, shorter hunter). Mouse aim does not lock.
 - Achievements and cloud save are stubs until the accounts exist.
 - If the WebGL context is lost, the game autosaves and reloads.
 

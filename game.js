@@ -646,6 +646,7 @@ CHAPTERS.ch_steel = {
     core_enter:[],
     alarm:[],
     planted:[{who:'THOMAS',text:"Propagation is running on its own now. Marcus? Marcus."}],
+    ambush:[{who:'THOMAS',text:"Two frames in the sealed corridor. They never got the order. Cut through them."}],
     extract:[] },
   endTitle:'', endSub:'' };
 
@@ -3027,6 +3028,7 @@ const G = {
   currentSegment: 0,
   radioQueue: [], radioT: 0, radioFired: new Set(),
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
+  ambush: null,          // null, live, ending, ended. Final chapter exit fight.
   alarm: false, waveSpawned: 0, waveT: 0,
   time: 0, shakeT: 0,
   firedClips: new Set(), padFire: false, padUse: false, storyQueued: false,
@@ -3411,8 +3413,15 @@ function updateDrones(dt){
           d.meleeCd = 1.0;
           damagePlayer(10);
         }
-        if (!seesPlayer && dist > 30) setDroneState(d, 'idle');
+        if (!seesPlayer && dist > 30 && !d.ambush) setDroneState(d, 'idle');
       } else {
+        // Exit ambush frames walk the corridor. A camping sentry would let you slip past.
+        if (d.ambush && dist > 4.2 && dist < 26){
+          const step = Math.min(2.5 * dt, dist - 4.2);
+          m.x -= distX / dist * step;
+          m.z -= distZ / dist * step;
+          collide(m, .55);
+        }
         // sentry: telegraphed shot cycle
         m.y = d.home.y + Math.sin(G.time*3 + d.id)*.1;
         const K = KINDS[d.kind];
@@ -3546,8 +3555,10 @@ function updateDoors(dt){
       applyLoot(L.type);
     }
   }
-  // escape phase: reaching the entrance ends the chapter
-  if (G.escape && yawObj.position.z > ROOMS[0].z1 + 1.5){
+  // escape phase: reaching the entrance ends the chapter.
+  // The final ambush stays live until those frames are dead, so a sprint
+  // to the ridge cannot skip the fight.
+  if (G.escape && G.ambush !== 'live' && yawObj.position.z > ROOMS[0].z1 + 1.5){
     G.escape = false;
     if (CB.finale) Story.start(CB.finale); else beginExtraction();
   }
@@ -3557,6 +3568,7 @@ function updateDoors(dt){
 
 function setObjectiveText(){
   const O = CH.obj;
+  if (G.ambush === 'live'){ el.objective.textContent = 'CUT THROUGH THE CORRIDOR'; return; }
   if (G.escape){ el.objective.textContent = O.done; return; }
   if (CH.train && G.currentSegment === 0){
     el.objective.textContent = SFLAGS.leftTrain ? (G.hasRifle ? O.advance : O.find) : (O.train || O.find);
@@ -3639,6 +3651,9 @@ function plantComplete(){
   PROPS.onComplete();
   // brief beat, then extraction
   setTimeout(()=>{ if (G.mode === 'play'){
+    // The hunter chapter used to open the finale in place. The way out is a
+    // short ambush first. Story beats still play once that corridor is clear.
+    if (CH.boss){ beginExitAmbush(); return; }
     if (CH.noEscape){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); return; }
     G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
     if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
@@ -3695,13 +3710,17 @@ function die(){
 }
 function respawn(){
   const seg = G.checkpoint.segment;
+  const exiting = G.ambush === 'live' || G.ambush === 'ending';
   // reset the segment being attempted (and the core wave if applicable)
-  if (seg >= 1 && seg <= CORE_SEG) spawnSegment(seg);
-  if (seg === CORE_SEG){
-    G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
-    // remove wave drones
-    for (let i = drones.length-1; i >= 0; i--){
-      if (drones[i].segment === 9){ scene.remove(drones[i].mesh); if (drones[i].w) scene.remove(drones[i].w.grp); drones.splice(i,1); }
+  // The exit ambush must not rewind the hunter or refill the yard.
+  if (!exiting){
+    if (seg >= 1 && seg <= CORE_SEG) spawnSegment(seg);
+    if (seg === CORE_SEG){
+      G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
+      // remove wave drones
+      for (let i = drones.length-1; i >= 0; i--){
+        if (drones[i].segment === 9){ scene.remove(drones[i].mesh); if (drones[i].w) scene.remove(drones[i].w.grp); drones.splice(i,1); }
+      }
     }
   }
   projectiles.forEach(p=>scene.remove(p.mesh)); projectiles.length = 0;
@@ -3710,31 +3729,59 @@ function respawn(){
   G.hp = 100; G.lastDamageT = G.time; G.detect = 0;
   el.redFade.style.opacity = 0;
   G.mode = 'play';
-  if (Boss) Boss.onRespawn();
+  if (Boss && !exiting) Boss.onRespawn();
+  if (G.ambush === 'live') spawnAmbushSquad();
+  else if (CH.boss && G.planted && !G.ambush) beginExitAmbush();
+  else if (G.ambush === 'ending') setTimeout(() => {
+    if (G.mode === 'play' && G.ambush === 'ending') startExitFinale();
+  }, 450);
 }
 
 /* ============================================================
    Player movement
    ============================================================ */
 const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
+// Story Mode shot magnetism.
+// Before: every input, including mouse look, hard-locked onto a live
+// machine inside 0.50 rad (about 28.6 deg) from 1.4 m to 28 m.
+// After: mouse, keyboard, and a desktop pad fire down the crosshair.
+// A phone fire button (or a pad on a phone) in Story Mode gets a nudge
+// only when the crosshair is already near the target.
+const STORY_AIM = {
+  angle: 0.12, // rad, about 6.9 deg. Was 0.50.
+  min: 2.0,    // m. Was 1.4.
+  max: 12,     // m. Was 28.
+  pull: 0.65,  // blend toward the target. Was 1, a full snap.
+};
+function aimAssistScale(story, phoneFire, ang, dist){
+  if (!story || !phoneFire) return 0;
+  if (dist < STORY_AIM.min || dist > STORY_AIM.max) return 0;
+  if (!(ang < STORY_AIM.angle)) return 0;
+  return STORY_AIM.pull;
+}
+function phoneAiming(){
+  return !!(touchFiring || (IS_TOUCH && G.padFire));
+}
 function storyAim(origin, dir){
   if (!window.Waking || !Waking.storyMode()) return;
-  let best = null, bestAng = 0.5;
+  if (!phoneAiming()) return;
+  let best = null, bestAng = STORY_AIM.angle, bestDist = 0;
   const consider = (point) => {
     if (!point) return;
     const to = point.clone().sub(origin);
     const dist = to.length();
-    if (dist < 1.4 || dist > 28) return;
+    if (dist < STORY_AIM.min || dist > STORY_AIM.max) return;
     to.multiplyScalar(1 / dist);
     const ang = Math.acos(Math.min(1, Math.max(-1, dir.dot(to))));
-    if (ang < bestAng){ bestAng = ang; best = to; }
+    if (ang < bestAng){ bestAng = ang; best = to; bestDist = dist; }
   };
   for (const d of drones){
     if (!d.alive) continue;
     consider(d.mesh.position);
   }
   if (Boss && Boss.aimPoint) consider(Boss.aimPoint());
-  if (best) dir.copy(best);
+  const pull = best ? aimAssistScale(true, true, bestAng, bestDist) : 0;
+  if (best && pull > 0) dir.lerp(best, pull).normalize();
 }
 function pollGamepad(dt){
   G.padFire = false;
@@ -5234,6 +5281,53 @@ function spawnExtra(kind, x, z, seg){
   scene.add(d.mesh);
   return d;
 }
+// Final chapter only. The sealed corridor (room 3) is the yard's only way
+// out. One heavy frame holds the door and one crawler comes through it.
+// Short and mean. Not another hunter.
+const EXIT_AMBUSH = [
+  ['warden', 0.6, -99.5],
+  ['crawler', -0.9, -95.5],
+];
+function spawnAmbushSquad(){
+  for (let i = drones.length - 1; i >= 0; i--){
+    if (!drones[i].ambush) continue;
+    scene.remove(drones[i].mesh);
+    drones.splice(i, 1);
+  }
+  EXIT_AMBUSH.forEach(([kind, x, z]) => {
+    const d = spawnExtra(kind, x, z, 7);
+    d.ambush = true;
+  });
+}
+function beginExitAmbush(){
+  if (!CH.boss || G.ambush) return;
+  G.ambush = 'live';
+  G.escape = true;
+  // Yard mouth, facing the corridor (+z). Death returns here, not to the chair.
+  G.checkpoint.pos.set(0, 0, -108);
+  G.checkpoint.yaw = Math.PI;
+  G.checkpoint.segment = CORE_SEG;
+  spawnAmbushSquad();
+  radio('ambush');
+  sToast('TWO FRAMES IN THE EXIT CORRIDOR.');
+  setObjectiveText();
+}
+function startExitFinale(){
+  if (G.ambush === 'ended') return;
+  G.ambush = 'ended';
+  G.escape = false;
+  if (CB.finale) Story.start(CB.finale); else beginExtraction();
+}
+function updateExitAmbush(){
+  if (G.mode !== 'play' || G.ambush !== 'live') return;
+  if (drones.some(d => d.ambush && d.alive)) return;
+  // Door between the yard and the corridor sits at z=-104. Step through it.
+  if (yawObj.position.z < -103.2) return;
+  G.ambush = 'ending';
+  G.escape = false;
+  sToast('CORRIDOR CLEAR.');
+  setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+}
 // in-world people: realistic procedural humans (humans.js), with the
 // old box figure kept only as a fallback if humans.js failed to load
 function makeCivvy(o){
@@ -6186,7 +6280,7 @@ const Boss = (() => {
     pose(0);
   }
   function onRespawn(){
-    if (!H.active) return;
+    if (!H.active || G.ambush) return;
     for (let i = drones.length-1; i >= 0; i--) if (drones[i].segment === 8){ scene.remove(drones[i].mesh); drones.splice(i,1); }
     if (H.phase === 'enter') H.phase = 'sensors';
     if (H.phase === 'sensors') H.sensHP = H.sensMax;
@@ -6255,7 +6349,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush };
 
 if (window.Waking) Waking.mount({
   getMode: () => G.mode,
@@ -6326,6 +6420,7 @@ function loop(){
     updateAllies(dt);
     updateProjectiles(dt);
     updateDoors(dt);
+    updateExitAmbush();
     updateWave(dt);
     updateObjective(dt);
     updateRadio(dt);
