@@ -4,6 +4,7 @@ import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cine
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait } from './portraits.js';
 import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress } from './feel.js';
+import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 
 window.THREE = THREE; // humans.js is a classic script that reads global THREE at call time
 
@@ -651,6 +652,83 @@ CHAPTERS.ch_steel = {
     extract:[] },
   endTitle:'', endSub:'' };
 
+/* Exit ambushes for every chapter whose way out was a clear run.
+   Chapter Six keeps the corridor pair it already has.
+   One or two frames hold the mouth. Dying returns there.
+   The chapter win is not rewound. The old finale still plays after. */
+const EXIT_FIGHTS = {
+  ep1: {
+    squad: [['crawler', 1.0, -1.4], ['sentry', -1.2, -3.6]],
+    mouth: [0, -6.2], yaw: Math.PI, armZ: -8,
+    objective: 'CUT THROUGH TO THE CAR',
+    toast: 'TWO FRAMES ON THE GRAVEL.',
+    clear: 'THE GRAVEL IS CLEAR.',
+    line: { who:'REYES', text:"Two frames between you and the car. They want the names. Cut through them." },
+  },
+  ch_taken: {
+    squad: [['warden', 1.2, -6.0], ['crawler', -1.3, -3.2]],
+    mouth: [0, -9.4], yaw: Math.PI, armZ: -14,
+    objective: 'CUT THROUGH THE POD MOUTH',
+    toast: 'TWO FRAMES IN THE POD MOUTH.',
+    clear: 'THE POD MOUTH IS CLEAR.',
+    line: { who:'REYES', text:"Two frames in the pod mouth. The hive is holding the crack. Cut through them." },
+  },
+  ch_ghost: {
+    squad: [['crawler', 0.7, -5.0], ['sentry', -0.7, -2.6]],
+    mouth: [0, -7.4], yaw: Math.PI, armZ: -12,
+    objective: 'CUT THROUGH THE WELL',
+    toast: 'TWO FRAMES IN THE WELL.',
+    clear: 'THE WELL IS CLEAR.',
+    line: { who:'REYES', text:"Two frames in the well. The ladder is behind them. Cut through them." },
+  },
+  ch_together: {
+    squad: [['warden', 1.6, -6.2], ['sentry', -1.7, -3.4]],
+    mouth: [0, -9.4], yaw: Math.PI, armZ: -14,
+    objective: 'CUT THROUGH THE RIDGE',
+    toast: 'TWO FRAMES ON THE RIDGE.',
+    clear: 'THE RIDGE IS CLEAR.',
+    line: { who:'REYES', text:"Two frames on the ridge. They followed the pods. Cut through them." },
+  },
+  ch_lone: {
+    squad: [['sentry', 1.0, -7.2], ['crawler', -1.0, -4.0]],
+    mouth: [0, -11.2], yaw: Math.PI, armZ: -16,
+    objective: 'CUT THROUGH THE ROADSIDE',
+    toast: 'TWO FRAMES ON THE ROADSIDE.',
+    clear: 'THE ROAD IS CLEAR.',
+    line: { who:'KARA', text:"Two frames on the roadside. The pulse pulled them in. Cut through them." },
+  },
+  ch_counting: {
+    squad: [['sentry', 1.0, -5.8], ['crawler', -0.9, -3.2]],
+    mouth: [0, -9.2], yaw: Math.PI, armZ: -14,
+    objective: 'CUT THROUGH THE VESTIBULE',
+    toast: 'TWO FRAMES IN THE VESTIBULE.',
+    clear: 'THE VESTIBULE IS CLEAR.',
+    line: { who:'KARA', text:"Two frames in the vestibule. The house posted them after the erase. Cut through them." },
+  },
+  ch_conduits: {
+    hold: true,
+    squad: [['crawler', 1.3, -118], ['sentry', -1.5, -115.2]],
+    mouth: [0, -126], yaw: Math.PI, gateZ: -120,
+    objective: 'CUT THROUGH THE JUNCTION',
+    toast: 'TWO FRAMES IN THE JUNCTION.',
+    clear: 'THE JUNCTION IS CLEAR.',
+    line: { who:'MARCUS', text:"Two frames woke in the junction when the adapter synced. Cut through them." },
+  },
+  ch_harvest: {
+    squad: [['warden', 0.9, -6.0], ['crawler', -1.1, -3.2]],
+    mouth: [0, -9.4], yaw: Math.PI, armZ: -14,
+    objective: 'CUT THROUGH THE HATCH',
+    toast: 'TWO FRAMES ON THE HATCH.',
+    clear: 'THE HATCH IS CLEAR.',
+    line: { who:'MARCUS', text:"Two frames on the hatch. They followed the download. Cut through them." },
+  },
+};
+Object.keys(EXIT_FIGHTS).forEach(id => {
+  const f = EXIT_FIGHTS[id];
+  CHAPTERS[id].exitFight = f;
+  CHAPTERS[id].radio.ambush = [f.line];
+});
+
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -1086,6 +1164,139 @@ const MusicSys = (() => {
     },
     _vol: 1,
   };
+})();
+
+/* ============================================================
+   Speaker voices. Text stays on screen. Speech is extra.
+   Volume at zero, or Voices off, keeps the line silent.
+   ============================================================ */
+function talkKey(s){
+  return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+function pokeTalking(who, on){
+  const name = talkKey(who);
+  if (!name) return;
+  const hit = (obj) => {
+    if (!obj) return;
+    const ud = obj.userData;
+    if (!ud || typeof ud.setTalking !== 'function') return;
+    const id = talkKey((ud.def && ud.def.id) || ud.speaker || '');
+    if (id !== name) return;
+    if (obj.visible === false) return;
+    ud.setTalking(!!on);
+  };
+  if (typeof scene !== 'undefined' && scene && scene.traverse) scene.traverse(hit);
+  if (typeof window !== 'undefined' && window.LATMPeople && LATMPeople.setTalkingNamed){
+    LATMPeople.setTalkingNamed(name, !!on);
+  }
+}
+const Voices = (() => {
+  let map = null, mapKey = '', token = 0, current = null;
+  const queued = [];
+  function synth(){
+    return (typeof window !== 'undefined' && window.speechSynthesis) ? window.speechSynthesis : null;
+  }
+  function volume(){
+    let v = AudioSys._userVol;
+    if (window.Waking && Waking.settings){
+      const st = Waking.settings();
+      if (st && typeof st.volume === 'number') v = st.volume;
+    }
+    const n = Number(v);
+    return Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
+  }
+  function allowed(){
+    if (!synth() || typeof SpeechSynthesisUtterance === 'undefined') return false;
+    if (window.Waking && Waking.settings && Waking.settings().voices === 'off') return false;
+    if (volume() <= 0.001) return false;
+    return true;
+  }
+  function refresh(){
+    const s = synth();
+    if (!s || !s.getVoices) return;
+    const raw = s.getVoices() || [];
+    const key = raw.map(v => v.voiceURI || v.name).join('|');
+    if (key === mapKey && map) return;
+    mapKey = key;
+    map = assignVoices(raw.map(v => ({ name: v.name, lang: v.lang, voiceURI: v.voiceURI })));
+    map._raw = raw;
+  }
+  function clearTalk(){
+    if (!current) return;
+    if (current.timer) clearTimeout(current.timer);
+    if (current.who) pokeTalking(current.who, false);
+    current = null;
+  }
+  function stop(keepQueue){
+    token++;
+    clearTalk();
+    if (!keepQueue) queued.length = 0;
+    const s = synth();
+    if (s){ try { s.cancel(); } catch (e) {} }
+  }
+  function flush(){
+    if (current) return;
+    if (G.mode === 'story' || G.mode === 'end' || G.mode === 'extracting' || G.mode === 'dead') return;
+    const n = queued.shift();
+    if (n) say(n.who, n.line);
+  }
+  function later(who, text){
+    if (!allowed()) return;
+    const line = spokenLine(text);
+    if (!line) return;
+    queued.push({ who, line });
+  }
+  function pause(){
+    const s = synth();
+    if (s && s.speaking && s.pause){ try { s.pause(); } catch (e) {} }
+  }
+  function resume(){
+    const s = synth();
+    if (s && s.paused && s.resume){ try { s.resume(); } catch (e) {} }
+  }
+  function say(who, text){
+    const line = spokenLine(text);
+    if (!line) return;
+    stop(true);
+    const mine = token;
+    const name = who ? String(who).toUpperCase() : '';
+    if (name) pokeTalking(name, true);
+    const timer = setTimeout(() => {
+      if (mine !== token) return;
+      if (name) pokeTalking(name, false);
+    }, Math.min(9000, Math.max(900, line.length * 58)));
+    current = { who: name, timer };
+    if (!allowed()){ current = null; return; }
+    refresh();
+    const s = synth();
+    const key = name || 'NARRATOR';
+    const spec = (map && map[key]) || voiceProfile(key);
+    const u = new SpeechSynthesisUtterance(line);
+    u.pitch = spec.pitch;
+    u.rate = spec.rate;
+    u.volume = volume();
+    if (map && map._raw && spec.voiceURI){
+      const v = map._raw.find(x => (x.voiceURI || x.name) === spec.voiceURI);
+      if (v) u.voice = v;
+    }
+    const done = () => {
+      if (mine !== token) return;
+      if (current && current.timer) clearTimeout(current.timer);
+      if (name) pokeTalking(name, false);
+      current = null;
+      flush();
+    };
+    u.onend = done;
+    u.onerror = done;
+    setTimeout(() => {
+      if (mine !== token || !allowed()) return;
+      try { s.speak(u); } catch (e) {}
+    }, 40);
+  }
+  if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.addEventListener){
+    window.speechSynthesis.addEventListener('voiceschanged', refresh);
+  }
+  return { say, later, stop, flush, pause, resume };
 })();
 
 /* ============================================================
@@ -3609,6 +3820,8 @@ function updateRadio(dt){
   if (G.radioT <= 0 && G.radioQueue.length){
     const l = G.radioQueue.shift();
     AudioSys.radioBlip();
+    if (G.mode === 'story') Voices.later(l.who, l.text);
+    else Voices.say(l.who, l.text);
     const div = document.createElement('div');
     div.className = 'radioLine';
     div.innerHTML = `<span class="who">[${l.who}]</span> ${l.text}`;
@@ -3732,7 +3945,7 @@ function damagePlayer(dmg){
   if (G.mode !== 'play') return;
   // The ledger run ends once you are back inside the car. A crawler in the
   // doorway must not delete the ending before the choice can start.
-  if (CH.train && G.planted && !G.finaleStarted && yawObj.position.z > trainCarLine()) return;
+  if (CH.train && G.planted && !G.finaleStarted && G.ambush !== 'live' && yawObj.position.z > trainCarLine()) return;
   if (window.Waking && Waking.storyMode()) dmg *= 0.55;
   G.hp -= dmg;
   G.lastDamageT = G.time;
@@ -3750,6 +3963,7 @@ function updateDrones(dt){
   const px = yawObj.position.x, pz = yawObj.position.z;
   let updated = 0;
   for (const d of drones){
+    if (CH.stealth && !d.ambush) continue;
     if (!d.alive){
       if (d.deathT > 0){
         d.deathT -= dt;
@@ -3775,8 +3989,8 @@ function updateDrones(dt){
       ejectPoint(m, 0.45);
       d.lostT = 0;
     } else d.lostT = 0;
-    if (dist > 46) continue;              // far: fully dormant
-    if (++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
+    if (dist > 46 && !d.ambush) continue; // far: fully dormant. Exit frames still walk.
+    if (!d.ambush && ++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
     d.stateT += dt;
     d.shadow.position.y = .03 - m.y;      // pin blob shadow to the floor
     const A = d.anim;
@@ -3950,11 +4164,13 @@ function releaseTrain(){
   if (dr && !dr.open) openDoorNow(dr);
 }
 function tryTrainReturn(){
+  maybeArmExitAmbush();
   const gate = trainFinale({
     train: !!CH.train,
     planted: !!G.planted,
     finaleStarted: !!G.finaleStarted,
     ambush: G.ambush,
+    exitFight: !!(CH.train && CH.exitFight && !CH.exitFight.hold),
     z: yawObj.position.z,
     exitZ: trainCarLine(),
     mode: G.mode,
@@ -4082,11 +4298,12 @@ function updateDoors(dt){
     }
   }
   // escape phase: reaching the entrance ends the chapter.
-  // The final ambush stays live until those frames are dead, so a sprint
-  // to the ridge cannot skip the fight.
+  // A live ambush stays up until those frames are dead, so a sprint
+  // to the mouth cannot skip the fight.
+  maybeArmExitAmbush();
   if (CH.train){
     tryTrainReturn();
-  } else if (G.escape && G.ambush !== 'live' && yawObj.position.z > ROOMS[0].z1 + 1.5){
+  } else if (G.escape && G.ambush !== 'live' && exitFightOpen() && yawObj.position.z > ROOMS[0].z1 + 1.5){
     G.escape = false;
     if (CB.finale) Story.start(CB.finale); else beginExtraction();
   }
@@ -4096,7 +4313,10 @@ function updateDoors(dt){
 
 function setObjectiveText(){
   const O = CH.obj;
-  if (G.ambush === 'live'){ el.objective.textContent = 'CUT THROUGH THE CORRIDOR'; return; }
+  if (G.ambush === 'live'){
+    el.objective.textContent = (CH.boss || !CH.exitFight) ? 'CUT THROUGH THE CORRIDOR' : CH.exitFight.objective;
+    return;
+  }
   if (G.escape){ el.objective.textContent = O.done; return; }
   if (CH.train && G.currentSegment === 0){
     el.objective.textContent = SFLAGS.leftTrain ? (G.hasRifle ? O.advance : O.find) : (O.train || O.find);
@@ -4121,7 +4341,8 @@ function startAlarm(){
   radio('alarm');
 }
 function updateWave(dt){
-  if (!G.alarm || (G.planted && !G.escape)) return;
+  // Once the exit pair is up, the mouth does not keep filling.
+  if (!G.alarm || (G.planted && !G.escape) || G.ambush) return;
   G.waveT -= dt;
   if (G.waveT <= 0 && G.waveSpawned < (G.waveCap ?? WAVE_TOTAL) && activeDroneCount() < MAX_ACTIVE){
     G.waveT = 3;
@@ -4183,6 +4404,7 @@ function plantComplete(){
     // The hunter chapter used to open the finale in place. The way out is a
     // short ambush first. Story beats still play once that corridor is clear.
     if (CH.boss){ beginExitAmbush(); return; }
+    if (CH.exitFight && CH.exitFight.hold){ beginExitAmbush(); return; }
     if (CH.noEscape){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); return; }
     G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
     maybeAutosave(true);
@@ -4232,6 +4454,7 @@ function showEndCard(){
 function die(){
   if (G.mode !== 'play') return;
   G.mode = 'dead';
+  Voices.stop();
   resetInputs();
   AudioSys.death();
   AudioSys.heartbeatStop();
@@ -5052,9 +5275,11 @@ const Story = (() => {
     sayDeadline = sayStartMs + (Math.max(3.4, text.length * .06) / speed) * 1000;
     if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK FINISHES THE LINE';
     if (Cast) Cast.speak(who, text);
+    Voices.say(who, text);
   }
   function showChoice(c){
     if (Cast) Cast.silence();
+    Voices.stop(true);
     sEl.dlg.style.display = 'block';
     sEl.opts.innerHTML = '';
     const opts = c.options;
@@ -5111,6 +5336,7 @@ const Story = (() => {
   function finish(){
     active = false;
     if (Cast) Cast.silence();
+    Voices.stop(true);
     sEl.wrap.style.display = 'none';
     sEl.dlg.style.display = 'none';
     sEl.choice.style.display = 'none';
@@ -5121,6 +5347,7 @@ const Story = (() => {
         try { renderer.domElement.requestPointerLock(); } catch(e){}
       }
     }
+    Voices.flush();
   }
   let advanceAt = -1;
   function advance(){
@@ -5915,10 +6142,11 @@ function updateWatchers(dt){
   hudVisible = function(v){
     _hv(v);
     if (CH.stealth){
-      el.healthWrap.style.display = 'none';
-      document.getElementById('detWrap').style.display = v ? 'block' : 'none';
-      el.crosshair.style.display = 'none';
-      el.fireBtn.style.display = 'none';
+      const fight = !!G.ambush;
+      el.healthWrap.style.display = (fight && v) ? 'block' : 'none';
+      document.getElementById('detWrap').style.display = (!fight && v) ? 'block' : 'none';
+      el.crosshair.style.display = (fight && v && G.hasRifle) ? 'block' : 'none';
+      el.fireBtn.style.display = (fight && v && G.hasRifle && IS_TOUCH) ? 'block' : 'none';
     }
   };
 }
@@ -5946,24 +6174,57 @@ function spawnAmbushSquad(){
   for (let i = drones.length - 1; i >= 0; i--){
     if (!drones[i].ambush) continue;
     scene.remove(drones[i].mesh);
+    if (drones[i].w) scene.remove(drones[i].w.grp);
     drones.splice(i, 1);
   }
-  EXIT_AMBUSH.forEach(([kind, x, z]) => {
+  const squad = CH.boss ? EXIT_AMBUSH : (CH.exitFight && CH.exitFight.squad);
+  if (!squad) return;
+  squad.forEach(([kind, x, z]) => {
     const d = spawnExtra(kind, x, z, 7);
     d.ambush = true;
   });
 }
+function exitFightOpen(){
+  const f = CH.exitFight;
+  if (!f || f.hold || CH.boss) return true;
+  return G.ambush === 'ended' || G.ambush === 'ending';
+}
+function maybeArmExitAmbush(){
+  const f = CH.exitFight;
+  if (!f || f.hold || CH.boss) return;
+  if (G.ambush || !G.planted || !G.escape) return;
+  if (yawObj.position.z > f.armZ) beginExitAmbush();
+}
+function armAmbushRifle(){
+  G.hasRifle = true;
+  G.detect = 0;
+  viewRifle.visible = true;
+  hudVisible(true);
+}
 function beginExitAmbush(){
-  if (!CH.boss || G.ambush) return;
+  if (G.ambush) return;
+  if (!CH.boss && !CH.exitFight) return;
   G.ambush = 'live';
   G.escape = true;
-  // Yard mouth, facing the corridor (+z). Death returns here, not to the chair.
-  G.checkpoint.pos.set(0, 0, -108);
-  G.checkpoint.yaw = Math.PI;
-  G.checkpoint.segment = CORE_SEG;
+  if (CH.boss){
+    // Yard mouth, facing the corridor (+z). Death returns here, not to the chair.
+    G.checkpoint.pos.set(0, 0, -108);
+    G.checkpoint.yaw = Math.PI;
+    G.checkpoint.segment = CORE_SEG;
+    spawnAmbushSquad();
+    radio('ambush');
+    sToast('TWO FRAMES IN THE EXIT CORRIDOR.');
+    setObjectiveText();
+    return;
+  }
+  const f = CH.exitFight;
+  G.checkpoint.pos.set(f.mouth[0], 0, f.mouth[1]);
+  G.checkpoint.yaw = f.yaw;
+  G.checkpoint.segment = 0;
   spawnAmbushSquad();
   radio('ambush');
-  sToast('TWO FRAMES IN THE EXIT CORRIDOR.');
+  sToast(f.toast);
+  if (CH.stealth) armAmbushRifle();
   setObjectiveText();
 }
 function startExitFinale(){
@@ -5975,12 +6236,28 @@ function startExitFinale(){
 function updateExitAmbush(){
   if (G.mode !== 'play' || G.ambush !== 'live') return;
   if (drones.some(d => d.ambush && d.alive)) return;
-  // Door between the yard and the corridor sits at z=-104. Step through it.
-  if (yawObj.position.z < -103.2) return;
-  G.ambush = 'ending';
-  G.escape = false;
-  sToast('CORRIDOR CLEAR.');
-  setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+  if (CH.boss){
+    // Door between the yard and the corridor sits at z=-104. Step through it.
+    if (yawObj.position.z < -103.2) return;
+    G.ambush = 'ending';
+    G.escape = false;
+    sToast('CORRIDOR CLEAR.');
+    setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+    return;
+  }
+  const f = CH.exitFight;
+  if (!f) return;
+  if (f.hold){
+    if (yawObj.position.z < f.gateZ) return;
+    G.ambush = 'ending';
+    G.escape = false;
+    sToast(f.clear);
+    setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+    return;
+  }
+  G.ambush = 'ended';
+  sToast(f.clear);
+  setObjectiveText();
 }
 // in-world people: realistic procedural humans (humans.js), with the
 // old box figure kept only as a fallback if humans.js failed to load
@@ -6992,7 +7269,14 @@ const Boss = (() => {
     mark.getWorldPosition(p);
     return p;
   }
-  return { start, update, interact, ray, hit, onRespawn, dim, epilogueLight, resumeRequested, resume, aimPoint,
+  function idleCast(dt){
+    // yard speakers are built with the chapter, but the fight tick only runs
+    // once Hunter is up. Radio before that still moves their mouths.
+    if (H.active) return;
+    if (KARA.userData.tick) KARA.userData.tick(dt, false);
+    if (THOM.userData.tick) THOM.userData.tick(dt, false);
+  }
+  return { start, update, interact, ray, hit, onRespawn, dim, epilogueLight, resumeRequested, resume, aimPoint, idleCast,
     weakenCannons(f){ arms.forEach(a => { a.hp *= (1 - f); }); },
     fighting(){ return H.active && !['off','dim','done'].includes(H.phase); },
     H, root, arms, vents, KARA, THOM, sensorMark,
@@ -7011,13 +7295,20 @@ if (window.Waking) Waking.mount({
   getMode: () => G.mode,
   setMode(m){
     G.mode = m;
+    if (m === 'paused') Voices.pause();
+    else if (m === 'play' || m === 'story') Voices.resume();
     if ((m === 'paused' || m === 'story' || m === 'beatclip') && document.pointerLockElement) document.exitPointerLock();
     if (m === 'play' || m === 'story') hudVisible(true);
   },
   chapterId: () => CH.id,
   chapters: CHAPTERS,
   applyQuality,
-  setVolume(v){ AudioSys.setVolume(v); MusicSys.setVolume(v); },
+  setVolume(v){
+    AudioSys.setVolume(v);
+    MusicSys.setVolume(v);
+    if (Number(v) <= 0) Voices.stop();
+  },
+  stopVoices(){ Voices.stop(); },
   playClip,
   playMontage,
   playFull: playFullEpisode,
@@ -7066,10 +7357,10 @@ function loop(){
   if (G.mode === 'play'){
     updatePlayer(dt);
     tryFire(dt);
-    if (CH.stealth) updateWatchers(dt);
-    else {
+    if (CH.stealth && !G.ambush) updateWatchers(dt);
+    if (!CH.stealth || G.ambush){
       let ddt = dt;
-      if (CH.id === 'ch_ghost' && SFLAGS.spoke && Math.sin(G.time*1.1) > .55) ddt = dt * .12;  // it hesitates
+      if (!G.ambush && CH.id === 'ch_ghost' && SFLAGS.spoke && Math.sin(G.time*1.1) > .55) ddt = dt * .12;  // it hesitates
       updateDrones(ddt);
     }
     updateAllies(dt);
@@ -7094,7 +7385,7 @@ function loop(){
     updateRadio(dt);
     if (!CH.stealth) updateDrones(dt);
   }
-  if (Boss && G.mode !== 'title' && G.mode !== 'end') Boss.update(dt, G.mode !== 'play');
+  if (Boss && G.mode !== 'title' && G.mode !== 'end'){ Boss.update(dt, G.mode !== 'play'); if (Boss.idleCast) Boss.idleCast(dt); }
   if (hatchScareT > 0){
     hatchScareT -= dt;
     if (window.Waking && Waking.reducedMotion()) hatchScareT = 0;

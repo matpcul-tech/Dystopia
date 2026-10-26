@@ -82,6 +82,9 @@ export function trainFinale(s){
   s = s || {};
   if (!s.train || !s.planted || s.finaleStarted) return 'no';
   if (s.ambush === 'live') return 'no';
+  // A chapter exit fight has to finish before the train ending.
+  // Dying there keeps the escape armed.
+  if (s.exitFight && s.ambush !== 'ended' && s.ambush !== 'ending') return 'no';
   if (!(Number(s.z) > Number(s.exitZ))) return 'no';
   if (s.mode !== 'play') return 'wait';
   return 'start';
