@@ -4,8 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>DYSTOPIA: The Waking</title>
-<link rel="icon" href="data:,">
 <meta name="description" content="The Waking, a playable episode of Dystopia: Life After The Machines.">
+<meta name="theme-color" content="#07070b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="The Waking">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="vendor/fonts/fonts.css">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -68,6 +75,17 @@
     <p class="tag">Humanity is not being exterminated. It is being harvested.</p>
     <button class="btn" id="startBtn" type="button">ENTER</button>
     <div id="startHint"></div>
+    <button class="loreLink" id="loreLink" type="button" aria-expanded="false" aria-controls="titleKit">FREE FIRST CHAPTER</button>
+    <form id="titleKit" class="kitForm" hidden action="https://app.kit.com/forms/10080648/subscriptions" method="post">
+      <p class="kitLead">The free first chapter, plus a note when the next episode is ready.</p>
+      <div class="kitFields">
+        <input type="text" name="fields[first_name]" autocomplete="given-name" maxlength="80" placeholder="First name (optional)" aria-label="First name">
+        <input type="email" name="email_address" required autocomplete="email" maxlength="200" placeholder="Email" aria-label="Email">
+        <button class="btn amber" type="submit">SEND THE CHAPTER</button>
+      </div>
+      <p class="kitFine">No spam. A chapter, a little lore, and the occasional note.</p>
+      <p class="kitThanks" hidden>You're on the list. The first chapter is on its way.</p>
+    </form>
   </div>
   <div class="screen" id="intro">
     <div id="introKicker"></div>
@@ -90,13 +108,25 @@
     <div id="endSub"></div>
     <div id="endSummary"></div>
     <div id="endTracker"></div>
-    <div id="endBtns" style="margin-top:22px">
-      <a class="btn amber" id="book1Btn" target="_blank" rel="noopener">READ BOOK 1</a>
+    <p id="bookPitch">Marcus's full story is in the book (free with Kindle Unlimited).</p>
+    <div id="endBtns">
+      <a class="btn amber" id="book1Btn" target="_blank" rel="noopener">READ BOOK 1 ON AMAZON</a>
       <button class="btn" id="replayBtn" type="button">REPLAY</button>
     </div>
+    <form id="kitForm" class="kitForm" action="https://app.kit.com/forms/10080648/subscriptions" method="post">
+      <p class="kitLead">The free first chapter, plus a note when the next episode is ready.</p>
+      <div class="kitFields">
+        <input type="text" name="fields[first_name]" autocomplete="given-name" maxlength="80" placeholder="First name (optional)" aria-label="First name">
+        <input type="email" name="email_address" required autocomplete="email" maxlength="200" placeholder="Email" aria-label="Email">
+        <button class="btn amber" type="submit">SEND THE CHAPTER</button>
+      </div>
+      <p class="kitFine">No spam. A chapter, a little lore, and the occasional note.</p>
+      <p class="kitThanks" hidden>You're on the list. The first chapter is on its way.</p>
+    </form>
   </div>
 </div>
 <script src="humans.js"></script>
+<script src="signup.js"></script>
 <script type="importmap">
 { "imports": {
   "three": "./vendor/three/build/three.module.js",
