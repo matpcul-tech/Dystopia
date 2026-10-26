@@ -280,4 +280,40 @@ body.live #pauseBtn{display:block;}
   #portraitCard canvas{width:72px;height:84px;}
   #healthWrap{width:min(250px, 58vw);}
   #radio{max-width:min(460px, 86%);left:max(12px, env(safe-area-inset-left));}
+  #endCard{justify-content:flex-start;}
+  #endCard #cover{width:min(132px, 34vw);}
+  #endTitle{margin-bottom:10px;font-size:clamp(22px, 6vw, 32px);}
+  #endSub{margin-top:10px;font-size:16px;}
+  #endBtns{flex-direction:column;align-items:stretch;width:min(420px, 100%);}
+  #endBtns .btn{width:100%;min-height:44px;}
 }
+
+#bookPitch{margin:16px auto 0;max-width:460px;
+  font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;
+  font-size:18px;line-height:1.4;color:var(--cream);}
+#endBtns{margin-top:16px;}
+#book1Btn{background:var(--brass);color:#1a140e;border-color:var(--brass-hot);font-weight:500;}
+#book1Btn:hover{background:var(--brass-hot);color:#1a140e;}
+#startScreen,#endCard{touch-action:pan-y;
+  padding-top:max(18px, env(safe-area-inset-top));
+  padding-bottom:max(24px, env(safe-area-inset-bottom));
+  padding-left:max(16px, env(safe-area-inset-left));
+  padding-right:max(16px, env(safe-area-inset-right));}
+#startScreen > *,
+#endCard > *{flex-shrink:0;}
+.loreLink{margin-top:12px;background:none;border:none;padding:8px;cursor:pointer;
+  color:var(--brass-hot);font-family:inherit;font-size:11px;letter-spacing:.22em;
+  text-decoration:underline;text-underline-offset:3px;}
+.kitForm{margin:16px auto 0;width:min(420px, 100%);text-align:left;
+  border:1px solid rgba(198,163,106,.45);background:rgba(7,7,11,.55);padding:14px 14px 12px;}
+.kitLead,.kitFine,.kitThanks{font-family:"Cormorant Garamond",Georgia,serif;
+  font-size:16px;line-height:1.35;color:var(--cream-dim);}
+.kitFine{font-size:14px;margin-top:8px;}
+.kitThanks{color:var(--brass-hot);font-style:italic;margin-top:4px;}
+.kitFields{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+.kitFields input{width:100%;min-height:44px;background:#100e0c;color:var(--cream);
+  border:1px solid var(--line);font-family:inherit;font-size:16px;padding:10px 12px;
+  letter-spacing:.03em;touch-action:manipulation;
+  user-select:text;-webkit-user-select:text;}
+.kitFields input:focus{outline:1px solid var(--brass);border-color:var(--brass);}
+.kitFields .btn{margin-top:4px;min-height:44px;text-align:center;touch-action:manipulation;}
