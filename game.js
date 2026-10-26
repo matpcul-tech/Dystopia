@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait } from './portraits.js';
-import { typedCount, swallowLook, integrateMove } from './feel.js';
+import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress } from './feel.js';
 
 window.THREE = THREE; // humans.js is a classic script that reads global THREE at call time
 
@@ -3234,6 +3234,7 @@ function makeDrone(kind, x, z, segment){
 
 const INITIAL_DRONES = CH.drones;
 const spawnedSegs = new Set();
+const clearedSegs = new Set();
 
 function spawnSegment(seg){
   // (re)create the initial drones of a segment; used at load + on respawn
@@ -3244,6 +3245,10 @@ function spawnSegment(seg){
       drones.splice(i,1);
     }
   }
+  if (clearedSegs.has(seg)){
+    spawnedSegs.add(seg);
+    return;
+  }
   INITIAL_DRONES.filter(d=>d[3]===seg).forEach(([k,x,z,s])=>{
     const d = makeDrone(k,x,z,s);
     d.spawned = true; scene.add(d.mesh);
@@ -3251,22 +3256,37 @@ function spawnSegment(seg){
   spawnedSegs.add(seg);
   if (seg === 2) addHatchCrawler();
 }
+function markSegmentsCleared(list){
+  (list || []).forEach(seg => {
+    clearedSegs.add(seg);
+    spawnSegment(seg);
+  });
+}
 function addHatchCrawler(){
   if (!SFLAGS.hatchScar) return;
+  if (clearedSegs.has(2)) return;
   if (drones.some(d => d.scar === 'hatch' && d.alive)) return;
   const d = makeDrone('crawler', 2.2, -22, 2);
   d.spawned = true;
   d.scar = 'hatch';
   scene.add(d.mesh);
 }
-modelsReady.then(() => {
+let initialSpawned = false;
+function spawnAllInitial(){
+  if (initialSpawned) return;
+  initialSpawned = true;
   const segs = new Set(INITIAL_DRONES.map(d => d[3]));
   segs.forEach(spawnSegment);
-});
+}
+// Models usually win. If a GLB load never settles, procedural frames still
+// spawn, or a cleared door waits forever on an enemy that is not there.
+modelsReady.then(spawnAllInitial);
+setTimeout(spawnAllInitial, 2500);
 
 function segmentCleared(seg){
   // Models arrive a moment after the title. An unspawned segment is not clear,
   // or Continue would open the next door and start its story early.
+  if (clearedSegs.has(seg)) return true;
   if (!spawnedSegs.has(seg)) return false;
   return !drones.some(d => d.segment === seg && d.alive);
 }
@@ -3310,12 +3330,14 @@ const G = {
   hp: 100, lastDamageT: 0,
   hasRifle: false, fireCd: 0,
   yaw: 0, pitch: 0,
-  checkpoint: { pos: new THREE.Vector3(0,0,0), yaw: 0, segment: 0 },
+  checkpoint: { pos: new THREE.Vector3(0, 0, CH.spawnZ || 0), yaw: 0, segment: 0 },
   currentSegment: 0,
   radioQueue: [], radioT: 0, radioFired: new Set(),
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
   ambush: null,          // null, live, ending, ended. Final chapter exit fight.
   alarm: false, waveSpawned: 0, waveT: 0,
+  finaleStarted: false,
+  furthest: 0,
   time: 0, shakeT: 0,
   firedClips: new Set(), padFire: false, padUse: false, storyQueued: false,
 };
@@ -3502,6 +3524,44 @@ function collide(pos, r){
     }
   }
 }
+function pointInSolid(x, z){
+  for (const c of colliders){
+    if (c.door && !c.active) continue;
+    if (x > c.x1 && x < c.x2 && z > c.z1 && z < c.z2) return true;
+  }
+  return false;
+}
+function ejectPoint(pos, r){
+  const gap = Math.max(0.2, r);
+  for (let pass = 0; pass < 5; pass++){
+    let hit = null;
+    for (const c of colliders){
+      if (c.door && !c.active) continue;
+      if (pos.x > c.x1 && pos.x < c.x2 && pos.z > c.z1 && pos.z < c.z2){ hit = c; break; }
+    }
+    if (!hit) return;
+    const left = pos.x - hit.x1, right = hit.x2 - pos.x, down = pos.z - hit.z1, up = hit.z2 - pos.z;
+    const m = Math.min(left, right, down, up);
+    if (m === left) pos.x = hit.x1 - gap;
+    else if (m === right) pos.x = hit.x2 + gap;
+    else if (m === down) pos.z = hit.z1 - gap;
+    else pos.z = hit.z2 + gap;
+  }
+}
+function inPlayable(x, z){
+  for (const r of ROOMS){
+    if (x >= r.x1 - 0.4 && x <= r.x2 + 0.4 && z >= r.z1 - 0.4 && z <= r.z2 + 0.4) return true;
+  }
+  for (const a of ANNEXES){
+    const r = ROOMS[a.room];
+    if (!r) continue;
+    const inner = a.side === 'L' ? r.x1 : r.x2;
+    const outer = a.side === 'L' ? inner - a.depth : inner + a.depth;
+    const x1 = Math.min(inner, outer), x2 = Math.max(inner, outer);
+    if (x >= x1 - 0.4 && x <= x2 + 0.4 && z >= a.z1 - 0.4 && z <= a.z2 + 0.4) return true;
+  }
+  return false;
+}
 
 /* ============================================================
    Line of sight (2D grid vs AABBs. Cheap, no raycaster allocs)
@@ -3611,6 +3671,20 @@ function tryFire(dt){
   if (!bossHit) spawnSparks(hitPoint, bestDrone ? 12 : 6);
   if (bossHit) Boss.hit(bossHit, 16 * (G.dmgMul || 1), hitPoint);
 
+  // A crawler wedged inside a locked door used to eat the shot on the
+  // door slab and stay alive, so the door that required its death never opened.
+  if (!bestDrone && wallT < 59){
+    const hx = origin.x + _rayDir.x * wallT;
+    const hz = origin.z + _rayDir.z * wallT;
+    let bestD = 1e9;
+    for (const d of drones){
+      if (!d.alive || !pointInSolid(d.mesh.position.x, d.mesh.position.z)) continue;
+      const dd = Math.hypot(d.mesh.position.x - hx, d.mesh.position.z - hz);
+      const reach = KINDS[d.kind].rad + 0.75;
+      if (dd < reach && dd < bestD){ bestD = dd; bestDrone = d; }
+    }
+  }
+
   if (bestDrone){
     AudioSys.hitConfirm();
     damageDrone(bestDrone, 16 * (G.dmgMul || 1));
@@ -3650,8 +3724,15 @@ function setDroneState(d, s){
   if (s === 'alert') AudioSys.alert();
 }
 
+function trainCarLine(){
+  // One step through the vestibule. The ending and the safe car share this line.
+  return ROOMS[0].z1 + 0.15;
+}
 function damagePlayer(dmg){
   if (G.mode !== 'play') return;
+  // The ledger run ends once you are back inside the car. A crawler in the
+  // doorway must not delete the ending before the choice can start.
+  if (CH.train && G.planted && !G.finaleStarted && yawObj.position.z > trainCarLine()) return;
   if (window.Waking && Waking.storyMode()) dmg *= 0.55;
   G.hp -= dmg;
   G.lastDamageT = G.time;
@@ -3683,6 +3764,17 @@ function updateDrones(dt){
     const m = d.mesh.position;
     const distX = m.x - px, distZ = m.z - pz;
     const dist = Math.hypot(distX, distZ);
+    if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || !inPlayable(m.x, m.z)){
+      d.lostT = (d.lostT || 0) + dt;
+      if (d.lostT > 1.2){
+        m.x = d.home.x; m.z = d.home.z; m.y = d.home.y;
+        d.lostT = 0;
+        ejectPoint(m, 0.45);
+      }
+    } else if (pointInSolid(m.x, m.z)){
+      ejectPoint(m, 0.45);
+      d.lostT = 0;
+    } else d.lostT = 0;
     if (dist > 46) continue;              // far: fully dormant
     if (++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
     d.stateT += dt;
@@ -3740,6 +3832,7 @@ function updateDrones(dt){
           const s = 3.4 * dt / dist;
           m.x -= distX * s; m.z -= distZ * s;
           collide(m, .45);
+          if (pointInSolid(m.x, m.z)) ejectPoint(m, 0.45);
           m.y = .5 + Math.abs(Math.sin(G.time*10 + d.id))*.12;
         }
         if (d.anim.glb) d.mesh.rotation.set(
@@ -3820,6 +3913,7 @@ function progIndex(roomIndex){
 function placeLabel(){
   const ep1 = ['ON THE TRAIN','THE GRAVEL','THE RUINED STREET','THE HARDWARE DISTRICT','THE RAIL BRIDGE','THE DEPOT'];
   if (CH.id === 'ep1'){
+    if (G.planted && yawObj.position.z > ROOMS[0].z1) return 'BACK ON THE TRAIN';
     if (G.currentSegment === 0 && !SFLAGS.leftTrain) return 'ON THE TRAIN';
     return ep1[G.currentSegment] || 'IN THE FIELD';
   }
@@ -3832,6 +3926,8 @@ function capturePos(){
     yaw: G.yaw, hp: G.hp,
     leftTrain: !!SFLAGS.leftTrain, hatchScar: !!SFLAGS.hatchScar,
     hasRifle: !!G.hasRifle,
+    planted: !!G.planted, escape: !!(G.escape || G.planted), alarm: !!G.alarm,
+    furthest: Math.max(G.currentSegment || 0, G.furthest || 0),
     trusted: !!SFLAGS.trusted, radio: !!SFLAGS.radio,
     freed: !!SFLAGS.freed, spoke: !!SFLAGS.spoke,
     dmgMul: G.dmgMul || 1, regenFast: !!G.regenFast, spdMul: G.spdMul || 1,
@@ -3847,6 +3943,35 @@ function maybeAutosave(force){
   if (!force && now < nextSaveAt) return;
   nextSaveAt = now + 4000;
   Waking.autosave(capturePos());
+}
+function releaseTrain(){
+  if (!CH.train || !SFLAGS.leftTrain) return;
+  const dr = doors.find(d => d.index === 0);
+  if (dr && !dr.open) openDoorNow(dr);
+}
+function tryTrainReturn(){
+  const gate = trainFinale({
+    train: !!CH.train,
+    planted: !!G.planted,
+    finaleStarted: !!G.finaleStarted,
+    ambush: G.ambush,
+    z: yawObj.position.z,
+    exitZ: trainCarLine(),
+    mode: G.mode,
+  });
+  if (gate !== 'start') return false;
+  if (!CB.finale){
+    beginExtraction();
+    G.finaleStarted = true;
+    G.escape = false;
+    maybeAutosave(true);
+    return true;
+  }
+  if (!Story.start(CB.finale)) return false;
+  G.finaleStarted = true;
+  G.escape = false;
+  maybeAutosave(true);
+  return true;
 }
 function openDoorNow(dr){
   dr.open = true;
@@ -3913,6 +4038,7 @@ function updateDoors(dt){
   ROOMS.forEach((r,i)=>{ if (z <= r.z2 && z >= r.z1) seg = i; });
   if (seg !== G.currentSegment && seg > G.currentSegment){
     G.currentSegment = seg;
+    G.furthest = Math.max(G.furthest || 0, seg);
     G.checkpoint.pos.set(0, 0, ROOMS[seg].z2 - 2);
     G.checkpoint.yaw = 0; // yaw 0 faces -z, deeper into the hive
     G.checkpoint.segment = seg;
@@ -3958,7 +4084,9 @@ function updateDoors(dt){
   // escape phase: reaching the entrance ends the chapter.
   // The final ambush stays live until those frames are dead, so a sprint
   // to the ridge cannot skip the fight.
-  if (G.escape && G.ambush !== 'live' && yawObj.position.z > ROOMS[0].z1 + 1.5){
+  if (CH.train){
+    tryTrainReturn();
+  } else if (G.escape && G.ambush !== 'live' && yawObj.position.z > ROOMS[0].z1 + 1.5){
     G.escape = false;
     if (CB.finale) Story.start(CB.finale); else beginExtraction();
   }
@@ -4048,6 +4176,7 @@ function plantComplete(){
   AudioSys.alarmStop();
   radio('planted');
   setObjectiveText();
+  maybeAutosave(true);
   PROPS.onComplete();
   // brief beat, then extraction
   setTimeout(()=>{ if (G.mode === 'play'){
@@ -4056,6 +4185,7 @@ function plantComplete(){
     if (CH.boss){ beginExitAmbush(); return; }
     if (CH.noEscape){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); return; }
     G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
+    maybeAutosave(true);
     if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
     if (CH.id === 'ch_taken' && SFLAGS.freed){
       G.waveCap = Math.ceil((CH.waveTotal||12)/2);
@@ -4230,6 +4360,7 @@ function updatePlayer(dt){
   yawObj.position.addScaledVector(_fwd, -mv.z * spd);
   yawObj.position.addScaledVector(_right, mv.x * spd);
   collide(yawObj.position, PLAYER_R);
+  if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
   yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
 
   // camera shake
@@ -4255,19 +4386,34 @@ function updatePlayer(dt){
 
   // rifle pickup. The prompt only shows when the rifle is close,
   // so the rail car does not ask for a gun that is still on the gravel.
+  // Reach is horizontal: standing over the rifle used to miss because the
+  // eyes sit 1.45 m above the model. E takes it from the prompt, and
+  // walking past it toward the locked door takes it too.
   let riflePrompt = false;
   if (!G.hasRifle && !CH.stealth && rifleFloor.parent){
-    const d = yawObj.position.distanceTo(rifleFloor.position);
-    if (d < 3.2){
+    const rx = rifleFloor.position.x, rz = rifleFloor.position.z;
+    const h = Math.hypot(yawObj.position.x - rx, yawObj.position.z - rz);
+    const use = !!(keys['KeyE'] || G.padUse || IS_TOUCH);
+    if (h < 4){
       riflePrompt = true;
       el.prompt.style.display = 'block';
       el.prompt.dataset.kind = 'rifle';
-      el.prompt.textContent = 'RETRIEVE THE PULSE RIFLE';
-      if (d < 1.6) pickupRifle();
+      el.prompt.textContent = IS_TOUCH ? 'TAKE THE RIFLE' : 'PRESS [E] TO TAKE THE RIFLE';
+      if (riflePickup(yawObj.position.x, yawObj.position.z, rx, rz, use)) pickupRifle();
+    } else if (riflePickup(yawObj.position.x, yawObj.position.z, rx, rz, false)){
+      pickupRifle();
     } else if (el.prompt.dataset.kind === 'rifle'){
       el.prompt.style.display = 'none';
       el.prompt.textContent = '';
       delete el.prompt.dataset.kind;
+    }
+  }
+  if (!riflePrompt && CH.train && SFLAGS.leftTrain && SFLAGS.hatchScar && trainHatch && !G.hatchExitHint){
+    const hx = yawObj.position.x - trainHatch.x;
+    const hz = yawObj.position.z - trainHatch.z;
+    if (hx * hx + hz * hz < 1.96){
+      G.hatchExitHint = true;
+      sToast('THE VESTIBULE DOOR IS OPEN. THE RIFLE IS ON THE GRAVEL.');
     }
   }
   if (!riflePrompt) tickPlayHint();
@@ -4725,10 +4871,12 @@ function finishIntro(skipAll){
     yawObj.position.set(mid.x, PLAYER_EYE, mid.z);
     G.yaw = mid.yaw || 0; G.pitch = 0;
     G.hp = (typeof mid.hp === 'number' && mid.hp > 0) ? mid.hp : 100;
-    let seg = mid.segment || 0;
-    ROOMS.forEach((r, i) => { if (mid.z <= r.z2 && mid.z >= r.z1) seg = i; });
-    G.currentSegment = seg;
-    G.checkpoint.segment = seg;
+    let room = 0;
+    ROOMS.forEach((r, i) => { if (mid.z <= r.z2 && mid.z >= r.z1) room = i; });
+    const progress = resumeProgress(mid.segment, mid.furthest, room);
+    G.currentSegment = progress.segment;
+    G.furthest = progress.furthest;
+    G.checkpoint.segment = progress.segment;
     G.checkpoint.pos.set(mid.x, 0, mid.z);
     G.checkpoint.yaw = mid.yaw || 0;
     if (mid.leftTrain) SFLAGS.leftTrain = true;
@@ -4737,16 +4885,20 @@ function finishIntro(skipAll){
     if (mid.radio) SFLAGS.radio = true;
     if (mid.freed) SFLAGS.freed = true;
     if (mid.spoke) SFLAGS.spoke = true;
+    if (mid.planted){ G.planted = true; G.escape = true; G.alarm = true; }
+    else if (mid.escape) G.escape = true;
+    if (!G.alarm && mid.alarm) G.alarm = true;
     if (mid.dmgMul) G.dmgMul = mid.dmgMul;
     if (mid.regenFast) G.regenFast = true;
     if (mid.spdMul) G.spdMul = mid.spdMul;
     G._resumed = true;
+    markSegmentsCleared(segmentsToClear(progress.furthest));
     doors.forEach(dr => {
-      if (dr.index < G.currentSegment) openDoorNow(dr);
+      if (dr.index < progress.furthest) openDoorNow(dr);
       else if (dr.index === 0 && SFLAGS.leftTrain) openDoorNow(dr);
     });
     BEATS.forEach(b => {
-      if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= seg))) G.firedClips.add(b.id);
+      if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= progress.furthest))) G.firedClips.add(b.id);
     });
   }
   pitchObj.rotation.x = G.pitch;
@@ -4766,9 +4918,10 @@ function finishIntro(skipAll){
   renderPerks();
   setObjectiveText();
   if (CH.boss && Boss && Boss.resumeRequested()) { Boss.resume(); return; }
-  const trainChoice = CH.train && CB.start && !SFLAGS.leftTrain
+  if (CH.train && G.planted) tryTrainReturn();
+  const trainChoice = CH.train && CB.start && !SFLAGS.leftTrain && !G.finaleStarted
     && (!G._resumed || (G.currentSegment === 0 && yawObj.position.z > 2));
-  if ((CB.start && !G._resumed) || trainChoice) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
+  if (!G.finaleStarted && ((CB.start && !G._resumed) || trainChoice)) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
 function showSkip(){ el.skipBtn.style.transition = 'none'; el.skipBtn.style.opacity = .85; }
 function skipIntro(){
@@ -4861,7 +5014,8 @@ const Story = (() => {
     return typedCount(now - sayStartMs, sayFull.length, TYPE_CPS * speed);
   }
   function start(list){
-    if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return;
+    if (active || G.mode === 'dead' || G.mode === 'end' || G.mode === 'extracting') return false;
+    if (!list || !list.length) return false;
     active = true; beats = list; bi = 0;
     G.mode = 'story';
     resetInputs();
@@ -4869,6 +5023,7 @@ const Story = (() => {
     document.body.classList.add('cine');
     sEl.wrap.style.display = 'flex';
     next();
+    return true;
   }
   function next(){
     const b = beats[bi++];
@@ -4910,6 +5065,7 @@ const Story = (() => {
       const clean = o.label.replace(/[\[\]]/g,'');
       SCHOICES.push({ q: c.record, a: clean });
       if (o.flags) Object.assign(SFLAGS, o.flags);
+      if (SFLAGS.leftTrain) releaseTrain();
       if (o.apply) o.apply();
       maybeAutosave(true);
       let world = '';
@@ -5204,6 +5360,14 @@ function playHatchScare(done){
     camera.position.set(0, 0, 0);
     el.redFade.style.transition = 'opacity .25s';
     el.redFade.style.opacity = 0;
+    // The hatch plate is a scare, not a doorway. Leave them facing the
+    // vestibule, which is the way onto the gravel and the rifle.
+    G.yaw = 0;
+    G.pitch = 0;
+    yawObj.rotation.y = 0;
+    pitchObj.rotation.x = 0;
+    releaseTrain();
+    if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
     if (done) done();
   }, endAt);
 }
@@ -5581,8 +5745,14 @@ function goChapter(hash){
 function finishEnding(id){
   loadCover();
   const E = ENDING_TEXT[id];
-  if (window.Waking) Waking.onComplete(CH.id);
+  // Extracting is not a mode pagehide will write back over a cleared slot.
   G.mode = 'extracting';
+  if (window.Waking){
+    Waking.onComplete(CH.id);
+    // The run is over. Continue must not drop them back in the car
+    // with the ledger already pulled and the choice gone.
+    if (Waking.clearPlace) Waking.clearPlace();
+  }
   Story.finish();
   sEl.endName.textContent = 'ENDING: ' + E.name;
   document.getElementById('endTitle').textContent = E.title;
@@ -6892,6 +7062,7 @@ function loop(){
 
   if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
   if (G.mode === 'beatclip' || G.mode === 'galleryclip') updateBeat(dt);
+  if (G.mode === 'play' && CH.train) tryTrainReturn();
   if (G.mode === 'play'){
     updatePlayer(dt);
     tryFire(dt);
@@ -6944,7 +7115,12 @@ function loop(){
 loop();
 
 try {
-  if (sessionStorage.getItem('latm_autoload') === '1' && peekResume()){
+  if (sessionStorage.getItem('latm_newgame') === '1'){
+    sessionStorage.removeItem('latm_newgame');
+    sessionStorage.removeItem('latm_resume');
+    sessionStorage.removeItem('latm_autoload');
+    beginFromTitle(false);
+  } else if (sessionStorage.getItem('latm_autoload') === '1' && peekResume()){
     sessionStorage.removeItem('latm_autoload');
     beginFromTitle(true);
   }
