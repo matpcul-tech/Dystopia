@@ -5647,6 +5647,55 @@ const Boss = (() => {
     fireProjectile(_w.clone(), tgt, 30, 5, { r:.75, col:0xffb347, hitR:.5, grace:.3, silent:true });
     AudioSys.burst();
   }
+  // Yard walls are half a metre thick. A 2.4 shove clears one in a single step,
+  // the circle test misses, and the player is left outside with no way back.
+  // Step the shove so the wall catches it, then clamp to the yard interior.
+  const YARD = ROOMS[ROOMS.length - 1];
+  const ARENA = {
+    minX: YARD.x1 + PLAYER_R,
+    maxX: YARD.x2 - PLAYER_R,
+    minZ: YARD.z1 + PLAYER_R,
+    maxZ: YARD.z2 - .3 - PLAYER_R, // north bulkhead sits .3 into the yard
+  };
+  function arenaLocked(){
+    return H.active && H.phase !== 'off' && H.phase !== 'dim' && H.phase !== 'done';
+  }
+  function keepInArena(P){
+    if (!arenaLocked()) return;
+    if (P.x >= ARENA.minX && P.x <= ARENA.maxX && P.z >= ARENA.minZ && P.z <= ARENA.maxZ) return;
+    P.x = Math.max(ARENA.minX, Math.min(ARENA.maxX, P.x));
+    P.z = Math.max(ARENA.minZ, Math.min(ARENA.maxZ, P.z));
+    // A clamp onto a prop (the valves sit against the side walls) would overlap it.
+    // Step toward the yard center until the circle is clear, and stay inside.
+    const cx = (ARENA.minX + ARENA.maxX) * .5, cz = (ARENA.minZ + ARENA.maxZ) * .5;
+    for (let n = 0; n < 8; n++){
+      let hit = false;
+      for (const c of colliders){
+        if (c.door && !c.active) continue;
+        const qx = Math.max(c.x1, Math.min(P.x, c.x2));
+        const qz = Math.max(c.z1, Math.min(P.z, c.z2));
+        const dx = P.x - qx, dz = P.z - qz;
+        if (dx*dx + dz*dz < PLAYER_R*PLAYER_R){ hit = true; break; }
+      }
+      if (!hit) return;
+      const dx = cx - P.x, dz = cz - P.z, d = Math.hypot(dx, dz) || 1;
+      P.x += dx / d * .4;
+      P.z += dz / d * .4;
+      P.x = Math.max(ARENA.minX, Math.min(ARENA.maxX, P.x));
+      P.z = Math.max(ARENA.minZ, Math.min(ARENA.maxZ, P.z));
+    }
+  }
+  function shovePlayer(dx, dz){
+    const P = yawObj.position;
+    const dist = Math.hypot(dx, dz);
+    const steps = Math.max(1, Math.ceil(dist / .2));
+    const sx = dx / steps, sz = dz / steps;
+    for (let i = 0; i < steps; i++){
+      P.x += sx; P.z += sz;
+      collide(P, PLAYER_R);
+    }
+    keepInArena(P);
+  }
   function stompNow(){
     const f = new THREE.Vector3(Math.sin(H.yaw), 0, Math.cos(H.yaw));
     const cx = pos().x + f.x*1.1, cz = pos().z + f.z*1.1;
@@ -5656,7 +5705,7 @@ const Boss = (() => {
     if (d < 6.5){
       damagePlayer(d < 3.5 ? 30 : 18);
       const nx = (P.x - cx) / Math.max(.1,d), nz = (P.z - cz) / Math.max(.1,d);
-      P.x += nx*2.4; P.z += nz*2.4; collide(P, PLAYER_R);
+      shovePlayer(nx*2.4, nz*2.4);
     }
     H.ringFade = .3;
   }
@@ -5766,7 +5815,7 @@ const Boss = (() => {
       pos().x += Math.sin(H.yaw) * v * dt; pos().z += Math.cos(H.yaw) * v * dt;
       if (H.phase !== 'enter'){ pos().x = Math.max(-10.5, Math.min(10.5, pos().x)); pos().z = Math.max(-139, Math.min(-108, pos().z)); }
       const pd = Math.hypot(P.x - pos().x, P.z - pos().z);
-      if (pd < 1.8 && G.mode === 'play'){ const s = (1.8 - pd) / Math.max(.05, pd); P.x += (P.x - pos().x)*s; P.z += (P.z - pos().z)*s; collide(P, PLAYER_R); }
+      if (pd < 1.8 && G.mode === 'play'){ const s = (1.8 - pd) / Math.max(.05, pd); shovePlayer((P.x - pos().x)*s, (P.z - pos().z)*s); }
       // Kara covers from her barricade
       KARA.rotation.y = Math.atan2(pos().x - KARA.position.x, pos().z - KARA.position.z);
       H.kfire -= dt;
@@ -5840,6 +5889,7 @@ const Boss = (() => {
     if (!KARA.userData.armedPose){ KARA.userData.armedPose = true; }
     KARA.userData.tick(dt, false); THOM.userData.tick(dt, false);
     THOM.rotation.y = Math.atan2(P.x - THOM.position.x, P.z - THOM.position.z);
+    keepInArena(P);
     hud();
   }
 
