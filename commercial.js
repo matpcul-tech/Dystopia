@@ -26,6 +26,7 @@ let panels = {};
 function defaultSettings(){
   return {
     volume: 0.8,
+    voices: 'on',
     textSize: 'md',
     textSpeed: 1,
     timer: 'on',
@@ -280,6 +281,7 @@ function buildSettings(host){
   box.appendChild(el('h3', 'sheetTitle', 'SETTINGS'));
   const rows = [
     ['VOLUME', 'range', 'volume', 0, 1, 0.05],
+    ['VOICES', 'select', 'voices', null, null, null, ['on', 'off']],
     ['TEXT SIZE', 'select', 'textSize', null, null, null, ['sm', 'md', 'lg']],
     ['TEXT SPEED', 'select', 'textSpeed', null, null, null, [0.6, 1, 1.6]],
     ['CHOICE TIMER', 'select', 'timer', null, null, null, ['on', 'long', 'off']],
@@ -315,6 +317,9 @@ function buildSettings(host){
       st[key] = v;
       persist();
       applySettings();
+      if ((key === 'voices' && v === 'off') || (key === 'volume' && Number(v) <= 0)){
+        if (api && api.stopVoices) api.stopVoices();
+      }
       if (key === 'quality' && api && api.applyQuality) {
         api.applyQuality(v === 'auto' ? (api.Q && api.Q.auto) || 'low' : v);
       }
@@ -323,6 +328,7 @@ function buildSettings(host){
     box.appendChild(row);
   });
   box.appendChild(el('p', 'fine', 'Story Mode softens hits and shortens the hunter. On a phone, Story Mode nudges a shot that is already close to a target. Mouse and keyboard do not lock on. Action Mode is the desktop fight. Timer off keeps every option on screen until you choose. Portrait cards are placeholders, not finished art.'));
+  box.appendChild(el('p', 'fine', 'Voices speak radio lines and story lines. Each person keeps one voice. Off leaves the text. Volume at zero stays silent.'));
   box.appendChild(el('p', 'fine', 'Choice counts and chapter events are anonymous. No account. No name is sent.'));
   const close = el('button', 'btn', 'CLOSE');
   close.type = 'button';

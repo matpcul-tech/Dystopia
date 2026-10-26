@@ -376,6 +376,7 @@ MODULE API
     ud._look = null;
     ud._emote = null;
     ud.managed = false;
+    ud.speaker = opts.seed != null ? String(opts.seed).toUpperCase() : "";
 
     attachBehavior(root);
     registry.push(root);
@@ -783,6 +784,21 @@ MODULE API
     };
   }
 
+  function talkKey(s) {
+    return String(s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  }
+  function setTalkingNamed(name, on) {
+    var want = talkKey(name);
+    if (!want) return;
+    registry.forEach(function (person) {
+      var ud = person && person.userData;
+      if (!ud || typeof ud.setTalking !== "function") return;
+      if (talkKey(ud.speaker) !== want) return;
+      if (person.visible === false) return;
+      ud.setTalking(!!on);
+    });
+  }
+
   var API = {
     createCharacter: createCharacter,
     createSurvivor: createSurvivor,
@@ -792,6 +808,7 @@ MODULE API
     update: update,
     remove: removePerson,
     registry: registry,
+    setTalkingNamed: setTalkingNamed,
     PALETTE: PALETTE
   };
 

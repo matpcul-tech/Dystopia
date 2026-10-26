@@ -29,6 +29,8 @@ check('story mode waits and keeps the escape', trainFinale({ ...back, mode: 'sto
 check('still on the gravel does not start it', trainFinale({ ...back, z: 1 }) === 'no');
 check('a second start is refused', trainFinale({ ...back, finaleStarted: true }) === 'no');
 check('a live ambush is not the train ending', trainFinale({ ...back, ambush: 'live' }) === 'no');
+check('an unfinished exit fight is not the train ending', trainFinale({ ...back, exitFight: true, ambush: null }) === 'no');
+check('a cleared exit fight can start the train ending', trainFinale({ ...back, exitFight: true, ambush: 'ended' }) === 'start');
 check('an unpulled ledger does not end the chapter', trainFinale({ ...back, planted: false }) === 'no');
 check('other chapters do not use the train gate', trainFinale({ ...back, train: false }) === 'no');
 
