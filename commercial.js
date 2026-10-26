@@ -581,6 +581,14 @@ function buildArchive(host){
   host.appendChild(box);
 }
 
+function syncPauseExtras(){
+  const on = pausedFrom === 'play' || pausedFrom === 'story';
+  const restart = document.getElementById('restartEpisodeBtn');
+  const title = document.getElementById('titleReturnBtn');
+  if (restart) restart.style.display = on ? '' : 'none';
+  if (title) title.style.display = on ? '' : 'none';
+}
+
 export const Waking = window.Waking = {
   settings(){ return memory.settings; },
   storyMode(){ return memory.settings.mode === 'story'; },
@@ -608,6 +616,7 @@ export const Waking = window.Waking = {
     if (mode === 'paused') {
       api.setMode(pausedFrom || 'play');
       pausedFrom = null;
+      syncPauseExtras();
       hideSheets();
       return;
     }
@@ -615,6 +624,7 @@ export const Waking = window.Waking = {
     if (mode !== 'play' && mode !== 'story') return;
     pausedFrom = mode;
     api.setMode('paused');
+    syncPauseExtras();
     show('pauseSheet');
   },
   onChoice(chapter, record, label){
@@ -624,6 +634,12 @@ export const Waking = window.Waking = {
   worldLine,
   onChapterStart(id){ track('chapter_start', { chapter: id }); },
   onComplete(id){ track('chapter_complete', { chapter: id }); pullLegacy(slot()); persist(); },
+  clearPlace(){
+    const s = slot();
+    if (!s) return;
+    s.mid = null;
+    persist();
+  },
   noteDrop(segment){ track('dropoff', { segment }); },
   autosave(pos){
     if (!pos) return;
@@ -651,6 +667,37 @@ export const Waking = window.Waking = {
     resume.type = 'button';
     resume.addEventListener('click', () => Waking.togglePause());
     pb.appendChild(resume);
+    const restart = el('button', 'btn', 'RESTART EPISODE');
+    restart.type = 'button';
+    restart.id = 'restartEpisodeBtn';
+    restart.style.display = 'none';
+    restart.addEventListener('click', () => {
+      try {
+        sessionStorage.setItem('latm_newgame', '1');
+        sessionStorage.removeItem('latm_resume');
+        sessionStorage.removeItem('latm_autoload');
+      } catch (e) {}
+      Waking.clearPlace();
+      // pagehide saves play, story, paused, and dead. Leave that set so
+      // the reload cannot write the cleared place back into the slot.
+      if (api && api.setMode) api.setMode('end');
+      location.reload();
+    });
+    pb.appendChild(restart);
+    const toTitle = el('button', 'btn', 'RETURN TO TITLE');
+    toTitle.type = 'button';
+    toTitle.id = 'titleReturnBtn';
+    toTitle.style.display = 'none';
+    toTitle.addEventListener('click', () => {
+      if (api && api.getPos) Waking.autosave(api.getPos());
+      try {
+        sessionStorage.removeItem('latm_resume');
+        sessionStorage.removeItem('latm_autoload');
+        sessionStorage.removeItem('latm_newgame');
+      } catch (e) {}
+      location.reload();
+    });
+    pb.appendChild(toTitle);
     const settingsHost = el('div', '');
     buildSettings(settingsHost);
     pb.appendChild(settingsHost);
@@ -743,6 +790,7 @@ export const Waking = window.Waking = {
     });
     window.addEventListener('pagehide', () => {
       if (!api || !api.getMode || !api.getPos) return;
+      try { if (sessionStorage.getItem('latm_newgame') === '1') return; } catch (e) {}
       const mode = api.getMode();
       if (mode !== 'play' && mode !== 'story' && mode !== 'paused' && mode !== 'dead') return;
       const pos = api.getPos();

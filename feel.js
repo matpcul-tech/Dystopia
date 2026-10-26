@@ -61,3 +61,46 @@ export function resumePlan(mid, hereId, chapters){
   if (mid.chapter !== hereId) return { ok:true, action:'switch', chapter:mid.chapter };
   return { ok:true, action:'resume', chapter:mid.chapter };
 }
+
+// Rifle pickup is horizontal. Eye height must not shrink the reach to a
+// sliver above the gravel, and walking past the rifle still counts.
+// use is the use key while the prompt is up.
+export function riflePickup(px, pz, rx, rz, use){
+  const h = Math.hypot((Number(px) || 0) - (Number(rx) || 0), (Number(pz) || 0) - (Number(rz) || 0));
+  if (h <= 2.2) return true;
+  if (use && h <= 4) return true;
+  const z = Number(pz) || 0;
+  const rzN = Number(rz) || 0;
+  if (z < rzN - 0.5 && z > rzN - 8 && Math.abs((Number(px) || 0) - (Number(rx) || 0)) <= 3.1) return true;
+  return false;
+}
+
+// 'start' may open the ending. 'wait' means the player is in the car but
+// the mode cannot take the handoff, so the escape must stay armed.
+// 'no' means do not touch the escape flag.
+export function trainFinale(s){
+  s = s || {};
+  if (!s.train || !s.planted || s.finaleStarted) return 'no';
+  if (s.ambush === 'live') return 'no';
+  if (!(Number(s.z) > Number(s.exitZ))) return 'no';
+  if (s.mode !== 'play') return 'wait';
+  return 'start';
+}
+
+// Combat rooms behind the furthest door the player has already earned.
+// The room they are still in is not cleared. Walking back must not rewind this.
+export function segmentsToClear(furthest){
+  const n = Math.max(0, Number(furthest) || 0);
+  const out = [];
+  for (let s = 2; s < n; s++) out.push(s);
+  return out;
+}
+
+// Saved segment is how far the run got. The room under the body can be
+// behind that once they turn around. Never drop the run back to the body.
+export function resumeProgress(savedSegment, furthest, roomFromZ){
+  const saved = Math.max(0, Number(savedSegment) || 0, Number(furthest) || 0);
+  const room = Math.max(0, Number(roomFromZ) || 0);
+  const progress = Math.max(saved, room);
+  return { furthest: progress, segment: progress, room };
+}
