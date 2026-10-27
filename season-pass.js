@@ -1,22 +1,29 @@
 // Season Pass rules that do not need the DOM.
 // GitHub Pages cannot ask Stripe if a Checkout Session was paid.
 // The secret key must never ship in this static site.
-// A return grants only with season_pass=1 and a plausible one-time
-// session id. Used ids are remembered in this browser so the same
-// URL does not grant twice here. Another browser does not see that
-// list until a server records it. cloud/season-pass-worker.js is
-// that check. It is not deployed, and this file does not call it.
+// A cs_ id is only a candidate. It never grants by itself.
+// commercial.js posts it to COMMERCE.SEASON_VERIFY_URL and grants
+// only when the JSON is { pass: true }. An empty URL fails closed.
+// Used ids are remembered in this browser after a real grant so the
+// same URL does not grant twice here.
 
 export const PASS_KEY = 'latm_season_pass_v1';
 export const USED_KEY = 'latm_season_sessions_v1';
 
 const SESSION_RE = /^cs_(live|test)_[A-Za-z0-9]{14,}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function plausibleSessionId(id){
   return typeof id === 'string' && id.length <= 200 && SESSION_RE.test(id);
 }
 
-// Accept a bare id or a pasted return URL.
+export function emailFromText(raw){
+  const text = String(raw || '').trim().toLowerCase();
+  if (!text || text.length > 200 || !EMAIL_RE.test(text)) return '';
+  return text;
+}
+
+// Accept a bare id or a pasted return URL. This does not grant.
 export function sessionFromText(raw){
   const text = String(raw || '').trim();
   if (!text || text.length > 2000) return '';
@@ -26,18 +33,55 @@ export function sessionFromText(raw){
   return bare ? bare[0] : '';
 }
 
-// source is 'return' (the Stripe success URL) or 'restore' (pasted id).
+// 'verify' means the shape is worth a server check. It is not a grant.
 // usedList is the ids this browser has already granted.
 // hasPass is true when this browser already holds the entitlement.
 export function judgeSession(raw, usedList, hasPass){
   const id = sessionFromText(raw);
-  if (!plausibleSessionId(id)) return { action: 'reject', id: id || '' };
+  if (!plausibleSessionId(id)) return { action: 'reject', id: id || '', email: '' };
   const used = Array.isArray(usedList) && usedList.indexOf(id) >= 0;
-  if (used) return { action: hasPass ? 'already' : 'replay', id };
-  return { action: 'grant', id };
+  if (used) return { action: hasPass ? 'already' : 'replay', id, email: '' };
+  return { action: 'verify', id, email: '' };
 }
 
 export function judgeReturn(seasonFlag, sessionId, usedList, hasPass){
-  if (seasonFlag !== '1') return { action: 'ignore', id: '' };
+  if (seasonFlag !== '1') return { action: 'ignore', id: '', email: '' };
   return judgeSession(sessionId, usedList, hasPass);
+}
+
+// Email is the restore path. A pasted return URL is still a session check.
+// Neither action grants until the worker says pass true.
+export function judgeRestore(raw, usedList, hasPass){
+  const id = sessionFromText(raw);
+  if (id) return judgeSession(raw, usedList, hasPass);
+  const email = emailFromText(raw);
+  if (email) return { action: 'verify', id: '', email };
+  return { action: 'reject', id: '', email: '' };
+}
+
+// Posts { session_id } or { email }. pass is true only for HTTP ok
+// JSON { pass: true }. Empty URL, network failure, and 4xx/5xx do not grant.
+export async function askSeasonVerify(verifyUrl, body, fetchImpl){
+  const url = typeof verifyUrl === 'string' ? verifyUrl.trim() : '';
+  if (!url) return { pass: false, status: 0, reason: 'unconfigured' };
+  const fetchFn = fetchImpl || globalThis.fetch;
+  if (typeof fetchFn !== 'function') return { pass: false, status: 0, reason: 'network' };
+  let res;
+  try {
+    res = await fetchFn(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+  } catch (e) {
+    return { pass: false, status: 0, reason: 'network' };
+  }
+  if (!res) return { pass: false, status: 0, reason: 'network' };
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  const status = Number(res.status) || 0;
+  if (res.ok && data && data.pass === true) return { pass: true, status, reason: '' };
+  if (status === 409 || (data && data.reason === 'used')) return { pass: false, status, reason: 'used' };
+  if (!res.ok) return { pass: false, status, reason: 'http' };
+  return { pass: false, status, reason: 'denied' };
 }

@@ -1,6 +1,7 @@
-// Cloudflare worker. Not deployed. The game does not call it.
-// GitHub Pages is a static site, so this file is not live until someone
-// deploys it and sets COMMERCE.SEASON_VERIFY_URL in commercial.js.
+// Cloudflare worker. Not deployed until the steps in
+// cloud/SEASON_PASS_WORKER.md are run. The game calls it only when
+// COMMERCE.SEASON_VERIFY_URL in commercial.js is that live URL.
+// Until then the page fails closed and does not grant from a cs_ id.
 //
 // Secret: wrangler secret STRIPE_SECRET_KEY. Never put that key in the
 // repo or in the Pages bundle.

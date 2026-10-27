@@ -16,5 +16,5 @@ Honest notes for Matthew to submit. This build does not claim a survey was filed
 ## What is not in this build
 
 - No live ad creative.
-- Season Pass checkout opens a Stripe Payment Link in this same tab. The button does not grant the pass. Returning with season_pass=1 does not grant unless the link also has a checkout session id. The pass is stored in this browser for every save slot. Three book trailers open only the chapter you asked for, for this visit, and do not set Season Pass. The Remove Ads button is hidden until a real purchase exists. RevenueCat is not connected. Trailer files are local. Links after a trailer are not a charge.
+- Season Pass checkout opens a Stripe Payment Link in this same tab. The button does not grant the pass. Returning with season_pass=1 does not grant from a checkout session id alone. The page asks the purchase check and grants only when that check answers pass true. Until that check is connected, a session id does not grant. The pass is stored in this browser for every save slot. Three book trailers open only the chapter you asked for, for this visit, and do not set Season Pass. The Remove Ads button is hidden until a real purchase exists. RevenueCat is not connected. Trailer files are local. Links after a trailer are not a charge.
 - No voice acting pass and no recorded score.
