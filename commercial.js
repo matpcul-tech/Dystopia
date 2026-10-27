@@ -1,6 +1,8 @@
 // Commercial shell: settings, 3 save slots, entitlements, choice counts.
-// Phase 1 web unlock: three local book trailers, watched to the end,
-// grant the same Season Pass as the button. Real store checkout is later.
+// Three book trailers open the chapter you asked for during this visit.
+// They do not set Season Pass. Season Pass is the only permanent unlock
+// (every chapter, and no trailers). The button does not grant it here.
+// Checkout comes later. ?preview=1 unlocks this tab without slot.pass.
 // A missing trailer file shows an error and does not count a view.
 
 import { resumePlan } from './feel.js';
@@ -152,9 +154,9 @@ function hasPass(){
 function previewOn(){
   try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
 }
-// Pages has no store checkout yet. The Season Pass button and three
-// finished book trailers set the same local entitlement: Chapters
-// Three to Six and every Chapter Two path. Real checkout is Phase 2.
+// Permanent Season Pass: every paid chapter and no trailers.
+// The pay sheet does not call this. Checkout will, when it exists.
+// ?preview=1 unlocks the tab through hasPass() without this function.
 function grantSeason(){
   const s = slot();
   s.pass = true;
@@ -171,6 +173,7 @@ function grantSeason(){
 export function bootSaves(){
   if (typeof localStorage === 'undefined') {
     memory = migrate();
+    settleTrailerSession();
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -189,6 +192,7 @@ export function bootSaves(){
   writeLegacy(slot());
   persist();
   if (typeof document !== 'undefined') applySettings();
+  settleTrailerSession();
 }
 
 function track(name, extra){
@@ -482,28 +486,79 @@ function importBackup(code){
   }
 }
 
+const TRAILER_VISIT_KEY = 'latm_trailer_visit';
+function emptyTrailerVisit(){
+  return { watched: {}, open: [], enter: '' };
+}
+function trailerVisit(){
+  try {
+    const raw = sessionStorage.getItem(TRAILER_VISIT_KEY);
+    const data = raw ? JSON.parse(raw) : null;
+    if (!data || typeof data !== 'object') return emptyTrailerVisit();
+    return {
+      watched: data.watched && typeof data.watched === 'object' ? data.watched : {},
+      open: Array.isArray(data.open) ? data.open.filter(id => typeof id === 'string') : [],
+      enter: typeof data.enter === 'string' ? data.enter : '',
+    };
+  } catch (e) {
+    return emptyTrailerVisit();
+  }
+}
+function saveTrailerVisit(data){
+  try { sessionStorage.setItem(TRAILER_VISIT_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function hashChapter(){
+  try { return String(location.hash || '').replace(/^#/, ''); } catch (e) { return ''; }
+}
+// A finished set of trailers may survive the reload that enters that chapter.
+// Any other load clears the visit, so a refresh asks for the trailers again.
+function settleTrailerSession(){
+  if (typeof sessionStorage === 'undefined') return;
+  const data = trailerVisit();
+  const hash = hashChapter();
+  if (data.enter && hash && data.enter === hash) {
+    data.open = [hash];
+    data.watched = {};
+    data.enter = '';
+    saveTrailerVisit(data);
+    return;
+  }
+  const dirty = data.enter || data.open.length || Object.keys(data.watched).length;
+  if (dirty) saveTrailerVisit(emptyTrailerVisit());
+}
+function visitAllows(id){
+  const data = trailerVisit();
+  return data.open.indexOf(id) >= 0 || data.enter === id;
+}
 function trailersDone(){
-  const s = slot();
-  const ads = (s && s.ads) || {};
+  const watched = trailerVisit().watched;
   let n = 0;
-  TRAILERS.forEach(t => { if (ads[t.id]) n += 1; });
+  TRAILERS.forEach(t => { if (watched[t.id]) n += 1; });
   return n;
 }
 function nextTrailer(){
-  const s = slot();
-  const ads = (s && s.ads) || {};
+  const watched = trailerVisit().watched;
   for (let i = 0; i < TRAILERS.length; i++) {
-    if (!ads[TRAILERS[i].id]) return TRAILERS[i];
+    if (!watched[TRAILERS[i].id]) return TRAILERS[i];
   }
   return null;
 }
-function markTrailer(trailerId){
+function markTrailer(trailerId, chapterId){
+  const data = trailerVisit();
+  data.watched[trailerId] = 1;
+  let opened = false;
+  if (TRAILERS.every(t => data.watched[t.id])) {
+    data.watched = {};
+    data.enter = chapterId || '';
+    if (chapterId && data.open.indexOf(chapterId) < 0) data.open.push(chapterId);
+    opened = true;
+  }
+  saveTrailerVisit(data);
+  return opened;
+}
+function trailersSuppressed(){
   const s = slot();
-  if (!s.ads || typeof s.ads !== 'object') s.ads = {};
-  if (s.ads[trailerId]) return;
-  s.ads[trailerId] = 1;
-  persist();
-  if (trailersDone() >= COMMERCE.AD_VIEWS) grantSeason();
+  return !!(s && s.noAds && !hasPass());
 }
 function fmtClock(t){
   if (!t || !isFinite(t)) return '0:00';
@@ -527,74 +582,79 @@ function releaseTrailer(){
 function payTitle(id){
   return (api && api.chapters && api.chapters[id] && api.chapters[id].subtitle) || id;
 }
-function openUnlocked(id, body){
-  if (trailersDone() >= COMMERCE.AD_VIEWS && !slot().pass) grantSeason();
-  body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
-  body.appendChild(el('p', 'deckLine', 'Season Pass is open on this device.'));
-  body.appendChild(el('p', 'fine', trailersDone() + ' of ' + COMMERCE.AD_VIEWS + ' trailers finished. Chapters Three to Six and every Chapter Two path are unlocked here. Nothing was charged.'));
-  const go = el('button', 'btn amber', 'ENTER CHAPTER');
-  go.type = 'button';
-  go.addEventListener('click', () => {
-    location.hash = '#' + id;
-    location.reload();
-  });
-  body.appendChild(go);
-  const close = el('button', 'btn', 'CLOSE');
-  close.type = 'button';
-  close.addEventListener('click', hideSheets);
-  body.appendChild(close);
+function enterChapter(id){
+  location.hash = '#' + id;
+  location.reload();
 }
 
 function openPaywall(id){
   const body = document.getElementById('payBody');
   if (!body) return;
   body.innerHTML = '';
-  const unlocked = !previewOn() && (hasPass() || trailersDone() >= COMMERCE.AD_VIEWS);
-  if (unlocked) {
-    openUnlocked(id, body);
+  if (visitAllows(id) && !previewOn()) {
+    body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
+    body.appendChild(el('p', 'deckLine', 'This chapter is open for this visit.'));
+    body.appendChild(el('p', 'fine', 'Reload the page and the trailers are required again. This is not the Season Pass. Season Pass is the permanent unlock.'));
+    const go = el('button', 'btn amber', 'ENTER CHAPTER');
+    go.type = 'button';
+    go.addEventListener('click', () => enterChapter(id));
+    body.appendChild(go);
+    const close = el('button', 'btn', 'CLOSE');
+    close.type = 'button';
+    close.addEventListener('click', hideSheets);
+    body.appendChild(close);
     show('paySheet');
     return;
   }
   const done = trailersDone();
+  const quiet = trailersSuppressed();
   body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
   if (id === 'ch_counting') {
     body.appendChild(el('p', 'deckLine', 'Your story continues in Chapter Three.'));
   } else {
     body.appendChild(el('p', 'deckLine', 'This chapter is part of Book One.'));
   }
-  body.appendChild(el('p', 'fine', 'Episode One stays free. One Chapter Two path stays free with the ending you earned. Season Pass ' + COMMERCE.SEASON_PRICE + ' opens Chapters Three to Six and every Chapter Two path. It also removes ads.'));
-  body.appendChild(el('p', 'fine', 'This Pages build has no store checkout yet. The Season Pass button opens those chapters on this device until real checkout is added. Nothing is charged.'));
+  body.appendChild(el('p', 'fine', 'Episode One stays free. One Chapter Two path stays free with the ending you earned. Season Pass (' + COMMERCE.SEASON_PRICE + ') is the permanent unlock: every chapter, and no trailers.'));
+  body.appendChild(el('p', 'fine', 'Checkout is not connected on this Pages build yet. The Season Pass button does not unlock chapters and does not charge you. Payment comes later.'));
   const pass = el('button', 'btn amber', 'SEASON PASS  ' + COMMERCE.SEASON_PRICE);
   pass.type = 'button';
   pass.addEventListener('click', () => {
-    grantSeason();
-    location.hash = '#' + id;
-    location.reload();
+    const note = document.getElementById('payNote');
+    if (previewOn()) {
+      enterChapter(id);
+      return;
+    }
+    if (note) note.textContent = 'Season Pass checkout is not connected yet. Nothing was charged. This button will open payment later. It does not unlock chapters.';
   });
   body.appendChild(pass);
-  const ads = el('button', 'btn', 'WATCH BOOK TRAILERS  ' + done + ' / ' + COMMERCE.AD_VIEWS);
-  ads.type = 'button';
-  ads.addEventListener('click', () => playTrailer(id));
-  body.appendChild(ads);
-  const s = slot();
-  const bag = (s && s.ads) || {};
-  TRAILERS.forEach((t, i) => {
-    body.appendChild(el('p', 'fine', (i + 1) + '. ' + t.title + (bag[t.id] ? '  WATCHED' : '')));
-  });
-  body.appendChild(el('p', 'fine', 'Watch three book trailers to the end for the same Season Pass on this device. Each trailer counts once. Close early and it does not count. There is no skip.'));
-  body.appendChild(el('p', 'fine', 'After a trailer ends, you can open Amazon or the author hub. Those links are not the payment.'));
+  if (!quiet) {
+    const ads = el('button', 'btn', 'WATCH BOOK TRAILERS  ' + done + ' / ' + COMMERCE.AD_VIEWS);
+    ads.type = 'button';
+    ads.addEventListener('click', () => playTrailer(id));
+    body.appendChild(ads);
+    const watched = trailerVisit().watched;
+    TRAILERS.forEach((t, i) => {
+      body.appendChild(el('p', 'fine', (i + 1) + '. ' + t.title + (watched[t.id] ? '  WATCHED' : '')));
+    });
+    body.appendChild(el('p', 'fine', 'Watch all three trailers to open this chapter for this visit. Reload the page, or pick another locked chapter, and the trailers start over. Trailers do not include Season Pass.'));
+    body.appendChild(el('p', 'fine', 'After a trailer ends, you can open Amazon or the author hub. Those links are not the payment.'));
+  } else {
+    body.appendChild(el('p', 'fine', 'Remove Ads is on for this device, so trailers stay off. Chapters stay locked until Season Pass.'));
+  }
   const remove = el('button', 'btn', 'REMOVE ADS  ' + COMMERCE.REMOVE_ADS_PRICE);
   remove.type = 'button';
   remove.addEventListener('click', () => {
-    const note = document.getElementById('payNote');
     if (hasPass()) {
+      const note = document.getElementById('payNote');
       if (note) note.textContent = 'Season Pass already includes Remove Ads.';
       return;
     }
     const cur = slot();
     cur.noAds = true;
     persist();
-    if (note) note.textContent = 'Remove Ads is on for this device. Chapters stay locked until Season Pass or three finished trailers. Nothing was charged.';
+    openPaywall(id);
+    const note = document.getElementById('payNote');
+    if (note) note.textContent = 'Remove Ads is on for this device. Trailers stay off. Chapters stay locked until Season Pass. Nothing was charged.';
   });
   body.appendChild(remove);
   const note = el('p', 'fine', '');
@@ -608,16 +668,16 @@ function openPaywall(id){
   show('paySheet');
 }
 
-function showTrailerDone(chapterId, trailer){
+function showTrailerDone(chapterId, trailer, opened){
   const body = document.getElementById('trailerBody');
   if (!body) return;
   body.innerHTML = '';
-  const done = trailersDone();
+  const done = opened ? COMMERCE.AD_VIEWS : trailersDone();
   body.appendChild(el('h3', 'sheetTitle', 'TRAILER COMPLETE'));
   body.appendChild(el('p', 'deckLine', trailer.title));
   body.appendChild(el('p', 'fine', done + ' of ' + COMMERCE.AD_VIEWS + ' trailers finished.'));
-  if (done >= COMMERCE.AD_VIEWS) {
-    body.appendChild(el('p', 'fine', 'Season Pass is open on this device. Nothing was charged.'));
+  if (opened) {
+    body.appendChild(el('p', 'fine', 'This chapter is open for this visit. Reload the page and the trailers are required again. This is not the Season Pass.'));
   }
   const link = document.createElement('a');
   link.className = 'btn amber';
@@ -626,10 +686,17 @@ function showTrailerDone(chapterId, trailer){
   link.target = '_blank';
   link.rel = 'noopener noreferrer';
   body.appendChild(link);
-  const cont = el('button', 'btn', 'CONTINUE');
-  cont.type = 'button';
-  cont.addEventListener('click', () => openPaywall(chapterId));
-  body.appendChild(cont);
+  if (opened) {
+    const go = el('button', 'btn', 'ENTER CHAPTER');
+    go.type = 'button';
+    go.addEventListener('click', () => enterChapter(chapterId));
+    body.appendChild(go);
+  } else {
+    const cont = el('button', 'btn', 'CONTINUE');
+    cont.type = 'button';
+    cont.addEventListener('click', () => openPaywall(chapterId));
+    body.appendChild(cont);
+  }
 }
 
 function playTrailer(chapterId){
@@ -690,7 +757,6 @@ function playTrailer(chapterId){
 
   let watched = 0;
   let correcting = false;
-  let seekRejectAt = 0;
 
   function alive(){ return token === trailerToken && !trailerSettled; }
   function paint(){
@@ -715,13 +781,12 @@ function playTrailer(chapterId){
     trailerSettled = true;
     try { video.pause(); } catch (e) {}
     activeVideo = null;
-    markTrailer(trailer.id);
-    showTrailerDone(chapterId, trailer);
+    const opened = markTrailer(trailer.id, chapterId);
+    showTrailerDone(chapterId, trailer, opened);
   }
   function clampSeek(){
     if (!alive() || correcting) return;
     if (video.currentTime > watched + 0.25) {
-      seekRejectAt = performance.now();
       correcting = true;
       try { video.currentTime = watched; } catch (e) {}
       correcting = false;
@@ -739,7 +804,8 @@ function playTrailer(chapterId){
     const ahead = video.currentTime - watched;
     // Normal playback reports small steps. A scrub, or a currentTime
     // jump, is larger than a stalled frame and must not count.
-    if (ahead > 1 || (performance.now() - seekRejectAt < 500 && ahead > 0.25)) {
+    // Do not keep re-arming that snap, or playback can never catch up.
+    if (ahead > 1) {
       clampSeek();
       return;
     }
@@ -778,7 +844,6 @@ function playTrailer(chapterId){
     if (!alive()) return;
     if (play.dataset.mode === 'retry' || video.error) {
       watched = 0;
-      seekRejectAt = 0;
       video.style.visibility = '';
       play.dataset.mode = '';
       play.textContent = 'PLAY';
@@ -815,18 +880,18 @@ function buildChapters(host){
   host.innerHTML = '';
   const box = el('div', 'sheetBody');
   box.appendChild(el('h3', 'sheetTitle', 'CHAPTERS'));
-  box.appendChild(el('p', 'fine', 'Episode One is free. One Chapter Two path stays free with the ending you earned. The rest opens with the Season Pass, or after three book trailers watched to the end.'));
+  box.appendChild(el('p', 'fine', 'Episode One is free. One Chapter Two path stays free with the ending you earned. Season Pass opens the rest for good. Three book trailers open one locked chapter for this visit only.'));
   const chapters = (api && api.chapters) || {};
   Object.keys(chapters).forEach(id => {
     const c = chapters[id];
     const locked = Waking.isLocked(id);
-    const here = api && api.chapterId && api.chapterId() === id;
+    const here = !locked && api && api.chapterId && api.chapterId() === id;
     const b = el('button', 'btn small beatRow', '');
     b.type = 'button';
-    b.textContent = (here ? 'HERE  ' : (locked ? 'LOCKED  ' : 'OPEN  ')) + (c.subtitle || id);
+    b.textContent = (locked ? 'LOCKED  ' : (here ? 'HERE  ' : 'OPEN  ')) + (c.subtitle || id);
     b.addEventListener('click', () => {
-      if (here){ hideSheets(); return; }
       if (Waking.isLocked(id)){ openPaywall(id); return; }
+      if (here){ hideSheets(); return; }
       location.hash = '#' + id;
       location.reload();
     });
@@ -903,12 +968,8 @@ export const Waking = window.Waking = {
   isLocked(id){
     if (!id || id === 'ep1') return false;
     if (hasPass()) return false;
+    if (visitAllows(id)) return false;
     const s = slot();
-    if (s && trailersDone() >= COMMERCE.AD_VIEWS) {
-      if (!s.pass) grantSeason();
-      return false;
-    }
-    if (s && (s.ads[id] || 0) >= COMMERCE.AD_VIEWS) return false;
     if (CH2_IDS.indexOf(id) >= 0) {
       const free = s && s.carry && CH2[s.carry.from];
       return id !== free;
