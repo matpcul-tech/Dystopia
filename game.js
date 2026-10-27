@@ -849,8 +849,8 @@ const QP = {
   high:   { pr:1.75, shadows:1, post:1, bloom:.6, fxaa:1, dust:320, accent:1, shafts:14, tex:512, ash:420, basic:0, decor:1 },
 };
 const QLEVELS = ['potato','low','med','high'];
-const QLABEL = { auto:'AUTO', potato:'POTATO / ULTRA LOW', low:'LOW', med:'MED', high:'HIGH' };
-function qLabel(v){ return QLABEL[v] || String(v || '').toUpperCase(); }
+const QSHORT = { auto:'AUTO', potato:'POTATO', low:'LOW', med:'MED', high:'HIGH' };
+function qShort(v){ return QSHORT[v] || String(v || '').toUpperCase(); }
 const Q = (() => {
   const url = normQ(new URLSearchParams(location.search).get('q'));
   let saved = null; try { saved = normQ(localStorage.getItem('waking_q')); } catch(e){}
@@ -890,9 +890,13 @@ window.__WAKING_Q = Q;
 function refreshGfxButton(){
   const b = document.getElementById('gfxBtn');
   if (!b) return;
-  const choice = qLabel(Q.userChoice);
-  const active = qLabel(Q.level);
-  b.textContent = 'GRAPHICS: ' + choice + (Q.userChoice === 'auto' || Q.userChoice !== Q.level ? ' [' + active + ']' : '');
+  const choice = qShort(Q.userChoice);
+  const active = qShort(Q.level);
+  const showActive = Q.userChoice === 'auto' || Q.userChoice !== Q.level;
+  b.textContent = showActive ? ('GFX: ' + choice + ' · ' + active) : ('GFX: ' + choice);
+  b.setAttribute('aria-label', showActive
+    ? ('Graphics ' + choice + ', playing at ' + active)
+    : ('Graphics ' + choice));
 }
 
 /* ============================================================
@@ -1577,6 +1581,40 @@ const GFX = { dust:null, shafts:[], ash:null };
 const DECOR = [];
 const EXTRA_LIGHTS = [];
 function markDecor(o){ if (o){ o.userData.decor = 1; DECOR.push(o); } return o; }
+// Low and potato skip the color grade, so the chapter fog (often near black)
+// turned the first outdoor-looking street into a dark grid and left enemies
+// as red dots. This only recolors fog, clear color, and the hemisphere.
+// Med and high keep the authored palette. No extra meshes.
+function applyTierReadability(){
+  if (!scene.fog) return;
+  const baseFog = new THREE.Color(CH.palette.fog);
+  const baseBg = new THREE.Color(CH.palette.bg);
+  const baseDensity = CH.palette.fogDensity || (CH.outdoor ? 0.022 : 0.034);
+  const soft = Q.level === 'low' || Q.level === 'potato';
+  if (!soft){
+    scene.fog.color.copy(baseFog);
+    scene.fog.density = baseDensity;
+    if (scene.background && scene.background.isColor) scene.background.copy(baseBg);
+    hemi.color.set(CH.palette.hemi);
+    hemi.groundColor.set(0x08090b);
+    return;
+  }
+  const outdoor = !!CH.outdoor;
+  const potato = Q.level === 'potato';
+  // Dusk rust, in the family of the opener haze, not a grey noon.
+  // Episode One's ruined street is roofed, so it takes the indoor mix.
+  const haze = new THREE.Color(outdoor ? 0x6e3c28 : 0x4e3426);
+  const mix = potato ? (outdoor ? 0.82 : 0.64) : (outdoor ? 0.7 : 0.52);
+  const fog = baseFog.clone().lerp(haze, mix);
+  scene.fog.color.copy(fog);
+  scene.fog.density = baseDensity * (potato ? 0.76 : 0.84);
+  if (scene.background && scene.background.isColor){
+    scene.background.copy(fog).multiplyScalar(outdoor ? 0.7 : 0.5);
+  }
+  const warm = new THREE.Color(outdoor ? 0xe0c09a : 0xc4a888);
+  hemi.color.copy(new THREE.Color(CH.palette.hemi)).lerp(warm, potato ? 0.34 : 0.22);
+  hemi.groundColor.set(outdoor ? 0x3e2c22 : 0x30241c);
+}
 function applyQuality(level){
   level = QLEVELS.includes(level) ? level : 'low';
   Q.level = level;
@@ -1593,8 +1631,17 @@ function applyQuality(level){
   // Potato has no environment light. Lambert still divides by PI, so the
   // hemisphere has to carry the fill that IBL provides on the other tiers,
   // and the headlamp stays in the same range low uses or the car reads black.
-  hemi.intensity = (CH.palette.hemiI || .75) * (p.basic ? 6 : (spot ? 1 : 1.5));
-  renderer.toneMappingExposure = (CH.palette.exposure || 1.24) * (p.basic ? 1.18 : (p.post || spot ? 1 : 1.12));
+  // Low (and potato) get a further ambient and exposure lift. They have no
+  // grade pass, so the authored near-black fog was crushing the street.
+  let hemiMul = spot ? 1 : 1.5;
+  if (p.basic) hemiMul = 7.4;
+  else if (level === 'low') hemiMul = 2.05;
+  hemi.intensity = (CH.palette.hemiI || .75) * hemiMul;
+  let expMul = (p.post || spot) ? 1 : 1.12;
+  if (p.basic) expMul = 1.3;
+  else if (level === 'low') expMul = 1.24;
+  renderer.toneMappingExposure = (CH.palette.exposure || 1.24) * expMul;
+  applyTierReadability();
   flash.visible = spot; flash.castShadow = spot;
   lamp.intensity = p.basic ? 46 : (spot ? 14 : 42);
   accent.visible = !!p.accent && !p.basic;
