@@ -162,6 +162,14 @@ canvas{display:block;position:fixed;inset:0;z-index:0;}
 .sbar{position:fixed;left:0;right:0;height:0;background:#000;z-index:26;transition:height .7s;}
 #sbarTop{top:0;} #sbarBot{bottom:0;}
 body.cine #sbarTop,body.cine #sbarBot{height:9vh;}
+/* Story lines and choice beats own the lower screen. Vitals, perks,
+   the objective, and the touch HUD stay hidden until the scene ends. */
+body.cine #hud,
+body.cine #fireBtn,
+body.cine #plantBtn,
+body.cine #stickZone,
+body.cine #lookZone,
+body.cine #stickBase{visibility:hidden;}
 #storyWrap{position:fixed;inset:0;z-index:28;display:none;pointer-events:none;
   flex-direction:column;justify-content:flex-end;align-items:center;gap:8px;
   padding:calc(8px + var(--inset-top)) 12px calc(16px + var(--inset-bottom));}
