@@ -280,6 +280,8 @@ html[data-portraits="cards"] #castStage{display:none;height:0;}
 .sheet{position:fixed;inset:0;z-index:80;display:none;align-items:flex-start;justify-content:center;
   overflow:auto;background:rgba(7,7,11,.94);pointer-events:auto;
   padding:max(24px, var(--inset-top)) max(16px, var(--inset-right)) max(24px, var(--inset-bottom)) max(16px, var(--inset-left));}
+/* The title screen sits under this sheet. A tint lets BOOK ONE and NEW GAME show through the pay text. */
+#paySheet,#paySheet .sheetBody{background:#07070b;}
 .sheetBody{width:min(560px,100%);text-align:left;}
 .sheetTitle{font-family:"Outfit",sans-serif;font-weight:500;font-size:14px;letter-spacing:.28em;margin:8px 0 12px;}
 .setRow{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0;
@@ -295,6 +297,8 @@ html[data-portraits="cards"] #castStage{display:none;height:0;}
 .slotBtn.on{border-color:var(--brass);color:var(--brass-hot);}
 #backupCode{width:100%;margin:8px 0;background:#100e0c;color:var(--cream);border:1px solid var(--line);
   font-family:inherit;font-size:12px;padding:8px;}
+#restoreSession{width:100%;box-sizing:border-box;margin:8px 0;min-height:44px;background:#100e0c;color:var(--cream);
+  border:1px solid var(--line);font-family:inherit;font-size:16px;padding:10px 12px;}
 #pauseBtn{display:none;position:fixed;top:max(10px, var(--inset-top));
   right:max(10px, var(--inset-right));z-index:40;pointer-events:auto;
   padding:8px 12px;border:1px solid var(--line);background:rgba(7,7,11,.72);color:var(--cream);
