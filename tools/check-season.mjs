@@ -244,15 +244,20 @@ const server = createServer((req, res) => {
   }
   if (url.pathname === '/commercial.js') {
     let text = commercialSource;
-    if (url.searchParams.get('verify') === '1') {
-      const replaced = text.replace("SEASON_VERIFY_URL: '" + VERIFY_URL + "'", "SEASON_VERIFY_URL: '/season-verify'");
-      if (replaced === text) {
-        res.writeHead(500, { 'content-type': 'text/plain' });
-        res.end('SEASON_VERIFY_URL was not rewritten');
-        return;
-      }
-      text = replaced;
+    // Source points at the live worker. The plain harness keeps the empty
+    // URL so a fake return fails closed without calling the network.
+    // verify=1 points at the local stub instead.
+    const live = "SEASON_VERIFY_URL: '" + VERIFY_URL + "'";
+    const next = url.searchParams.get('verify') === '1'
+      ? "SEASON_VERIFY_URL: '/season-verify'"
+      : "SEASON_VERIFY_URL: ''";
+    const replaced = text.replace(live, next);
+    if (replaced === text) {
+      res.writeHead(500, { 'content-type': 'text/plain' });
+      res.end('SEASON_VERIFY_URL was not rewritten');
+      return;
     }
+    text = replaced;
     res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8' });
     res.end(text);
     return;
