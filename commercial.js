@@ -3,21 +3,21 @@
 // They do not set Season Pass. Season Pass is the only permanent unlock
 // (every chapter, and no trailers). The button opens COMMERCE.SEASON_URL
 // in this same tab.
-// A return grants only when season_pass=1 AND session_id is a plausible
-// one-time Checkout Session id (cs_live_... or cs_test_...). Bare
-// ?season_pass=1 does not grant. The id is stored in this browser so
-// the same URL does not grant twice here.
+// A return never grants from a cs_ session id by itself. The page posts
+// { session_id } to COMMERCE.SEASON_VERIFY_URL and grants only when the
+// JSON says { pass: true }. Restore posts { email } or { session_id }
+// the same way. An empty URL fails closed.
+// After a real grant, the id is stored in this browser so the same URL
+// does not grant twice here.
 // The pass is stored for every save slot in this browser, plus a
 // separate key that survives a slot switch. ?preview=1 unlocks this
 // tab without writing the pass.
 // A missing trailer file shows an error and does not count a view.
-// There is no server on GitHub Pages. Do not put a Stripe secret here.
-// cloud/season-pass-worker.js can verify a session and restore by
-// receipt email. It is not deployed, and this page does not call it.
-// Wiring a host that is not live would fail closed and block a paid return.
+// There is no Stripe secret in this file. Matthew sets SEASON_VERIFY_URL
+// to the deployed worker. See cloud/SEASON_PASS_WORKER.md.
 
 import { resumePlan } from './feel.js';
-import { PASS_KEY, USED_KEY, judgeReturn, judgeSession, plausibleSessionId } from './season-pass.js';
+import { PASS_KEY, USED_KEY, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId } from './season-pass.js';
 
 const SAVE_KEY = 'latm_save_v1';
 const CH2 = { together:'ch_together', lone:'ch_lone', ghost:'ch_ghost', taken:'ch_taken' };
@@ -28,6 +28,10 @@ export const COMMERCE = {
   STATS_URL: '',
   ANALYTICS_URL: '',
   SEASON_URL: 'https://buy.stripe.com/bJe14pfBe0XNfJz0Xk3wQ00',
+  // Matthew sets this to the live workers.dev (or custom) URL after
+  // deploying cloud/season-pass-worker.js. See cloud/SEASON_PASS_WORKER.md.
+  // Empty fails closed: a cs_ session id never grants Season Pass.
+  SEASON_VERIFY_URL: '',
   SEASON_PRICE: '$6.99',
   // Price kept for a future real charge. The button stays hidden until then.
   REMOVE_ADS_PRICE: '$2.99',
@@ -236,8 +240,8 @@ function previewOn(){
   try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
 }
 // Permanent Season Pass: every paid chapter and no trailers.
-// Called once for a plausible checkout session id this browser has
-// not granted before. Trailers and the pay button do not call this.
+// Called only after the purchase check returns { pass: true }.
+// Trailers and the pay button do not call this.
 // ?preview=1 unlocks the tab through hasPass() without this function.
 function grantSeason(sessionId){
   const rec = { v: 1, pass: true, at: Date.now(), session: sessionId || '' };
@@ -286,10 +290,9 @@ export function bootSaves(){
   claimSeasonReturn();
 }
 
-// GitHub Pages cannot verify the Checkout Session with Stripe.
-// season_pass=1 alone is not proof. A plausible session id grants
-// once in this browser, then the id is stored and the query is stripped.
-function claimSeasonReturn(){
+// Strip the return query either way, so a refresh is not a second try.
+// Grant only after the worker says { pass: true }.
+async function claimSeasonReturn(){
   if (typeof location === 'undefined') return;
   let params;
   try { params = new URLSearchParams(location.search); } catch (e) { return; }
@@ -300,15 +303,41 @@ function claimSeasonReturn(){
   const q = params.toString();
   const next = location.pathname + (q ? '?' + q : '') + (location.hash || '');
   try { history.replaceState(history.state, '', next); } catch (e) {}
-  if (verdict.action === 'grant') grantSeason(verdict.id);
-  showSeasonNote(seasonMessage(verdict.action, 'return'));
+  if (verdict.action !== 'verify') {
+    showSeasonNote(seasonMessage(verdict.action, 'return'));
+    return;
+  }
+  showSeasonNote('Checking the purchase.');
+  const result = await askSeasonVerify(COMMERCE.SEASON_VERIFY_URL, { session_id: verdict.id });
+  if (result.pass === true) {
+    grantSeason(verdict.id);
+    showSeasonNote(seasonMessage('granted', 'return'));
+    return;
+  }
+  showSeasonNote(seasonFailureNote(result, 'return'));
 }
 function seasonMessage(action, source){
   if (action === 'granted' || action === 'already') return 'Season Pass is active on this browser, on every save slot.';
   if (action === 'replay') return 'That checkout id was already used in this browser. Season Pass was not granted again.';
   if (hasDevicePass()) return 'Season Pass is active on this browser, on every save slot.';
-  if (source === 'restore') return 'That is not a checkout id. Paste the id from the return page. It starts with cs_live_.';
-  return 'Season Pass was not granted. A return needs a checkout id that starts with cs_live_.';
+  if (action === 'verify') return 'Season Pass was not granted. The purchase check is not connected yet.';
+  if (source === 'restore') return 'That is not an email or a return link. Enter the email from your Stripe receipt.';
+  return 'Season Pass was not granted. The return link did not include a checkout id.';
+}
+function seasonFailureNote(result, source){
+  if (!result || result.reason === 'unconfigured') {
+    return 'Season Pass was not granted. The purchase check is not connected yet.';
+  }
+  if (result.reason === 'network') {
+    return 'Season Pass was not granted. The purchase check did not respond.';
+  }
+  if (result.reason === 'used' || result.status === 409) {
+    return 'That checkout was already used. Season Pass was not granted again.';
+  }
+  if (source === 'restore') {
+    return 'Season Pass was not granted. The purchase check did not confirm that email or return link.';
+  }
+  return 'Season Pass was not granted. The purchase check did not confirm this checkout.';
 }
 function showSeasonNote(text){
   if (typeof document === 'undefined' || !document.body) return;
@@ -325,14 +354,21 @@ function showSeasonNote(text){
   }
   note.textContent = text;
 }
-function applyRestore(raw){
-  const verdict = judgeSession(raw, readUsed(), hasDevicePass());
-  if (verdict.action === 'grant') grantSeason(verdict.id);
-  return seasonMessage(verdict.action, 'restore');
+async function applyRestore(raw){
+  if (hasDevicePass()) return seasonMessage('already', 'restore');
+  const verdict = judgeRestore(raw, readUsed(), false);
+  if (verdict.action !== 'verify') return seasonMessage(verdict.action, 'restore');
+  const body = verdict.email ? { email: verdict.email } : { session_id: verdict.id };
+  const result = await askSeasonVerify(COMMERCE.SEASON_VERIFY_URL, body);
+  if (result.pass === true) {
+    grantSeason(verdict.id || '');
+    return seasonMessage('granted', 'restore');
+  }
+  return seasonFailureNote(result, 'restore');
 }
 function openSeasonCheckout(){
   const note = document.getElementById('payNote');
-  if (note) note.textContent = 'Opening Stripe checkout in this tab. When you return, Season Pass is stored in this browser for every save slot.';
+  if (note) note.textContent = 'Opening Stripe checkout in this tab. When you return, Season Pass is stored in this browser for every save slot after the purchase check confirms it.';
   location.assign(COMMERCE.SEASON_URL);
 }
 
@@ -791,31 +827,40 @@ function openRestore(){
   if (hasDevicePass()) {
     body.appendChild(el('p', 'deckLine', 'Season Pass is active on this browser, on every save slot.'));
   }
-  body.appendChild(el('p', 'fine', 'Paste the checkout id from the return page or your Stripe receipt. It starts with cs_live_. Season Pass then stays on every save slot in this browser.'));
+  body.appendChild(el('p', 'fine', 'Enter the email from your Stripe receipt. Season Pass stays on every save slot in this browser when the purchase check confirms it. A receipt does not show a checkout id. If you still have the return page, paste that address instead.'));
   const input = document.createElement('input');
   input.id = 'restoreSession';
   input.type = 'text';
   input.autocomplete = 'off';
   input.spellcheck = false;
-  input.placeholder = 'cs_live_';
-  input.setAttribute('aria-label', 'Checkout session id');
+  input.placeholder = 'name@email.com';
+  input.setAttribute('aria-label', 'Receipt email or return link');
   body.appendChild(input);
   const go = el('button', 'btn amber', 'RESTORE');
   go.type = 'button';
+  let restorePending = false;
   go.addEventListener('click', () => {
+    if (restorePending) return;
+    restorePending = true;
     const note = document.getElementById('payNote');
-    const message = applyRestore(input.value);
-    if (note) note.textContent = message;
-    if (hasDevicePass()) {
-      const deck = body.querySelector('.deckLine');
-      if (!deck) body.insertBefore(el('p', 'deckLine', 'Season Pass is active on this browser, on every save slot.'), body.querySelector('.fine'));
-    }
+    if (note) note.textContent = 'Checking the purchase.';
+    applyRestore(input.value).then(message => {
+      restorePending = false;
+      if (note) note.textContent = message;
+      if (hasDevicePass()) {
+        const deck = body.querySelector('.deckLine');
+        if (!deck) body.insertBefore(el('p', 'deckLine', 'Season Pass is active on this browser, on every save slot.'), body.querySelector('.fine'));
+      }
+    }).catch(() => {
+      restorePending = false;
+      if (note) note.textContent = 'Season Pass was not granted. The purchase check did not respond.';
+    });
   });
   body.appendChild(go);
   const note = el('p', 'fine', '');
   note.id = 'payNote';
   body.appendChild(note);
-  body.appendChild(el('p', 'fine', 'If checkout finished in another browser, open Backup Code there and restore it here. This site cannot look up a purchase by email. A wiped browser needs the checkout id or a backup code.'));
+  body.appendChild(el('p', 'fine', 'Checkout in another browser can be restored here with that receipt email. You can also open Backup Code there and restore this save slot.'));
   const close = el('button', 'btn', 'CLOSE');
   close.type = 'button';
   close.addEventListener('click', hideSheets);
