@@ -17,6 +17,7 @@ const RESTORE_ID = 'cs_live_restorepurchase1';
 const SLOT_ID = 'cs_test_slotswitchslot01';
 const LOCAL_REPLAY = 'cs_test_localreplay0001';
 const LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
+const VERIFY_URL = 'https://waking-season-pass.matpcul.workers.dev';
 const LINE = 'Watch 3 trailers to play this chapter now, or get every chapter with Season Pass.';
 let failed = 0;
 
@@ -40,7 +41,7 @@ check('email restore is a verify', judgeRestore('Reader@Example.com', [], false)
 check('shape check never returns grant', [LIVE, FAKE, 'cs_test_abcdefghijklmnopqrst'].every(id => judgeReturn('1', id, [], false).action !== 'grant' && judgeSession(id, [], false).action !== 'grant'));
 
 const commercialSource = readFileSync(join(root, 'commercial.js'), 'utf8');
-check('verify url is empty until deploy', /SEASON_VERIFY_URL:\s*''/.test(commercialSource));
+check('verify url is the live worker', commercialSource.includes("SEASON_VERIFY_URL: '" + VERIFY_URL + "'"));
 check('client has no shape grant', !/action === 'grant'/.test(commercialSource));
 check('static site has no stripe secret', !/sk_(live|test)_/.test(commercialSource) && !/STRIPE_SECRET/.test(commercialSource));
 
@@ -244,7 +245,7 @@ const server = createServer((req, res) => {
   if (url.pathname === '/commercial.js') {
     let text = commercialSource;
     if (url.searchParams.get('verify') === '1') {
-      const replaced = text.replace("SEASON_VERIFY_URL: ''", "SEASON_VERIFY_URL: '/season-verify'");
+      const replaced = text.replace("SEASON_VERIFY_URL: '" + VERIFY_URL + "'", "SEASON_VERIFY_URL: '/season-verify'");
       if (replaced === text) {
         res.writeHead(500, { 'content-type': 'text/plain' });
         res.end('SEASON_VERIFY_URL was not rewritten');
