@@ -1,6 +1,7 @@
-// Phase 0 commercial shell: settings, 3 save slots, entitlements,
-// anonymous choice counts, share card, light analytics.
-// Purchases and live ads stay unwired until Matthew connects the stores.
+// Commercial shell: settings, 3 save slots, entitlements, choice counts.
+// Phase 1 web unlock: three local book trailers, watched to the end,
+// grant the same Season Pass as the button. Real store checkout is later.
+// A missing trailer file shows an error and does not count a view.
 
 import { resumePlan } from './feel.js';
 
@@ -17,6 +18,36 @@ export const COMMERCE = {
   STEAM_PRICE: '$7.99',
   AD_VIEWS: 3,
 };
+
+// One slot tracks each trailer id once inside slot.ads. Chapter keys
+// already stored there are left alone. Replace the mp4, keep the path.
+const TRAILERS = [
+  {
+    id: 'dystopia',
+    title: 'Dystopia: Life After The Machines',
+    src: 'ads/dystopia.mp4',
+    cta: 'OPEN ON AMAZON',
+    url: 'https://www.amazon.com/dp/B0H2SGHFNN',
+  },
+  {
+    id: 'borrowed-heartbeat',
+    title: 'Borrowed Heartbeat',
+    src: 'ads/borrowed-heartbeat.mp4',
+    cta: 'OPEN ON AMAZON',
+    url: 'https://www.amazon.com/dp/B0GXP6KYBN',
+  },
+  {
+    id: 'ailt',
+    title: 'Adaptive Inclusive Leadership Theory (AILT)',
+    src: 'ads/ailt.mp4',
+    cta: 'OPEN AUTHOR HUB',
+    url: 'https://matthew-culwell-author-page.vercel.app',
+  },
+];
+
+let trailerToken = 0;
+let trailerSettled = false;
+let activeVideo = null;
 
 let memory = null;
 let api = null;
@@ -121,8 +152,9 @@ function hasPass(){
 function previewOn(){
   try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
 }
-// Pages has no store checkout. Season Pass and three short views set the
-// same local entitlement: Chapters Three to Six and every Chapter Two path.
+// Pages has no store checkout yet. The Season Pass button and three
+// finished book trailers set the same local entitlement: Chapters
+// Three to Six and every Chapter Two path. Real checkout is Phase 2.
 function grantSeason(){
   const s = slot();
   s.pass = true;
@@ -276,8 +308,14 @@ function panel(id){
   panels[id] = p;
   return p;
 }
-function show(id){ Object.keys(panels).forEach(k => { panels[k].style.display = k === id ? 'flex' : 'none'; }); }
-function hideSheets(){ Object.keys(panels).forEach(k => { panels[k].style.display = 'none'; }); }
+function show(id){
+  if (id !== 'trailerSheet') releaseTrailer();
+  Object.keys(panels).forEach(k => { panels[k].style.display = k === id ? 'flex' : 'none'; });
+}
+function hideSheets(){
+  releaseTrailer();
+  Object.keys(panels).forEach(k => { panels[k].style.display = 'none'; });
+}
 
 function buildSettings(host){
   const st = memory.settings;
@@ -444,21 +482,88 @@ function importBackup(code){
   }
 }
 
-function openPaywall(id){
+function trailersDone(){
   const s = slot();
-  const views = (s.ads && s.ads[id]) || 0;
+  const ads = (s && s.ads) || {};
+  let n = 0;
+  TRAILERS.forEach(t => { if (ads[t.id]) n += 1; });
+  return n;
+}
+function nextTrailer(){
+  const s = slot();
+  const ads = (s && s.ads) || {};
+  for (let i = 0; i < TRAILERS.length; i++) {
+    if (!ads[TRAILERS[i].id]) return TRAILERS[i];
+  }
+  return null;
+}
+function markTrailer(trailerId){
+  const s = slot();
+  if (!s.ads || typeof s.ads !== 'object') s.ads = {};
+  if (s.ads[trailerId]) return;
+  s.ads[trailerId] = 1;
+  persist();
+  if (trailersDone() >= COMMERCE.AD_VIEWS) grantSeason();
+}
+function fmtClock(t){
+  if (!t || !isFinite(t)) return '0:00';
+  const s = Math.floor(t);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return m + ':' + (r < 10 ? '0' : '') + r;
+}
+function releaseTrailer(){
+  if (!trailerSettled) trailerToken += 1;
+  trailerSettled = false;
+  const video = activeVideo;
+  activeVideo = null;
+  if (!video) return;
+  try {
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+  } catch (e) {}
+}
+function payTitle(id){
+  return (api && api.chapters && api.chapters[id] && api.chapters[id].subtitle) || id;
+}
+function openUnlocked(id, body){
+  if (trailersDone() >= COMMERCE.AD_VIEWS && !slot().pass) grantSeason();
+  body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
+  body.appendChild(el('p', 'deckLine', 'Season Pass is open on this device.'));
+  body.appendChild(el('p', 'fine', trailersDone() + ' of ' + COMMERCE.AD_VIEWS + ' trailers finished. Chapters Three to Six and every Chapter Two path are unlocked here. Nothing was charged.'));
+  const go = el('button', 'btn amber', 'ENTER CHAPTER');
+  go.type = 'button';
+  go.addEventListener('click', () => {
+    location.hash = '#' + id;
+    location.reload();
+  });
+  body.appendChild(go);
+  const close = el('button', 'btn', 'CLOSE');
+  close.type = 'button';
+  close.addEventListener('click', hideSheets);
+  body.appendChild(close);
+}
+
+function openPaywall(id){
   const body = document.getElementById('payBody');
   if (!body) return;
   body.innerHTML = '';
-  const title = (api && api.chapters && api.chapters[id] && api.chapters[id].subtitle) || id;
-  body.appendChild(el('h3', 'sheetTitle', title));
+  const unlocked = !previewOn() && (hasPass() || trailersDone() >= COMMERCE.AD_VIEWS);
+  if (unlocked) {
+    openUnlocked(id, body);
+    show('paySheet');
+    return;
+  }
+  const done = trailersDone();
+  body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
   if (id === 'ch_counting') {
     body.appendChild(el('p', 'deckLine', 'Your story continues in Chapter Three.'));
   } else {
     body.appendChild(el('p', 'deckLine', 'This chapter is part of Book One.'));
   }
   body.appendChild(el('p', 'fine', 'Episode One stays free. One Chapter Two path stays free with the ending you earned. Season Pass ' + COMMERCE.SEASON_PRICE + ' opens Chapters Three to Six and every Chapter Two path. It also removes ads.'));
-  body.appendChild(el('p', 'fine', 'This Pages build has no store checkout. Season Pass and three short views open those chapters on this device. Nothing is charged.'));
+  body.appendChild(el('p', 'fine', 'This Pages build has no store checkout yet. The Season Pass button opens those chapters on this device until real checkout is added. Nothing is charged.'));
   const pass = el('button', 'btn amber', 'SEASON PASS  ' + COMMERCE.SEASON_PRICE);
   pass.type = 'button';
   pass.addEventListener('click', () => {
@@ -467,11 +572,17 @@ function openPaywall(id){
     location.reload();
   });
   body.appendChild(pass);
-  const ads = el('button', 'btn', 'WATCH A SHORT VIEW  ' + views + ' / ' + COMMERCE.AD_VIEWS);
+  const ads = el('button', 'btn', 'WATCH BOOK TRAILERS  ' + done + ' / ' + COMMERCE.AD_VIEWS);
   ads.type = 'button';
-  ads.addEventListener('click', () => playPlaceholderAd(id));
+  ads.addEventListener('click', () => playTrailer(id));
   body.appendChild(ads);
-  body.appendChild(el('p', 'fine', 'Three completed views open Chapters Three to Six and every Chapter Two path. Views are optional. There are no banner ads and no forced breaks. The button below is a stand in until AdMob is connected. It still counts, and the card says so.'));
+  const s = slot();
+  const bag = (s && s.ads) || {};
+  TRAILERS.forEach((t, i) => {
+    body.appendChild(el('p', 'fine', (i + 1) + '. ' + t.title + (bag[t.id] ? '  WATCHED' : '')));
+  });
+  body.appendChild(el('p', 'fine', 'Watch three book trailers to the end for the same Season Pass on this device. Each trailer counts once. Close early and it does not count. There is no skip.'));
+  body.appendChild(el('p', 'fine', 'After a trailer ends, you can open Amazon or the author hub. Those links are not the payment.'));
   const remove = el('button', 'btn', 'REMOVE ADS  ' + COMMERCE.REMOVE_ADS_PRICE);
   remove.type = 'button';
   remove.addEventListener('click', () => {
@@ -480,10 +591,10 @@ function openPaywall(id){
       if (note) note.textContent = 'Season Pass already includes Remove Ads.';
       return;
     }
-    const s = slot();
-    s.noAds = true;
+    const cur = slot();
+    cur.noAds = true;
     persist();
-    if (note) note.textContent = 'Remove Ads is on for this device. Chapters stay locked until Season Pass or three views. Nothing was charged.';
+    if (note) note.textContent = 'Remove Ads is on for this device. Chapters stay locked until Season Pass or three finished trailers. Nothing was charged.';
   });
   body.appendChild(remove);
   const note = el('p', 'fine', '');
@@ -497,31 +608,214 @@ function openPaywall(id){
   show('paySheet');
 }
 
-function playPlaceholderAd(id){
-  const note = document.getElementById('payNote');
-  if (note) note.textContent = 'Stand in view. No live ad played. AdMob is not connected.';
-  setTimeout(() => {
-    const s = slot();
-    if (!s.ads) s.ads = {};
-    s.ads[id] = (s.ads[id] || 0) + 1;
-    persist();
-    if (s.ads[id] >= COMMERCE.AD_VIEWS) {
-      grantSeason();
-      location.hash = '#' + id;
-      location.reload();
+function showTrailerDone(chapterId, trailer){
+  const body = document.getElementById('trailerBody');
+  if (!body) return;
+  body.innerHTML = '';
+  const done = trailersDone();
+  body.appendChild(el('h3', 'sheetTitle', 'TRAILER COMPLETE'));
+  body.appendChild(el('p', 'deckLine', trailer.title));
+  body.appendChild(el('p', 'fine', done + ' of ' + COMMERCE.AD_VIEWS + ' trailers finished.'));
+  if (done >= COMMERCE.AD_VIEWS) {
+    body.appendChild(el('p', 'fine', 'Season Pass is open on this device. Nothing was charged.'));
+  }
+  const link = document.createElement('a');
+  link.className = 'btn amber';
+  link.textContent = trailer.cta;
+  link.href = trailer.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  body.appendChild(link);
+  const cont = el('button', 'btn', 'CONTINUE');
+  cont.type = 'button';
+  cont.addEventListener('click', () => openPaywall(chapterId));
+  body.appendChild(cont);
+}
+
+function playTrailer(chapterId){
+  releaseTrailer();
+  const trailer = nextTrailer();
+  if (!trailer) {
+    openPaywall(chapterId);
+    return;
+  }
+  const token = ++trailerToken;
+  trailerSettled = false;
+  const body = document.getElementById('trailerBody');
+  if (!body) return;
+  body.innerHTML = '';
+  body.appendChild(el('h3', 'sheetTitle', 'BOOK TRAILER  ' + (trailersDone() + 1) + ' / ' + COMMERCE.AD_VIEWS));
+  body.appendChild(el('p', 'deckLine', trailer.title));
+  body.appendChild(el('p', 'fine', 'Watch to the end. There is no skip. Close returns you to the pay sheet and does not count.'));
+
+  const frame = el('div', 'trailerFrame');
+  const video = document.createElement('video');
+  video.id = 'trailerVideo';
+  video.playsInline = true;
+  video.setAttribute('playsinline', '');
+  video.setAttribute('webkit-playsinline', '');
+  video.preload = 'auto';
+  video.controls = false;
+  video.disablePictureInPicture = true;
+  video.disableRemotePlayback = true;
+  video.playbackRate = 1;
+  video.defaultPlaybackRate = 1;
+  video.tabIndex = -1;
+  video.setAttribute('aria-label', trailer.title);
+  try { video.volume = Math.max(0, Math.min(1, Number(memory.settings.volume) || 0)); } catch (e) {}
+  frame.appendChild(video);
+  body.appendChild(frame);
+
+  const meter = el('div', 'trailerMeter');
+  meter.setAttribute('aria-hidden', 'true');
+  const fill = el('div', '');
+  fill.id = 'trailerMeterFill';
+  meter.appendChild(fill);
+  body.appendChild(meter);
+
+  const time = el('p', 'fine', '0:00 / 0:00');
+  time.id = 'trailerTime';
+  body.appendChild(time);
+  const err = el('p', 'fine', '');
+  err.id = 'trailerErr';
+  body.appendChild(err);
+
+  const row = el('div', 'trailerBtns');
+  const play = el('button', 'btn', 'PLAY');
+  play.type = 'button';
+  const close = el('button', 'btn', 'CLOSE');
+  close.type = 'button';
+  row.append(play, close);
+  body.appendChild(row);
+
+  let watched = 0;
+  let correcting = false;
+  let seekRejectAt = 0;
+
+  function alive(){ return token === trailerToken && !trailerSettled; }
+  function paint(){
+    const label = document.getElementById('trailerTime');
+    const bar = document.getElementById('trailerMeterFill');
+    const dur = video.duration;
+    if (label) label.textContent = fmtClock(watched) + ' / ' + fmtClock(dur);
+    if (bar) {
+      const pct = dur && isFinite(dur) ? Math.max(0, Math.min(100, (watched / dur) * 100)) : 0;
+      bar.style.width = pct + '%';
+    }
+  }
+  function reached(){
+    const dur = video.duration;
+    if (!dur || !isFinite(dur) || dur < 0.5) return false;
+    if (watched >= dur * 0.95) return true;
+    if (video.ended && watched >= dur * 0.9) return true;
+    return false;
+  }
+  function settle(){
+    if (!alive() || !reached()) return;
+    trailerSettled = true;
+    try { video.pause(); } catch (e) {}
+    activeVideo = null;
+    markTrailer(trailer.id);
+    showTrailerDone(chapterId, trailer);
+  }
+  function clampSeek(){
+    if (!alive() || correcting) return;
+    if (video.currentTime > watched + 0.25) {
+      seekRejectAt = performance.now();
+      correcting = true;
+      try { video.currentTime = watched; } catch (e) {}
+      correcting = false;
+    }
+  }
+
+  video.addEventListener('seeking', clampSeek);
+  video.addEventListener('seeked', clampSeek);
+  video.addEventListener('loadedmetadata', paint);
+  video.addEventListener('ratechange', () => {
+    if (video.playbackRate !== 1) video.playbackRate = 1;
+  });
+  video.addEventListener('timeupdate', () => {
+    if (!alive() || video.seeking) return;
+    const ahead = video.currentTime - watched;
+    // Normal playback reports small steps. A scrub, or a currentTime
+    // jump, is larger than a stalled frame and must not count.
+    if (ahead > 1 || (performance.now() - seekRejectAt < 500 && ahead > 0.25)) {
+      clampSeek();
       return;
     }
-    openPaywall(id);
-    const n2 = document.getElementById('payNote');
-    if (n2) n2.textContent = 'Stand in view counted. ' + s.ads[id] + ' of ' + COMMERCE.AD_VIEWS + '.';
-  }, 900);
+    if (!video.paused && ahead > 0) watched = video.currentTime;
+    paint();
+    if (reached()) settle();
+  });
+  video.addEventListener('ended', () => { if (alive()) settle(); });
+  video.addEventListener('error', () => {
+    if (!alive()) return;
+    video.style.visibility = 'hidden';
+    const note = document.getElementById('trailerErr');
+    if (note) note.textContent = 'This trailer did not load. Nothing was counted. Press retry, or close and come back.';
+    play.textContent = 'RETRY';
+    play.dataset.mode = 'retry';
+  });
+  video.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  function startPlay(){
+    video.playbackRate = 1;
+    const pending = video.play();
+    if (pending && pending.then) {
+      pending.then(() => {
+        if (!alive()) return;
+        play.textContent = 'PAUSE';
+        play.dataset.mode = '';
+      }).catch(() => {
+        if (!alive()) return;
+        const note = document.getElementById('trailerErr');
+        if (note && !video.error) note.textContent = 'Playback did not start. Press play again.';
+      });
+    }
+  }
+
+  play.addEventListener('click', () => {
+    if (!alive()) return;
+    if (play.dataset.mode === 'retry' || video.error) {
+      watched = 0;
+      seekRejectAt = 0;
+      video.style.visibility = '';
+      play.dataset.mode = '';
+      play.textContent = 'PLAY';
+      const note = document.getElementById('trailerErr');
+      if (note) note.textContent = '';
+      video.src = trailer.src + (trailer.src.indexOf('?') >= 0 ? '&' : '?') + 'retry=' + Date.now();
+      video.load();
+      startPlay();
+      return;
+    }
+    if (video.paused) startPlay();
+    else {
+      video.pause();
+      play.textContent = 'PLAY';
+    }
+  });
+  close.addEventListener('click', () => {
+    trailerToken += 1;
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    } catch (e) {}
+    activeVideo = null;
+    openPaywall(chapterId);
+  });
+
+  video.src = trailer.src;
+  activeVideo = video;
+  show('trailerSheet');
 }
 
 function buildChapters(host){
   host.innerHTML = '';
   const box = el('div', 'sheetBody');
   box.appendChild(el('h3', 'sheetTitle', 'CHAPTERS'));
-  box.appendChild(el('p', 'fine', 'Episode One is free. One Chapter Two path stays free with the ending you earned. The rest opens with the Season Pass, or with three optional views.'));
+  box.appendChild(el('p', 'fine', 'Episode One is free. One Chapter Two path stays free with the ending you earned. The rest opens with the Season Pass, or after three book trailers watched to the end.'));
   const chapters = (api && api.chapters) || {};
   Object.keys(chapters).forEach(id => {
     const c = chapters[id];
@@ -610,7 +904,11 @@ export const Waking = window.Waking = {
     if (!id || id === 'ep1') return false;
     if (hasPass()) return false;
     const s = slot();
-    if (s && (s.ads[id] || 0) >= 3) return false;
+    if (s && trailersDone() >= COMMERCE.AD_VIEWS) {
+      if (!s.pass) grantSeason();
+      return false;
+    }
+    if (s && (s.ads[id] || 0) >= COMMERCE.AD_VIEWS) return false;
     if (CH2_IDS.indexOf(id) >= 0) {
       const free = s && s.carry && CH2[s.carry.from];
       return id !== free;
@@ -716,6 +1014,21 @@ export const Waking = window.Waking = {
     const payBody = el('div', 'sheetBody');
     payBody.id = 'payBody';
     pay.appendChild(payBody);
+
+    const trailer = panel('trailerSheet');
+    const trailerBody = el('div', 'sheetBody');
+    trailerBody.id = 'trailerBody';
+    trailer.appendChild(trailerBody);
+    window.addEventListener('keydown', (e) => {
+      const sheet = document.getElementById('trailerSheet');
+      if (!sheet || sheet.style.display === 'none') return;
+      const block = e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown'
+        || e.key === 'Home' || e.key === 'End' || e.key === 'MediaTrackNext' || e.key === 'MediaTrackPrevious'
+        || e.key === 'MediaFastForward' || e.key === 'MediaRewind';
+      if (!block) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
 
     const archive = panel('archiveSheet');
     buildArchive(archive);
