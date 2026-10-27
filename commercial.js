@@ -1,8 +1,9 @@
 // Commercial shell: settings, 3 save slots, entitlements, choice counts.
 // Three book trailers open the chapter you asked for during this visit.
 // They do not set Season Pass. Season Pass is the only permanent unlock
-// (every chapter, and no trailers). The button does not grant it here.
-// Checkout comes later. ?preview=1 unlocks this tab without slot.pass.
+// (every chapter, and no trailers). The button opens COMMERCE.SEASON_URL.
+// A return with ?season_pass=1 calls grantSeason once.
+// ?preview=1 unlocks this tab without slot.pass.
 // A missing trailer file shows an error and does not count a view.
 
 import { resumePlan } from './feel.js';
@@ -15,14 +16,16 @@ const PAID = ['ch_counting', 'ch_conduits', 'ch_harvest', 'ch_steel'];
 export const COMMERCE = {
   STATS_URL: '',
   ANALYTICS_URL: '',
+  SEASON_URL: 'https://buy.stripe.com/bJe14pfBe0XNfJz0Xk3wQ00',
   SEASON_PRICE: '$6.99',
   REMOVE_ADS_PRICE: '$2.99',
   STEAM_PRICE: '$7.99',
   AD_VIEWS: 3,
 };
 
-// One slot tracks each trailer id once inside slot.ads. Chapter keys
-// already stored there are left alone. Replace the mp4, keep the path.
+// Trailer progress for this visit lives in sessionStorage.
+// slot.ads stays in the save shape and does not unlock chapters.
+// Replace an mp4, keep the path.
 const TRAILERS = [
   {
     id: 'dystopia',
@@ -155,7 +158,8 @@ function previewOn(){
   try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
 }
 // Permanent Season Pass: every paid chapter and no trailers.
-// The pay sheet does not call this. Checkout will, when it exists.
+// Called once when checkout returns with season_pass=1.
+// Trailers and the pay button do not call this.
 // ?preview=1 unlocks the tab through hasPass() without this function.
 function grantSeason(){
   const s = slot();
@@ -174,6 +178,7 @@ export function bootSaves(){
   if (typeof localStorage === 'undefined') {
     memory = migrate();
     settleTrailerSession();
+    claimSeasonReturn();
     return;
   }
   const params = new URLSearchParams(location.search);
@@ -193,6 +198,51 @@ export function bootSaves(){
   persist();
   if (typeof document !== 'undefined') applySettings();
   settleTrailerSession();
+  claimSeasonReturn();
+}
+
+// GitHub Pages cannot verify the Checkout Session. The Payment Link
+// success URL is the signal. Strip it so a refresh does not grant again.
+function claimSeasonReturn(){
+  if (typeof location === 'undefined') return;
+  let params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return; }
+  if (params.get('season_pass') !== '1') return;
+  if (slot() && !slot().pass) grantSeason();
+  params.delete('season_pass');
+  params.delete('session_id');
+  const q = params.toString();
+  const next = location.pathname + (q ? '?' + q : '') + (location.hash || '');
+  try { history.replaceState(history.state, '', next); } catch (e) {}
+  showSeasonNote();
+}
+function showSeasonNote(){
+  if (typeof document === 'undefined' || !document.body) return;
+  let note = document.getElementById('seasonNote');
+  if (!note) {
+    note = document.createElement('p');
+    note.id = 'seasonNote';
+    note.className = 'modeLine';
+    const start = document.getElementById('startScreen');
+    const hint = document.getElementById('startHint');
+    if (start && hint && hint.parentNode === start) hint.insertAdjacentElement('afterend', note);
+    else if (start) start.appendChild(note);
+    else document.body.appendChild(note);
+  }
+  note.textContent = 'Season Pass is active on this device.';
+}
+function openSeasonCheckout(){
+  const url = COMMERCE.SEASON_URL;
+  const note = document.getElementById('payNote');
+  let popup = null;
+  try { popup = window.open(url, '_blank'); } catch (e) { popup = null; }
+  if (popup) {
+    try { popup.opener = null; } catch (e) {}
+    if (note) note.textContent = 'Stripe checkout opened in a new tab. The pass is stored on this device when you return.';
+    return;
+  }
+  if (note) note.textContent = 'Opening Stripe checkout.';
+  location.assign(url);
 }
 
 function track(name, extra){
@@ -615,16 +665,15 @@ function openPaywall(id){
     body.appendChild(el('p', 'deckLine', 'This chapter is part of Book One.'));
   }
   body.appendChild(el('p', 'fine', 'Episode One stays free. One Chapter Two path stays free with the ending you earned. Season Pass (' + COMMERCE.SEASON_PRICE + ') is the permanent unlock: every chapter, and no trailers.'));
-  body.appendChild(el('p', 'fine', 'Checkout is not connected on this Pages build yet. The Season Pass button does not unlock chapters and does not charge you. Payment comes later.'));
+  body.appendChild(el('p', 'fine', 'The Season Pass button opens Stripe checkout. The pass is stored on this device when you return.'));
   const pass = el('button', 'btn amber', 'SEASON PASS  ' + COMMERCE.SEASON_PRICE);
   pass.type = 'button';
   pass.addEventListener('click', () => {
-    const note = document.getElementById('payNote');
     if (previewOn()) {
       enterChapter(id);
       return;
     }
-    if (note) note.textContent = 'Season Pass checkout is not connected yet. Nothing was charged. This button will open payment later. It does not unlock chapters.';
+    openSeasonCheckout();
   });
   body.appendChild(pass);
   if (!quiet) {
