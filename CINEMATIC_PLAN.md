@@ -44,7 +44,7 @@ Posters, same folder:
 
 The origin clip is in: `media/shorts/game/game_ep1_origin_v2.mp4`, poster `media/shorts/game/game_ep1_origin_v2.jpg`. The face is the RSA Shorts Marcus (the Ep1 wake, run, and train look). Not a new actor. Not the human avatar built in this game. New Game plays cue 0 to 15. If that file fails to load, the two train intro lines still play and control returns in the car. The archive row is `ready`, so the checker requires the file and PLAY FULL SHORT is on.
 
-`media/shorts/game/game_ep1_origin.mp4` is retired. It is not the New Game open and not an archive row. That cut deletes the car wall so a hatch can appear. Do not point ep1_wake at it.
+`media/shorts/game/game_ep1_origin.mp4` is retired and is not in the repo. It is not the New Game open and not an archive row. That cut deletes the car wall so a hatch can appear. Do not add the file back and do not point ep1_wake at it.
 
 `media/shorts/game/game_ep1_train.mp4` stays on the archive row as a rewatch of the rail car. New Game does not play it.
 
