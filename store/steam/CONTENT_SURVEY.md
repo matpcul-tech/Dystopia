@@ -16,5 +16,5 @@ Honest notes for Matthew to submit. This build does not claim a survey was filed
 ## What is not in this build
 
 - No live ad creative.
-- No store purchase and no live charge. Season Pass is the permanent unlock and it is not granted by the button on this Pages build. Checkout comes later. Three book trailers open only the chapter you asked for, for this visit, and do not set Season Pass. Remove Ads turns trailers off and does not open chapters. RevenueCat is not connected. Trailer files are local. Links after a trailer are not a charge.
+- Season Pass checkout opens a Stripe Payment Link. The button does not grant the pass. Returning with season_pass=1 stores the pass on this device. Three book trailers open only the chapter you asked for, for this visit, and do not set Season Pass. Remove Ads turns trailers off and does not open chapters. RevenueCat is not connected. Trailer files are local. Links after a trailer are not a charge.
 - No voice acting pass and no recorded score.

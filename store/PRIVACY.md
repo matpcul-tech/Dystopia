@@ -10,4 +10,6 @@ If analytics is connected later, a chapter start, a chapter complete, a drop off
 
 Book trailers play from files on this site. They do not contact an ad network. AdMob is not connected. Amazon and the author hub open only if the player chooses those links after a trailer.
 
+Season Pass checkout opens Stripe in a new tab. This site does not see the card. When Stripe sends the player back, the pass is stored on this device.
+
 Backup codes are a copy of the save slot. They stay on the device until the player copies them.
