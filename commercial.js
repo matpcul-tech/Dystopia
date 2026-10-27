@@ -690,7 +690,6 @@ function playTrailer(chapterId){
 
   let watched = 0;
   let correcting = false;
-  let seekRejectAt = 0;
 
   function alive(){ return token === trailerToken && !trailerSettled; }
   function paint(){
@@ -721,7 +720,6 @@ function playTrailer(chapterId){
   function clampSeek(){
     if (!alive() || correcting) return;
     if (video.currentTime > watched + 0.25) {
-      seekRejectAt = performance.now();
       correcting = true;
       try { video.currentTime = watched; } catch (e) {}
       correcting = false;
@@ -739,7 +737,8 @@ function playTrailer(chapterId){
     const ahead = video.currentTime - watched;
     // Normal playback reports small steps. A scrub, or a currentTime
     // jump, is larger than a stalled frame and must not count.
-    if (ahead > 1 || (performance.now() - seekRejectAt < 500 && ahead > 0.25)) {
+    // Do not keep re-arming that snap, or playback can never catch up.
+    if (ahead > 1) {
       clampSeek();
       return;
     }
@@ -778,7 +777,6 @@ function playTrailer(chapterId){
     if (!alive()) return;
     if (play.dataset.mode === 'retry' || video.error) {
       watched = 0;
-      seekRejectAt = 0;
       video.style.visibility = '';
       play.dataset.mode = '';
       play.textContent = 'PLAY';
