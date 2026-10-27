@@ -1,5 +1,5 @@
-// Portrait cards are placeholders. They are drawn in code, labeled, and
-// are not finished character art. Swap the draw function when real art arrives.
+// Portrait cards stay hidden until real character art exists.
+// The gray stand-in used to ship with a SPEAK line and a placeholder label.
 
 const CAST = {
   MARCUS: 'MARCUS',
@@ -16,7 +16,10 @@ const CAST = {
   WARDEN: 'THE WARDEN',
 };
 
-let card, canvas, ctx, nameEl, exprEl;
+// Flip this only when a real portrait set replaces the drawn stand-in.
+const PORTRAIT_ART = false;
+
+let card, canvas, ctx, nameEl;
 
 export function mountPortrait(host){
   if (card) return card;
@@ -30,12 +33,7 @@ export function mountPortrait(host){
   meta.className = 'pmeta';
   nameEl = document.createElement('div');
   nameEl.className = 'pname';
-  exprEl = document.createElement('div');
-  exprEl.className = 'pexpr';
-  const tag = document.createElement('div');
-  tag.className = 'ptag';
-  tag.textContent = 'PORTRAIT PLACEHOLDER';
-  meta.append(nameEl, exprEl, tag);
+  meta.append(nameEl);
   card.append(canvas, meta);
   const parent = host || document.body;
   if (parent.firstChild) parent.insertBefore(card, parent.firstChild);
@@ -44,12 +42,15 @@ export function mountPortrait(host){
 }
 
 export function showPortrait(who, expr){
+  if (!PORTRAIT_ART){
+    hidePortrait();
+    return;
+  }
   if (!card) mountPortrait(document.getElementById('storyWrap') || document.body);
   const key = who && CAST[who] ? who : null;
   if (!key){ hidePortrait(); return; }
   const face = expr === 'tense' || expr === 'speak' ? expr : 'neutral';
   nameEl.textContent = CAST[key];
-  exprEl.textContent = face.toUpperCase();
   draw(key, face);
   card.classList.add('on');
   card.dataset.who = key;
@@ -94,7 +95,4 @@ function draw(who, expr){
     g.moveTo(144, 100); g.lineTo(164, 100);
   }
   g.stroke();
-  g.fillStyle = 'rgba(244,236,223,.18)';
-  g.font = '12px sans-serif';
-  g.fillText('NOT FINAL ART', 18, h - 28);
 }

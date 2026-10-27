@@ -1516,8 +1516,9 @@ function ensurePost(){
    ============================================================ */
 const MODELS = {};
 async function loadModels(){
-  // GLB heroes are full PBR. Potato stays on the procedural meshes.
-  if (Q.p.basic) return;
+  // Enemy GLBs stay procedural on potato. models/rifle.glb is small,
+  // so that tier still loads the rifle and drops the blocky cream fallback.
+  const rifleOnly = !!Q.p.basic;
   try {
     const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
     const loader = new GLTFLoader();
@@ -1527,7 +1528,8 @@ async function loadModels(){
       ['warden',  'models/warden.glb', 1.30, -0.643, -0.104,{ eye:[0,.14,.66], muzzle:[0,-.30,.60] }],
       ['rifle',   'models/rifle.glb',  1.08,  0,     0,     {}],
     ];
-    await Promise.all(defs.map(([kind, url, k, oy, oz, pts]) => new Promise(res => {
+    const wanted = rifleOnly ? defs.filter(d => d[0] === 'rifle') : defs;
+    await Promise.all(wanted.map(([kind, url, k, oy, oz, pts]) => new Promise(res => {
       loader.load(url, g => {
         const inner = g.scene;
         // keep the authored PBR materials; push them toward cold steel and recolour
@@ -1545,6 +1547,11 @@ async function loadModels(){
                 m.transparent = true; m.opacity = .2; m.roughness = .05; m.metalness = 0; m.depthWrite = false; m.envMapIntensity = 1.8;
               } else if (nm === 'subject'){
                 m.roughness = .85; m.color.multiplyScalar(.5);
+              } else if (Q.p.basic){
+                // Potato has no environment map. A metal rifle would render black
+                // and the cream block fallback would stay in frame.
+                m.color.multiplyScalar(1.35);
+                m.roughness = .55; m.metalness = .05; m.envMapIntensity = 0;
               } else {
                 m.color.multiply(new THREE.Color(.62,.66,.70));
                 m.roughness = Math.min(.7, Math.max(.5, m.roughness + .05)); m.metalness = .8; m.envMapIntensity = 1.3;
@@ -1666,7 +1673,11 @@ function applyQuality(level){
   G._fpsT = 0; G._fpsN = 0; G._fpsSkip = 1; G._fpsGood = 0; G._fpsBad = 0;
   refreshGfxButton();
   Cinematic.onQuality();
+  syncPotatoOutlines();
 }
+
+// Filled in once drones exist. The first quality pass runs before that.
+let syncPotatoOutlines = function(){};
 
 // Runtime governor: samples fps in 2.5s windows while playing.
 // Two bad windows in a row step quality down (and remember it for this device).
@@ -3446,6 +3457,63 @@ const KINDS = {
 const drones = [];
 let droneSeq = 0;
 
+// Potato fog swallows the blocky machines until only the red eye is left.
+// A bright rim and edge, drawn without fog, keep the silhouette readable.
+const POTATO_EDGE = new THREE.LineBasicMaterial({
+  color: 0xfff6d8, fog: false, toneMapped: false,
+  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+});
+const POTATO_SHELL = new THREE.MeshBasicMaterial({
+  color: 0xffe3a1, side: THREE.BackSide, fog: false, toneMapped: false,
+  transparent: true, opacity: .9, depthWrite: false,
+});
+const potatoEdgeGeo = new Map();
+const potatoOutlined = new WeakSet();
+function addPotatoOutline(root){
+  if (!Q.p.basic || !root || potatoOutlined.has(root)) return;
+  potatoOutlined.add(root);
+  const meshes = [];
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    if (o.material && o.material.transparent) return;
+    if (o.userData && o.userData.potatoOutline) return;
+    meshes.push(o);
+  });
+  meshes.forEach(o => {
+    let edges = potatoEdgeGeo.get(o.geometry);
+    if (!edges){
+      edges = new THREE.EdgesGeometry(o.geometry, 28);
+      potatoEdgeGeo.set(o.geometry, edges);
+    }
+    const lines = new THREE.LineSegments(edges, POTATO_EDGE);
+    lines.userData.potatoOutline = 1;
+    lines.frustumCulled = false;
+    lines.raycast = () => {};
+    o.add(lines);
+    const shell = new THREE.Mesh(o.geometry, POTATO_SHELL);
+    shell.userData.potatoOutline = 1;
+    shell.scale.setScalar(1.18);
+    shell.frustumCulled = false;
+    shell.raycast = () => {};
+    o.add(shell);
+  });
+}
+function clearPotatoOutline(root){
+  if (!root || !potatoOutlined.has(root)) return;
+  const drop = [];
+  root.traverse(o => { if (o.userData && o.userData.potatoOutline) drop.push(o); });
+  drop.forEach(o => { if (o.parent) o.parent.remove(o); });
+  potatoOutlined.delete(root);
+}
+syncPotatoOutlines = function(){
+  drones.forEach(d => {
+    if (!d.mesh) return;
+    // GLB frames already read as machines. Outlines are for the block meshes.
+    if (Q.p.basic && !(d.anim && d.anim.glb)) addPotatoOutline(d.mesh);
+    else clearPotatoOutline(d.mesh);
+  });
+};
+
 function makeDrone(kind, x, z, segment){
   const isCrawler = kind === 'crawler';
   const K = KINDS[kind];
@@ -3486,6 +3554,7 @@ function makeDrone(kind, x, z, segment){
     alive: true, spawned: false, deathT: 0,
   };
   mesh.position.copy(d.home);
+  addPotatoOutline(mesh);
   drones.push(d);
   return d;
 }
