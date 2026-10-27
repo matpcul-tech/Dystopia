@@ -33,7 +33,11 @@ function defaultSettings(){
     motion: 'full',
     quality: 'auto',
     mode: 'action',
-    portraits: 'blocks',
+    // Portrait default lives here. New saves, and any save with no
+    // portraits key, get cards (applySettings and portraitMode also
+    // fall back to cards when the key is missing). A stored value,
+    // including blocks, is kept. Settings can still switch it.
+    portraits: 'cards',
     gamepad: true,
     _init: 0,
   };
@@ -175,17 +179,15 @@ function choiceKey(chapter, record, label){
 }
 
 function worldLine(record, label, chapter){
+  // Public counter only. Local tallies stay in the save and are not shown.
+  // No line until STATS_URL has returned a real total for this option.
   const key = choiceKey(chapter, record, label);
   const bucket = memory.world[key];
   if (bucket && bucket.total > 0) {
     const pct = Math.round(100 * bucket.count / bucket.total);
     return pct + '% OF PLAYERS CHOSE THIS';
   }
-  const local = (slot().choices || {})[key] || 0;
-  const group = Object.keys(slot().choices || {}).filter(k => k.indexOf(chapter + '|' + record + '|') === 0);
-  const total = group.reduce((n, k) => n + (slot().choices[k] || 0), 0);
-  if (total > 0) return 'ON THIS DEVICE: ' + local + ' OF ' + total;
-  return 'WORLD TALLY OPENS WHEN THE PUBLIC COUNTER IS LIVE';
+  return '';
 }
 
 async function pushChoice(chapter, record, label){
@@ -233,10 +235,12 @@ function drawShare(endingName, title, choices){
   (choices || []).slice(0, 6).forEach(ch => {
     g.fillStyle = '#e7c98a';
     wrap(g, ch.a || '', 72, y, 936, 36);
-    y += 44;
+    y += 48;
+    const tally = worldLine(ch.q, ch.a, api ? api.chapterId() : '');
+    if (!tally) return;
     g.fillStyle = '#9a907f';
-    wrap(g, worldLine(ch.q, ch.a, api ? api.chapterId() : ''), 72, y, 936, 32);
-    y += 78;
+    wrap(g, tally, 72, y, 936, 32);
+    y += 56;
   });
   g.fillStyle = '#e7c98a';
   g.font = '26px sans-serif';
@@ -379,7 +383,6 @@ function continueActive(){
   if (api && api.startFromTitle) api.startFromTitle(true);
 }
 function buildSlots(host){
-  host.appendChild(el('p', 'slotNote', 'Three save slots. The highlighted slot is the one New Game and Continue use. Settings chooses Story Mode or Action Mode.'));
   const box = el('div', 'slotRow');
   memory.slots.forEach((s, i) => {
     const b = el('button', 'btn small slotBtn', '');
