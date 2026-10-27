@@ -287,7 +287,7 @@ part of that shell.
 
 ## Author config
 
-- `COMMERCE.SEASON_VERIFY_URL` in `commercial.js`. Leave this empty until the Season Pass worker is deployed. An empty value does not grant from a checkout session id. After deploy, set it to the workers.dev or custom URL. Steps are in `cloud/SEASON_PASS_WORKER.md`.
+- `COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is `https://waking-season-pass.matpcul.workers.dev`. An empty value does not grant from a checkout session id. Steps are in `cloud/SEASON_PASS_WORKER.md`.
 - `CONFIG.BOOK1_URL`, the Kindle store URL for Book One.
 - `CONFIG.COVER_URL`, the Book One cover on the end card (`book1-cover.jpg`).
 - Chapter data (`CHAPTERS.ep1`): rooms, enemies, radio script, palette.

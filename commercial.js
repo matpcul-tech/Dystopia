@@ -13,8 +13,8 @@
 // separate key that survives a slot switch. ?preview=1 unlocks this
 // tab without writing the pass.
 // A missing trailer file shows an error and does not count a view.
-// There is no Stripe secret in this file. Matthew sets SEASON_VERIFY_URL
-// to the deployed worker. See cloud/SEASON_PASS_WORKER.md.
+// There is no Stripe secret in this file. SEASON_VERIFY_URL is the
+// deployed worker. See cloud/SEASON_PASS_WORKER.md.
 
 import { resumePlan } from './feel.js';
 import { PASS_KEY, USED_KEY, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId } from './season-pass.js';
@@ -28,10 +28,9 @@ export const COMMERCE = {
   STATS_URL: '',
   ANALYTICS_URL: '',
   SEASON_URL: 'https://buy.stripe.com/bJe14pfBe0XNfJz0Xk3wQ00',
-  // Matthew sets this to the live workers.dev (or custom) URL after
-  // deploying cloud/season-pass-worker.js. See cloud/SEASON_PASS_WORKER.md.
+  // Live Season Pass verify worker. See cloud/SEASON_PASS_WORKER.md.
   // Empty fails closed: a cs_ session id never grants Season Pass.
-  SEASON_VERIFY_URL: '',
+  SEASON_VERIFY_URL: 'https://waking-season-pass.matpcul.workers.dev',
   SEASON_PRICE: '$6.99',
   // Price kept for a future real charge. The button stays hidden until then.
   REMOVE_ADS_PRICE: '$2.99',

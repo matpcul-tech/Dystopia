@@ -2,7 +2,7 @@
 
 `cloud/season-pass-worker.js` checks a Stripe Checkout Session and answers `{ "pass": true }` only when that session is paid, complete, and from the Season Pass Payment Link. The static site never holds a Stripe secret.
 
-`COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is the single constant Matthew sets after deploy. Leave it empty until this worker is live. An empty value fails closed: a `cs_` session id does not grant Season Pass.
+`COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is `https://waking-season-pass.matpcul.workers.dev`. An empty value fails closed: a `cs_` session id does not grant Season Pass.
 
 ## Deploy
 
@@ -27,8 +27,8 @@ The binding name must be `SEASON`. The worker reads `env.SEASON` and `env.STRIPE
    `npx wrangler secret put STRIPE_SECRET_KEY`
 5. Deploy from `cloud/`:
    `npx wrangler deploy`
-6. Copy the workers.dev URL, or the custom domain, into `COMMERCE.SEASON_VERIFY_URL` in `commercial.js`.
-   Example shape: `https://waking-season-pass.<account>.workers.dev`
+6. `COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is the live worker, with no trailing slash:
+   `https://waking-season-pass.matpcul.workers.dev`
 7. Publish the static site again so GitHub Pages picks up that constant.
 
 CORS in the worker already allows `https://matpcul-tech.github.io` and local dev. The page posts `{ "session_id" }` for a return, and `{ "email" }` to restore from the receipt email. A Stripe receipt does not include a `cs_` id.
