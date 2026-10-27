@@ -362,3 +362,19 @@ body.live #pauseBtn{display:block;}
   user-select:text;-webkit-user-select:text;}
 .kitFields input:focus{outline:1px solid var(--brass);border-color:var(--brass);}
 .kitFields .btn{margin-top:4px;min-height:44px;text-align:center;touch-action:manipulation;}
+
+#payBody > .btn,
+#trailerBody > .btn,
+#trailerBody > a.btn{display:block;width:100%;box-sizing:border-box;text-align:center;min-height:44px;}
+.trailerFrame{width:min(72vw, calc(58vh * 9 / 16));max-width:320px;aspect-ratio:9/16;margin:12px auto;
+  background:#000;border:1px solid rgba(244,236,223,.28);position:relative;overflow:hidden;}
+.trailerFrame video{width:100%;height:100%;object-fit:contain;background:#000;pointer-events:none;display:block;}
+.trailerFrame video::-webkit-media-controls,
+.trailerFrame video::-webkit-media-controls-enclosure,
+.trailerFrame video::-webkit-media-controls-panel,
+.trailerFrame video::-webkit-media-controls-timeline{display:none !important;opacity:0;pointer-events:none;}
+.trailerMeter{height:3px;background:rgba(244,236,223,.16);margin:8px 0 0;pointer-events:none;}
+.trailerMeter > div{height:100%;width:0;background:var(--brass);pointer-events:none;}
+.trailerBtns{display:flex;gap:8px;}
+.trailerBtns .btn{flex:1;min-height:44px;text-align:center;margin-top:8px;}
+#trailerErr:empty{display:none;}

@@ -16,5 +16,5 @@ Honest notes for Matthew to submit. This build does not claim a survey was filed
 ## What is not in this build
 
 - No live ad creative.
-- No store purchase and no live charge. On this Pages build, Season Pass and three short views open Chapters Three to Six and every Chapter Two path on the device. Remove Ads does not open chapters. RevenueCat is not connected.
+- No store purchase and no live charge. On this Pages build, the Season Pass button, or three book trailers watched to the end, open Chapters Three to Six and every Chapter Two path on the device. Remove Ads does not open chapters. RevenueCat is not connected. Trailer files are local. Links after a trailer are not a charge.
 - No voice acting pass and no recorded score.
