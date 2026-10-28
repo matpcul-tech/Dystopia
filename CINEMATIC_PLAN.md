@@ -19,8 +19,8 @@ All seven Book One Shorts are linked under `media/shorts/`. Each file is about a
 | 1. Twenty Feet of Machine | media/shorts/rsa_ep01_720p.mp4 | Gallery only. Episode One levels use the game shorts below, not this file. |
 | 2. Forty-Three Left | media/shorts/rsa_ep02_720p.mp4 | Gallery only. The conduits open is the dry riverbed game short, then the Thomas choice. This is not the hive path. |
 | 3. They Are Stealing Our Minds | media/shorts/rsa_ep03_720p.mp4 | Gallery only. The cards are the Omega-7 briefing (forty kilometers northwest, systematically depleted, a harvesting facility). That opener is the dry riverbed game short, then the Thomas choice. No second video. |
-| 4. The Afternoons | media/shorts/rsa_ep04_720p.mp4 | Tower gallery only, 16 to 32s, blue to amber. This is not the convoy path. |
-| 5. Eight Hundred Meters | media/shorts/rsa_ep05_720p.mp4 | Data conduits, 4 to 12s. Forty second dash, 20 to 32s. The sweep room has no card in this file, so that room stays the existing line. The pulse at the end stays the finale choice. |
+| 4. The Afternoons | media/shorts/rsa_ep04_720p.mp4 | Gallery only for this file. The tower room stays a line, because the cue leaves the towers. This is not the convoy path. |
+| 5. Eight Hundred Meters | media/shorts/rsa_ep05_720p.mp4 | Data conduits, 4 to 12s. Forty second dash, 20 to 28s. The sweep room has no card in this file, so that room stays the existing line. The pulse at the end stays the finale choice. |
 | 6. Batch | media/shorts/rsa_ep06_720p.mp4 | Depletion floor, 8 to 16s. The open is the core game short, not this file. Angela, the seventy-two hours, and the core voice stay the door stories. |
 | 7. The Base Is Gone | media/shorts/rsa_ep07_720p.mp4 | Gallery only. The cards are the evacuation: they followed me, the base, take Marcus north, Kara reached through. That is the harvest finale choice, not the underground chapter and not the ridge two days later. |
 
@@ -33,7 +33,7 @@ Level openers do not play `media/shorts/rsa_ep*_720p.mp4`. Those book files stay
 | Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
 | ep1_wake | open | 15s | media/shorts/game/game_ep1_origin_v2.mp4 (cue 0 to 15) | No memory. A twenty foot hunter under a blood sky. He dives into the dead rail car and goes still. Then control, and CHOOSE A WAY OFF THE TRAIN. |
-| ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. |
+| ep1_street | room 2 | 10s | media/shorts/game/game_ep1_street.mp4 (cue 0 to 10) | CROSS THE RUINED STREET. Drones in the game, not the book Short. The file still has a stale HEAD FOR THE RIVER overlay. |
 | ep1_depot | room 5 | 10s | media/shorts/game/game_ep1_depot.mp4 (cue 0 to 10) | PULL THE LEDGER AT THE DEPOT SCREEN. |
 
 Posters, same folder:
@@ -122,7 +122,7 @@ The open is a game short. Forty-Three Left stays in the gallery and is not a lev
 |---|---|---|---|---|
 | conduits_brief | open | 10s | media/shorts/game/game_ch4_conduits_river.mp4 (cue 0 to 10) | Bunker count over the dry riverbed. Forty-three, the fifty million, Omega-7. FOLLOW THE DRY RIVERBED. The Thomas choice comes after control returns. |
 | conduits_sweep | room 1 | 10s | text only | STAY UNDER THE PERIMETER SWEEPS. Existing line: cones, stay behind the slabs. Eight Hundred Meters has no sweep card, so this room does not play that file. |
-| conduits_dash | room 2 | 12s | 20 to 32 of Eight Hundred Meters | MAKE THE FORTY SECOND DASH. The card is the dash, open ground, forty seconds. |
+| conduits_dash | room 2 | 8s | 20 to 28 of Eight Hundred Meters | MAKE THE FORTY SECOND DASH. Open ground and the drop. The cable tunnel after 28s is not this beat. |
 | conduits_data | room 3 | 8s | 4 to 12 of Eight Hundred Meters | FOLLOW THE DATA CONDUITS. Existing line: power, data, coolant. |
 
 Poster: media/shorts/game/game_ch4_conduits_river.jpg
@@ -131,12 +131,12 @@ They Are Stealing Our Minds is on the archive row and has no level clip. Its car
 
 ## The Harvest, ch_harvest
 
-The open is a game short. The tower gallery stays The Afternoons. The depletion floor stays Batch, 8 to 16s. If the mp4 is missing, the open skips to control.
+The open is a game short. The tower gallery stays the gallery line, because The Afternoons leaves the towers. The depletion floor stays Batch, 8 to 16s. If the mp4 is missing, the open skips to control.
 
 | Clip | When | Cap | File | What the player hits |
 |---|---|---|---|---|
 | harvest_hatch | open | 10s | media/shorts/game/game_ch5_harvest_core.mp4 (cue 0 to 10) | Cathedral of chrome and pulsing light. ONTO THE CATWALK. Control returns before Angela. |
-| harvest_gallery | room 2 | 16s | 16 to 32 of The Afternoons | CROSS THE TOWER GALLERY. Blue to amber. The Angela choice is the door story before this clip. |
+| harvest_gallery | room 2 | lines | The Afternoons leaves the towers for a window and a control room, so this room stays the gallery line. | CROSS THE TOWER GALLERY. The Angela choice is the door story before this beat. |
 | harvest_floor | room 3 | 8s | 8 to 16 of Batch | CROSS THE DEPLETION FLOOR. The card is the depletion count. The hum line stays. |
 
 Poster: media/shorts/game/game_ch5_harvest_core.jpg

@@ -7,7 +7,7 @@ Honest notes for Matthew to submit. This build does not claim a survey was filed
 - Three.js r160 is vendored. It is a software library, not generated art.
 - Title fonts Cormorant Garamond and Outfit are vendored for offline play. They are licensed typefaces, not generated in this repo.
 - World surfaces, the rifle viewmodel extras, sky grade, music, and sound effects are procedural code written in the game. They are not samples from a generative image or audio model, and they are also not hand painted plates.
-- Portrait cards are code placeholders. The card says PORTRAIT PLACEHOLDER and NOT FINAL ART. They are not finished character art.
+- Dialogue cards do not show a face. The drawn stand-in and the block bust stay hidden until real portrait art is added.
 - The opening of Episode One is an in engine scene, not a filmed short.
 - Red Sky Archive full short URLs are empty. The gallery does not play a video file until one is linked.
 - GLB props in `models/` are described in code comments as author generated. This repo does not prove they were made without generative tools. Do not answer the survey as if that were proven.

@@ -17,7 +17,8 @@ const CAST = {
 };
 
 // Flip this only when a real portrait set replaces the drawn stand-in.
-const PORTRAIT_ART = false;
+// Until then dialogue cards show the name and the line, not a face.
+export const PORTRAIT_ART = false;
 
 let card, canvas, ctx, nameEl;
 

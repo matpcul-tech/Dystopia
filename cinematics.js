@@ -84,13 +84,17 @@ export const BEATS = [
   // The sweep room has no card in the file, so it stays text.
   { id:'conduits_brief', episode:'game_ch4_conduits_river', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, textOnly:true, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[0, 10], labelFrom:'segs:0' },
-  { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:12, cue:[20, 32], labelFrom:'segs:1' },
+  // 20s to 28s is the open-ground run and the drop. Past 28s the file
+  // is the cable tunnel, which belongs to the data room, not this dash.
+  { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:8, cue:[20, 28], labelFrom:'segs:1' },
   { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, radio:[{ key:'seg3_enter', idx:[0] }], max:8, cue:[4, 12], labelFrom:'segs:2' },
 
   // Harvest. The open is a game short. The tower stays The Afternoons.
   // The Angela choice and the core voice stay door stories, not extra clips.
   { id:'harvest_hatch', episode:'game_ch5_harvest_core', chapter:'ch_harvest', at:'open', intro:[1], max:10, cue:[0, 10], labelFrom:'advance' },
-  { id:'harvest_gallery', episode:'short04', chapter:'ch_harvest', at:'room', room:2, intro:[2], max:16, cue:[16, 32], labelFrom:'segs:1' },
+  // The Afternoons leaves the tower after a few seconds (a window, then
+  // a control room). That does not match the gallery, so this beat is lines.
+  { id:'harvest_gallery', episode:'short04', chapter:'ch_harvest', at:'room', room:2, textOnly:true, radio:[{ key:'seg2_enter', idx:[0] }], max:10, cue:[14, 22], labelFrom:'segs:1' },
   { id:'harvest_floor', episode:'rsa8', chapter:'ch_harvest', at:'room', room:3, intro:[4], max:8, cue:[8, 16], labelFrom:'segs:2' },
 
   // Fire and Steel. The open is the pass game short. Later rooms stay lines.
