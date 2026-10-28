@@ -120,6 +120,16 @@ rest, Lagos, Vera, the converted hunter, and the simulation reveal),
 ending on the Book Two hook. Losing endings offer **TRY AGAIN: THE
 LABORATORY YARD**, which reloads straight into the boss fight.
 
+## Coming back
+
+Three loops live on the title screen, on the same save slots.
+
+**Ending Codex.** ENDING CODEX opens all 23 endings. A locked card is a silhouette and a clue, with no name. An unlocked card shows the name, a short line, and SHARE, using the same ending card the end screen already draws. The list is `latm_hybrid_endings` on the active slot.
+
+**Daily Hive Signal.** DAILY HIVE SIGNAL is a short free run. The room, the side-room cache, and the one timed choice follow the calendar day. The reward is progress toward a cosmetic (a brass title line, a cool crosshair, or green vitals), or a clue on a locked codex card. It does not open a paid chapter and it does not need Season Pass. The day is stored in this browser as `latm_daily_v1`. Tomorrow's room is a different seed. The run does not overwrite the campaign checkpoint.
+
+**New Game+.** Clear Chapter Six with Game Over or The Count. NEW GAME+ stays on that save slot. Book flags, unlocked paths, and endings stay. The slot button is marked NG+. Action Mode hits harder. Story Mode takes a smaller bump. Inside the Hive, The Listening Dark, The Convoy, and The Long Road each gain a new mid-chapter beat, so a second clear is not the same conversation. Autosave, the three slots, and backup codes keep the NG+ mark with the slot.
+
 ## Cinematics: the Dystopia Shorts episodes
 
 All seven Book One Shorts live in `media/shorts/`. ARCHIVE on the title screen plays a full file. A level only plays an 8 to 20 second cue, then control comes back. Skip with the SKIP button, a tap, or Esc. Every chapter open uses a game short under `media/shorts/game/` (origin, street, depot, highway, toll, beacon, pods, trunk, ridge, records hall, dry river, core, pass). Book files stay in the gallery. If a game mp4 is missing, play continues. On the train open, the two origin lines still play. The map is `CINEMATIC_PLAN.md`.

@@ -18,6 +18,10 @@
 
 import { resumePlan } from './feel.js';
 import { PASS_KEY, USED_KEY, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId } from './season-pass.js';
+import {
+  CODEX, COSMETICS,
+  applySignalReward, campaignCleared, ngPlusSlot, readDaily, slotTag, todayKey, writeDaily,
+} from './return-loop.js';
 
 const SAVE_KEY = 'latm_save_v1';
 const CH2 = { together:'ch_together', lone:'ch_lone', ghost:'ch_ghost', taken:'ch_taken' };
@@ -106,7 +110,21 @@ function emptySlot(i){
     pass: false,
     noAds: false,
     choices: {},
+    ngPlus: 0,
+    cosmetics: [],
+    codexHints: [],
+    signalMarks: {},
+    lastSignal: '',
   };
+}
+function ensureReturnSlot(s){
+  if (!s) return s;
+  if (!Array.isArray(s.cosmetics)) s.cosmetics = [];
+  if (!Array.isArray(s.codexHints)) s.codexHints = [];
+  if (!s.signalMarks || typeof s.signalMarks !== 'object') s.signalMarks = {};
+  if (!s.ngPlus) s.ngPlus = 0;
+  if (!s.lastSignal) s.lastSignal = '';
+  return s;
 }
 function loadFile(){
   try {
@@ -163,7 +181,23 @@ function applySettings(){
   try { urlQ = new URLSearchParams(location.search).get('q') || ''; } catch (e) {}
   if (api && api.applyQuality && st.quality && st.quality !== 'auto' && !urlQ) api.applyQuality(st.quality);
   const line = typeof document !== 'undefined' && document.getElementById('modeLine');
-  if (line) line.textContent = st.mode === 'story' ? 'STORY MODE' : 'ACTION MODE';
+  if (line){
+    const ng = slotTag(slot());
+    line.textContent = (st.mode === 'story' ? 'STORY MODE' : 'ACTION MODE') + (ng ? '  ' + ng.trim() : '');
+  }
+  applyCosmetics();
+}
+function applyCosmetics(){
+  if (typeof document === 'undefined') return;
+  const owned = (slot() && slot().cosmetics) || [];
+  document.documentElement.dataset.cosmetics = owned.join(' ');
+}
+function endingIds(){
+  const s = slot();
+  const fromSlot = s && Array.isArray(s.endings) ? s.endings : [];
+  let fromLegacy = [];
+  try { fromLegacy = JSON.parse(localStorage.getItem('latm_hybrid_endings')) || []; } catch (e) {}
+  return Array.from(new Set(fromSlot.concat(fromLegacy)));
 }
 function readPassRecord(){
   try {
@@ -271,6 +305,7 @@ export function bootSaves(){
     try { sessionStorage.setItem('latm_preview', '1'); } catch (e) {}
   }
   memory = loadFile() || migrate();
+  memory.slots.forEach(ensureReturnSlot);
   memory.settings = Object.assign(defaultSettings(), memory.settings || {});
   if (!memory.settings._init) {
     const touch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
@@ -578,8 +613,9 @@ function describeSlot(){
   const s = slot();
   const n = (memory.active || 0) + 1;
   const plan = resumePlan(s && s.mid, api ? api.chapterId() : 'ep1', (api && api.chapters) || {});
-  if (!plan.ok) return 'Slot ' + n + ' is empty. New Game starts Episode One here.';
-  return 'Slot ' + n + '  ' + slotPlace(s) + '. Continue resumes this place.';
+  const ng = slotTag(s);
+  if (!plan.ok) return 'Slot ' + n + (ng ? '  ' + ng.trim() : '') + ' is empty. New Game starts Episode One here.';
+  return 'Slot ' + n + '  ' + ng + slotPlace(s) + '. Continue resumes this place.';
 }
 function continueActive(){
   const mid = slot().mid;
@@ -605,7 +641,7 @@ function buildSlots(host){
   memory.slots.forEach((s, i) => {
     const b = el('button', 'btn small slotBtn', '');
     b.type = 'button';
-    b.textContent = 'SLOT ' + (i + 1) + '  ' + slotPlace(s);
+    b.textContent = 'SLOT ' + (i + 1) + '  ' + slotTag(s) + slotPlace(s);
     if (i === memory.active) b.classList.add('on');
     b.addEventListener('click', () => {
       if (i === memory.active){
@@ -652,7 +688,7 @@ function importBackup(code){
   try {
     const s = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
     if (!s || typeof s !== 'object' || !s.choices) throw new Error('bad');
-    memory.slots[memory.active] = Object.assign(emptySlot(memory.active), s, { name: 'SLOT ' + (memory.active + 1) });
+    memory.slots[memory.active] = ensureReturnSlot(Object.assign(emptySlot(memory.active), s, { name: 'SLOT ' + (memory.active + 1) }));
     writeLegacy(memory.slots[memory.active]);
     persist();
     location.reload();
@@ -1091,6 +1127,7 @@ function buildChapters(host){
   const chapters = (api && api.chapters) || {};
   Object.keys(chapters).forEach(id => {
     const c = chapters[id];
+    if (id === 'ch_signal' || (c && c.signal)) return;
     const locked = Waking.isLocked(id);
     const here = !locked && api && api.chapterId && api.chapterId() === id;
     const b = el('button', 'btn small beatRow', '');
@@ -1164,7 +1201,202 @@ function syncPauseExtras(){
   if (title) title.style.display = on ? '' : 'none';
 }
 
+function shareCard(name, title){
+  const canvas = drawShare(name, title, []);
+  canvas.toBlob(async (blob) => {
+    if (!blob) return;
+    const file = new File([blob], 'waking-ending.png', { type: 'image/png' });
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'The Waking', text: name + ' in Dystopia: The Waking' }); return; } catch (e) {}
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'waking-ending.png';
+    a.click();
+  }, 'image/png');
+}
+function openCodex(){
+  const host = panels.codexSheet;
+  if (!host) return;
+  host.innerHTML = '';
+  const box = el('div', 'sheetBody');
+  const found = endingIds();
+  const hints = (slot() && slot().codexHints) || [];
+  box.appendChild(el('h3', 'sheetTitle', 'ENDING CODEX'));
+  box.appendChild(el('p', 'fine', 'ENDINGS RECOVERED ' + found.length + ' / ' + CODEX.length + '. Locked cards stay nameless.'));
+  CODEX.forEach((entry, i) => {
+    const live = api && api.endings && api.endings[entry.id];
+    const open = found.indexOf(entry.id) >= 0;
+    const row = el('div', 'codexRow' + (open ? '' : ' locked'));
+    if (open){
+      const name = (live && live.name) || entry.name;
+      const title = (live && live.title) || entry.title;
+      row.appendChild(el('div', 'codexIndex', String(i + 1).padStart(2, '0')));
+      const copy = el('div', 'codexCopy');
+      copy.appendChild(el('div', 'codexName', name));
+      copy.appendChild(el('p', 'fine', entry.flavor));
+      const share = el('button', 'btn small codexShare', 'SHARE');
+      share.type = 'button';
+      share.addEventListener('click', () => shareCard(name, title));
+      copy.appendChild(share);
+      row.appendChild(copy);
+    } else {
+      const sil = el('div', 'codexSil', '');
+      sil.setAttribute('aria-hidden', 'true');
+      row.appendChild(sil);
+      const copy = el('div', 'codexCopy');
+      copy.appendChild(el('div', 'codexKicker', 'LOCKED'));
+      copy.appendChild(el('p', 'fine', entry.clue));
+      if (hints.indexOf(entry.id) >= 0) copy.appendChild(el('p', 'fine', 'HIVE SIGNAL. ' + entry.hint));
+      row.appendChild(copy);
+      row.setAttribute('aria-label', 'Locked ending');
+    }
+    box.appendChild(row);
+  });
+  const close = el('button', 'btn', 'CLOSE');
+  close.type = 'button';
+  close.addEventListener('click', hideSheets);
+  box.appendChild(close);
+  host.appendChild(box);
+  show('codexSheet');
+}
+function cosmeticLine(){
+  const owned = (slot() && slot().cosmetics) || [];
+  if (!owned.length) return '';
+  const names = owned.map(id => {
+    const c = COSMETICS.find(x => x.id === id);
+    return c ? c.name : id;
+  });
+  return 'COSMETICS. ' + names.join(', ') + '.';
+}
+function fillSignalSheet(title, lines){
+  const host = panels.signalSheet;
+  if (!host) return;
+  host.innerHTML = '';
+  const box = el('div', 'sheetBody');
+  box.appendChild(el('h3', 'sheetTitle', title));
+  lines.forEach(t => { if (t) box.appendChild(el('p', 'fine', t)); });
+  const close = el('button', 'btn', 'BACK TO THE HUB');
+  close.type = 'button';
+  close.addEventListener('click', () => {
+    hideSheets();
+    if (api && api.chapterId && api.chapterId() === 'ch_signal'){
+      try {
+        sessionStorage.removeItem('latm_daily_run');
+        sessionStorage.removeItem('latm_resume');
+        sessionStorage.removeItem('latm_autoload');
+      } catch (e) {}
+      location.hash = '#ep1';
+      location.reload();
+    }
+  });
+  box.appendChild(close);
+  host.appendChild(box);
+  show('signalSheet');
+}
+function showSignalClosed(rec){
+  fillSignalSheet('HIVE SIGNAL LOGGED', [
+    'Come back tomorrow. The hive keeps a different room.',
+    rec && rec.text ? rec.text : '',
+    cosmeticLine(),
+    'The signal is free. It does not open a paid chapter.',
+  ]);
+}
+function openDaily(){
+  const rec = readDaily();
+  if (rec && rec.day === todayKey()){
+    showSignalClosed(rec);
+    return;
+  }
+  try { sessionStorage.setItem('latm_daily_run', '1'); } catch (e) {}
+  location.hash = '#ch_signal';
+  location.reload();
+}
+function finishSignal(pick){
+  const s = ensureReturnSlot(slot());
+  pullLegacy(s);
+  const day = todayKey();
+  const granted = applySignalReward(s, day, pick === 'clue' ? 'clue' : 'mark');
+  s.cosmetics = granted.slot.cosmetics;
+  s.signalMarks = granted.slot.signalMarks;
+  s.codexHints = granted.slot.codexHints;
+  s.lastSignal = day;
+  s.updated = Date.now();
+  const text = granted.result.text;
+  writeDaily({ day, pick: pick === 'clue' ? 'clue' : 'mark', text });
+  persist();
+  applyCosmetics();
+  if (document.pointerLockElement) document.exitPointerLock();
+  fillSignalSheet('SIGNAL LOGGED', [
+    text,
+    cosmeticLine(),
+    'Your campaign checkpoint was left where it was. Come back tomorrow.',
+  ]);
+}
+function openNgSheet(){
+  const host = panels.ngSheet;
+  if (!host) return;
+  host.innerHTML = '';
+  const box = el('div', 'sheetBody');
+  const level = (slot() && slot().ngPlus) || 0;
+  box.appendChild(el('h3', 'sheetTitle', level ? 'NG+ AGAIN' : 'NEW GAME+'));
+  box.appendChild(el('p', 'fine', 'Book flags, unlocked paths, and endings stay on this slot. The slot is marked NG+. Action Mode hits harder. Story Mode takes a smaller bump. Episode One starts again, and each Chapter Two path has a new mid-chapter beat.'));
+  box.appendChild(el('p', 'fine', 'Inside the Hive, The Listening Dark, The Convoy, and The Long Road each gain one new beat. Paid chapters stay paid.'));
+  const go = el('button', 'btn amber', level ? 'START NG+ AGAIN' : 'START NEW GAME+');
+  go.type = 'button';
+  go.addEventListener('click', () => beginNgPlus());
+  box.appendChild(go);
+  const close = el('button', 'btn', 'CLOSE');
+  close.type = 'button';
+  close.addEventListener('click', hideSheets);
+  box.appendChild(close);
+  host.appendChild(box);
+  show('ngSheet');
+}
+function beginNgPlus(){
+  const s = ensureReturnSlot(slot());
+  pullLegacy(s);
+  if (!campaignCleared(endingIds()) && !(s.ngPlus > 0)) return;
+  const next = ngPlusSlot(s);
+  Object.assign(s, next);
+  ensureReturnSlot(s);
+  persist();
+  writeLegacy(s);
+  try {
+    sessionStorage.setItem('latm_newgame', '1');
+    sessionStorage.removeItem('latm_resume');
+    sessionStorage.removeItem('latm_autoload');
+    sessionStorage.removeItem('latm_daily_run');
+  } catch (e) {}
+  if (api && api.setMode) api.setMode('end');
+  location.hash = '#ep1';
+  location.reload();
+}
+function refreshNgButton(){
+  const b = document.getElementById('ngBtn');
+  if (!b) return;
+  const on = campaignCleared(endingIds()) || ((slot() && slot().ngPlus) || 0) > 0;
+  b.style.display = on ? '' : 'none';
+  b.textContent = ((slot() && slot().ngPlus) || 0) > 0 ? 'NG+ AGAIN' : 'NEW GAME+';
+}
+function dailyLabel(){
+  const rec = readDaily();
+  if (rec && rec.day === todayKey()) return 'SIGNAL LOGGED';
+  return 'DAILY HIVE SIGNAL';
+}
+
 export const Waking = window.Waking = {
+  ngLevel(){ return (slot() && slot().ngPlus) || 0; },
+  finishSignal,
+  armNgOffer(){
+    const host = document.getElementById('endBtns');
+    if (!host || document.getElementById('ngEndBtn')) return;
+    const b = el('button', 'btn', 'NEW GAME+');
+    b.type = 'button';
+    b.id = 'ngEndBtn';
+    b.addEventListener('click', () => openNgSheet());
+    host.appendChild(b);
+  },
   settings(){ return memory.settings; },
   storyMode(){ return memory.settings.mode === 'story'; },
   timerMode(){ return memory.settings.timer || 'on'; },
@@ -1173,7 +1405,7 @@ export const Waking = window.Waking = {
   portraitMode(){ return memory.settings.portraits || 'cards'; },
   gamepadOn(){ return memory.settings.gamepad !== false; },
   isLocked(id){
-    if (!id || id === 'ep1') return false;
+    if (!id || id === 'ep1' || id === 'ch_signal') return false;
     if (hasPass()) return false;
     if (visitAllows(id)) return false;
     const s = slot();
@@ -1217,7 +1449,7 @@ export const Waking = window.Waking = {
   },
   noteDrop(segment){ track('dropoff', { segment }); },
   autosave(pos){
-    if (!pos) return;
+    if (!pos || pos.chapter === 'ch_signal') return;
     const s = slot();
     pullLegacy(s);
     s.mid = pos;
@@ -1247,6 +1479,16 @@ export const Waking = window.Waking = {
     restart.id = 'restartEpisodeBtn';
     restart.style.display = 'none';
     restart.addEventListener('click', () => {
+      if (api && api.chapterId && api.chapterId() === 'ch_signal'){
+        try {
+          sessionStorage.setItem('latm_daily_run', '1');
+          sessionStorage.removeItem('latm_resume');
+          sessionStorage.removeItem('latm_autoload');
+        } catch (e) {}
+        if (api.setMode) api.setMode('end');
+        location.reload();
+        return;
+      }
       try {
         sessionStorage.setItem('latm_newgame', '1');
         sessionStorage.removeItem('latm_resume');
@@ -1264,6 +1506,16 @@ export const Waking = window.Waking = {
     toTitle.id = 'titleReturnBtn';
     toTitle.style.display = 'none';
     toTitle.addEventListener('click', () => {
+      if (api && api.chapterId && api.chapterId() === 'ch_signal'){
+        try {
+          sessionStorage.removeItem('latm_daily_run');
+          sessionStorage.removeItem('latm_resume');
+          sessionStorage.removeItem('latm_autoload');
+        } catch (e) {}
+        location.hash = '#ep1';
+        location.reload();
+        return;
+      }
       if (api && api.getPos) Waking.autosave(api.getPos());
       try {
         sessionStorage.removeItem('latm_resume');
@@ -1324,6 +1576,9 @@ export const Waking = window.Waking = {
 
     const chapters = panel('chapterSheet');
     buildChapters(chapters);
+    panel('codexSheet');
+    panel('signalSheet');
+    panel('ngSheet');
 
     const bar = el('div', 'titleTools');
     const start = document.getElementById('startScreen');
@@ -1343,10 +1598,24 @@ export const Waking = window.Waking = {
       restore.type = 'button';
       restore.id = 'restoreBtn';
       restore.addEventListener('click', () => openRestore());
+      const codex = el('button', 'btn small', 'ENDING CODEX');
+      codex.type = 'button';
+      codex.id = 'codexBtn';
+      codex.addEventListener('click', () => openCodex());
+      const daily = el('button', 'btn small', dailyLabel());
+      daily.type = 'button';
+      daily.id = 'dailyBtn';
+      daily.addEventListener('click', () => openDaily());
+      const ng = el('button', 'btn small', 'NEW GAME+');
+      ng.type = 'button';
+      ng.id = 'ngBtn';
+      ng.style.display = 'none';
+      ng.addEventListener('click', () => openNgSheet());
       const nav = el('div', 'slotTools');
-      nav.append(chb, arch, setb, restore);
+      nav.append(codex, daily, ng, chb, arch, setb, restore);
       bar.appendChild(nav);
       start.appendChild(bar);
+      refreshNgButton();
     }
     const pauseBtn = el('button', 'hudBtn', 'PAUSE');
     pauseBtn.type = 'button';
@@ -1374,7 +1643,14 @@ export const Waking = window.Waking = {
       a.click();
     });
     const endBtns = document.getElementById('endBtns');
-    if (endBtns) endBtns.appendChild(share);
+    if (endBtns){
+      const codexEnd = el('button', 'btn', 'ENDING CODEX');
+      codexEnd.type = 'button';
+      codexEnd.id = 'codexEndBtn';
+      codexEnd.addEventListener('click', () => openCodex());
+      endBtns.appendChild(codexEnd);
+      endBtns.appendChild(share);
+    }
 
     window.addEventListener('error', (e) => {
       track('crash', { message: String(e.message || 'error').slice(0, 180) });
