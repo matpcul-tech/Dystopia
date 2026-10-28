@@ -107,3 +107,62 @@ export function resumeProgress(savedSegment, furthest, roomFromZ){
   const progress = Math.max(saved, room);
   return { furthest: progress, segment: progress, room };
 }
+
+// A point is inside a room or an annex, with a small margin for the body.
+// The hardware district is narrower than the street. A step that clears the
+// thin door wall can land beside that room. That point is not inside.
+export function inLevel(x, z, rooms, annexes, margin){
+  const m = margin == null ? 0.4 : margin;
+  const px = Number(x) || 0, pz = Number(z) || 0;
+  for (const r of rooms || []){
+    if (px >= r.x1 - m && px <= r.x2 + m && pz >= r.z1 - m && pz <= r.z2 + m) return true;
+  }
+  for (const a of annexes || []){
+    const r = rooms && rooms[a.room];
+    if (!r) continue;
+    const inner = a.side === 'L' ? r.x1 : r.x2;
+    const outer = a.side === 'L' ? inner - a.depth : inner + a.depth;
+    const x1 = Math.min(inner, outer), x2 = Math.max(inner, outer);
+    if (px >= x1 - m && px <= x2 + m && pz >= a.z1 - m && pz <= a.z2 + m) return true;
+  }
+  return false;
+}
+
+// Keep a resolved step only when it is still allowed. A hitch can move
+// about a meter. Rejecting the landing stops the shove out of the level.
+export function keptStep(prev, next, allowed){
+  const from = prev || { x: 0, z: 0 };
+  const to = next || from;
+  if (allowed && allowed(to.x, to.z)) return { x: to.x, z: to.z, kept: true };
+  return { x: from.x, z: from.z, kept: false };
+}
+
+// How many collision slices a move needs so it cannot skip a thin wall.
+export function moveSlices(distance, maxStep){
+  const d = Math.max(0, Number(distance) || 0);
+  const step = Math.max(0.05, Number(maxStep) || 0.18);
+  return Math.max(1, Math.ceil(d / step));
+}
+
+// Horizontal gap that keeps a machine body off the camera.
+export function bodyGap(kind){
+  if (kind === 'warden') return 1.7;
+  if (kind === 'sentry') return 1.45;
+  return 1.25;
+}
+
+// How long a spoken line stays before the next one. Reading time and
+// speech time both count, so the line is not cut off mid-word.
+export function lineHoldMs(text, speed){
+  const n = String(text || '').length;
+  const sp = Math.max(0.35, Number(speed) || 1);
+  const read = Math.max(3400, n * 60);
+  const speak = n * 78;
+  return Math.min(14000, Math.max(read, speak) / sp);
+}
+
+// A beat clip owns the music bed only when its file is actually playing sound.
+// A silent picture must leave music, heartbeat, and speech in place.
+export function claimClipBed(fileHasAudio, muted){
+  return !!fileHasAudio && !muted;
+}

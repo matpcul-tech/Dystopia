@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
-import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress } from './feel.js';
+import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 import { ngDamageMul, ngHpMul, readDaily, signalChapter, signalLayout, SIGNAL_SCRIPTS, todayKey } from './return-loop.js';
 
@@ -1194,15 +1194,22 @@ const MusicSys = (() => {
   };
 })();
 
-// One primary bed: a spoken line, a beat clip, or a book trailer.
-// Music ducks. Heartbeat stops. Those do not stack a second voice.
+// One primary bed: a spoken line, a beat clip with real audio, or a book trailer.
+// Music ducks under any of them. Heartbeat stays under speech and under a
+// silent picture. Only a clip or trailer that is actually sounding stops it.
 const Bed = {
   reasons: new Set(),
+  heart: false,
   set(reason, on){
     if (on) this.reasons.add(reason);
     else this.reasons.delete(reason);
+    const sounding = this.reasons.has('clip') || this.reasons.has('trailer');
     if (MusicSys.duck) MusicSys.duck(this.reasons.size > 0);
-    if (this.reasons.size && AudioSys.heartbeatStop) AudioSys.heartbeatStop();
+    if (sounding){
+      if (AudioSys.heartbeatStop) AudioSys.heartbeatStop();
+    } else if (this.heart && AudioSys.heartbeatStart){
+      AudioSys.heartbeatStart();
+    }
     if (on && (reason === 'clip' || reason === 'trailer')) Voices.stop();
   },
   holds(reason){ return reason ? this.reasons.has(reason) : this.reasons.size > 0; },
@@ -1266,6 +1273,7 @@ const Voices = (() => {
   function clearTalk(){
     if (!current) return;
     if (current.timer) clearTimeout(current.timer);
+    if (current.nudge) clearTimeout(current.nudge);
     if (current.who) pokeTalking(current.who, false);
     current = null;
   }
@@ -1308,9 +1316,14 @@ const Voices = (() => {
     const timer = setTimeout(() => {
       if (mine !== token) return;
       if (name) pokeTalking(name, false);
-    }, Math.min(9000, Math.max(900, line.length * 58)));
+    }, lineHoldMs(line, 1));
     current = { who: name, timer };
-    if (!allowed()){ current = null; return; }
+    if (!allowed()){
+      clearTimeout(timer);
+      if (name) pokeTalking(name, false);
+      current = null;
+      return;
+    }
     refresh();
     const s = synth();
     const key = name || 'NARRATOR';
@@ -1323,27 +1336,44 @@ const Voices = (() => {
       const v = map._raw.find(x => (x.voiceURI || x.name) === spec.voiceURI);
       if (v) u.voice = v;
     }
-    const done = () => {
+    const done = (ev) => {
       if (mine !== token) return;
+      // A cancel from the previous line can report interrupted on this one
+      // if it lands late. Ignore that unless this line is actually finished.
+      if (ev && ev.error === 'interrupted'){
+        const live = synth();
+        if (live && live.speaking) return;
+      }
       if (current && current.timer) clearTimeout(current.timer);
+      if (current && current.nudge) clearTimeout(current.nudge);
       if (name) pokeTalking(name, false);
       current = null;
       Bed.set('voice', false);
       flush();
     };
-    u.onend = done;
-    u.onerror = done;
+    u.onend = () => done();
+    u.onerror = (ev) => done(ev);
     Bed.set('voice', true);
+    // stop() already cancelled. A second cancel in the same turn as speak()
+    // is what makes Chrome drop the start of the line or cut it off.
+    const nudge = setTimeout(() => {
+      if (mine !== token) return;
+      const live = synth();
+      if (live && live.speaking && !live.paused){
+        try { live.pause(); live.resume(); } catch (e) {}
+      }
+    }, 12000);
+    current.nudge = nudge;
     setTimeout(() => {
-      if (mine !== token || !allowed()) return;
+      if (mine !== token || !allowed()){
+        if (mine === token) Bed.set('voice', false);
+        return;
+      }
       const synthNow = synth();
-      if (!synthNow) return;
-      // Chrome keeps the cancelled line alive unless cancel runs again
-      // just before the next speak. One line, then the queue.
-      try { synthNow.cancel(); } catch (e) {}
+      if (!synthNow){ Bed.set('voice', false); return; }
       try { if (synthNow.paused && synthNow.resume) synthNow.resume(); } catch (e) {}
-      try { synthNow.speak(u); } catch (e) {}
-    }, 60);
+      try { synthNow.speak(u); } catch (e) { Bed.set('voice', false); }
+    }, 120);
   }
   if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.addEventListener){
     window.speechSynthesis.addEventListener('voiceschanged', refresh);
@@ -3756,6 +3786,13 @@ yawObj.position.set(0, PLAYER_EYE, 0);
 const keys = {};
 let mouseFiring = false, pointerLocked = false;
 let lockAt = 0;
+let ignoreUnlock = 0;
+let unlockPaused = false;
+function dropPointerLock(){
+  if (!document.pointerLockElement) return;
+  ignoreUnlock++;
+  try { document.exitPointerLock(); } catch (e) { ignoreUnlock = Math.max(0, ignoreUnlock - 1); }
+}
 const MOVE_AXIS = {
   KeyW:[0,-1], ArrowUp:[0,-1], KeyS:[0,1], ArrowDown:[0,1],
   KeyA:[-1,0], ArrowLeft:[-1,0], KeyD:[1,0], ArrowRight:[1,0],
@@ -3815,7 +3852,15 @@ renderer.domElement.addEventListener('click', () => {
 });
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = document.pointerLockElement === renderer.domElement;
-  if (pointerLocked) lockAt = performance.now();
+  if (pointerLocked){ lockAt = performance.now(); return; }
+  // Escape exits pointer lock and the page never sees the key.
+  // That used to leave PAUSE dead while the canvas still had the cursor.
+  if (ignoreUnlock > 0){ ignoreUnlock--; return; }
+  if ((G.mode === 'play' || G.mode === 'story') && window.Waking && !Waking.isPaused()){
+    unlockPaused = true;
+    Waking.togglePause();
+    setTimeout(() => { unlockPaused = false; }, 250);
+  }
 });
 addEventListener('mousemove', e => {
   if (!pointerLocked || G.mode !== 'play') return;
@@ -3978,18 +4023,26 @@ function ejectPoint(pos, r){
   }
 }
 function inPlayable(x, z){
+  return inLevel(x, z, ROOMS, ANNEXES, 0.4);
+}
+function positionOk(x, z){
+  return inPlayable(x, z) && !pointInSolid(x, z);
+}
+function rescuePlayable(pos){
+  if (positionOk(pos.x, pos.z)) return;
+  const spot = openSpot(pos.x, pos.z, PLAYER_R);
+  if (positionOk(spot.x, spot.z)){ pos.x = spot.x; pos.z = spot.z; return; }
+  let room = null;
   for (const r of ROOMS){
-    if (x >= r.x1 - 0.4 && x <= r.x2 + 0.4 && z >= r.z1 - 0.4 && z <= r.z2 + 0.4) return true;
+    if (pos.z <= r.z2 + 2 && pos.z >= r.z1 - 2) room = r;
   }
-  for (const a of ANNEXES){
-    const r = ROOMS[a.room];
-    if (!r) continue;
-    const inner = a.side === 'L' ? r.x1 : r.x2;
-    const outer = a.side === 'L' ? inner - a.depth : inner + a.depth;
-    const x1 = Math.min(inner, outer), x2 = Math.max(inner, outer);
-    if (x >= x1 - 0.4 && x <= x2 + 0.4 && z >= a.z1 - 0.4 && z <= a.z2 + 0.4) return true;
+  if (!room) room = ROOMS[Math.min(ROOMS.length - 1, Math.max(0, G.currentSegment || 0))] || ROOMS[0];
+  pos.x = (room.x1 + room.x2) / 2;
+  pos.z = Math.min(room.z2 - 1.2, Math.max(room.z1 + 1.2, pos.z));
+  if (!positionOk(pos.x, pos.z)){
+    pos.x = 0;
+    pos.z = room.z2 - 2;
   }
-  return false;
 }
 
 /* ============================================================
@@ -4267,22 +4320,30 @@ function updateDrones(dt){
     else { // attack
       d.mesh.lookAt(px, m.y, pz);
       if (d.kind === 'crawler'){
-        if (dist > 1.1){
-          const s = 3.4 * dt / dist;
-          m.x -= distX * s; m.z -= distZ * s;
+        const gap = bodyGap('crawler');
+        if (dist > gap){
+          const step = Math.min(3.4 * dt, dist - gap);
+          m.x -= distX / dist * step; m.z -= distZ / dist * step;
           collide(m, .45);
           if (pointInSolid(m.x, m.z) || !inPlayable(m.x, m.z)){
             const p = openSpot(m.x, m.z, 0.45);
             m.x = p.x; m.z = p.z;
           }
           m.y = .5 + Math.abs(Math.sin(G.time*10 + d.id))*.12;
+        } else if (dist < gap){
+          const shove = gap - dist;
+          const ang = dist > 0.02 ? Math.atan2(distX, distZ) : ((d.id || 1) * 0.7);
+          m.x += Math.sin(ang) * shove;
+          m.z += Math.cos(ang) * shove;
+          collide(m, .45);
         }
         if (d.anim.glb) d.mesh.rotation.set(
           Math.sin(G.time*13 + d.id) * .05,
           Math.atan2(px - m.x, pz - m.z),
           0);
         d.meleeCd -= dt;
-        if (dist < 1.3 && d.meleeCd <= 0){
+        const reach = Math.hypot(m.x - px, m.z - pz);
+        if (reach < gap + 0.15 && d.meleeCd <= 0){
           d.meleeCd = 1.0;
           damagePlayer(10);
         }
@@ -4479,8 +4540,11 @@ function updateDoors(dt){
 
   // segment tracking + checkpoints + zone radio
   const z = yawObj.position.z;
+  const x = yawObj.position.x;
   let seg = 0;
-  ROOMS.forEach((r,i)=>{ if (z <= r.z2 && z >= r.z1) seg = i; });
+  ROOMS.forEach((r,i)=>{
+    if (z <= r.z2 && z >= r.z1 && x >= r.x1 - 0.6 && x <= r.x2 + 0.6) seg = i;
+  });
   if (seg !== G.currentSegment && seg > G.currentSegment){
     G.currentSegment = seg;
     G.furthest = Math.max(G.furthest || 0, seg);
@@ -4674,7 +4738,7 @@ function beginExtraction(){
 function showEndCard(){
   G.mode = 'end';
   MusicSys.stop();
-  if (document.pointerLockElement) document.exitPointerLock();
+  dropPointerLock();
   hudVisible(false);
   loadCover();
   el.end.style.display = 'flex';
@@ -4684,15 +4748,20 @@ function showEndCard(){
 /* ============================================================
    Death / respawn
    ============================================================ */
+let deathTimer = 0;
 function die(){
   if (G.mode !== 'play') return;
   G.mode = 'dead';
   Voices.stop();
   resetInputs();
+  dropPointerLock();
+  AudioSys.resume();
   AudioSys.death();
   AudioSys.heartbeatStop();
+  el.redFade.textContent = 'YOU WENT DOWN';
   el.redFade.style.opacity = 1;
-  setTimeout(respawn, 1600);
+  clearTimeout(deathTimer);
+  deathTimer = setTimeout(respawn, 2000);
 }
 function respawn(){
   const seg = G.checkpoint.segment;
@@ -4713,7 +4782,9 @@ function respawn(){
   yawObj.position.set(G.checkpoint.pos.x, PLAYER_EYE, G.checkpoint.pos.z);
   G.yaw = G.checkpoint.yaw; G.pitch = 0;
   G.hp = 100; G.lastDamageT = G.time; G.detect = 0;
+  el.redFade.textContent = '';
   el.redFade.style.opacity = 0;
+  if (!positionOk(yawObj.position.x, yawObj.position.z)) rescuePlayable(yawObj.position);
   G.mode = 'play';
   if (Boss && !exiting) Boss.onRespawn();
   if (G.ambush === 'live') spawnAmbushSquad();
@@ -4796,6 +4867,31 @@ function pollGamepad(dt){
   G._padStart = !!(pad.buttons[9] && pad.buttons[9].pressed);
   return { x: ax(pad.axes[0] || 0), y: ax(pad.axes[1] || 0) };
 }
+function separateFromDrones(){
+  const px = yawObj.position.x, pz = yawObj.position.z;
+  for (const d of drones){
+    if (!d.alive) continue;
+    const gap = bodyGap(d.kind);
+    const dx = px - d.mesh.position.x;
+    const dz = pz - d.mesh.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist >= gap) continue;
+    const push = gap - dist;
+    const ang = dist > 0.02 ? Math.atan2(dx, dz) : ((d.id || 1) * 0.7);
+    const nx = Math.sin(ang), nz = Math.cos(ang);
+    const bx = yawObj.position.x, bz = yawObj.position.z;
+    yawObj.position.x += nx * push;
+    yawObj.position.z += nz * push;
+    collide(yawObj.position, PLAYER_R);
+    if (!positionOk(yawObj.position.x, yawObj.position.z)){
+      yawObj.position.x = bx;
+      yawObj.position.z = bz;
+      d.mesh.position.x -= nx * push;
+      d.mesh.position.z -= nz * push;
+      collide(d.mesh.position, 0.45);
+    }
+  }
+}
 function updatePlayer(dt){
   const pad = pollGamepad(dt);
   const nowMove = performance.now();
@@ -4810,13 +4906,30 @@ function updatePlayer(dt){
   yawObj.rotation.y = G.yaw;
   pitchObj.rotation.x = G.pitch;
 
+  if (!positionOk(yawObj.position.x, yawObj.position.z)) rescuePlayable(yawObj.position);
+
   _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
   _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const spd = MOVE_SPEED * (G.spdMul || 1);
-  yawObj.position.addScaledVector(_fwd, -mv.z * spd);
-  yawObj.position.addScaledVector(_right, mv.x * spd);
-  collide(yawObj.position, PLAYER_R);
-  if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
+  const moveX = mv.x * spd;
+  const moveZ = -mv.z * spd;
+  const slices = moveSlices(Math.hypot(moveX, moveZ), 0.18);
+  for (let si = 0; si < slices; si++){
+    const bx = yawObj.position.x, bz = yawObj.position.z;
+    yawObj.position.x += moveX / slices;
+    yawObj.position.z += moveZ / slices;
+    collide(yawObj.position, PLAYER_R);
+    if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
+    const landed = keptStep(
+      { x: bx, z: bz },
+      { x: yawObj.position.x, z: yawObj.position.z },
+      (x, z) => positionOk(x, z)
+    );
+    yawObj.position.x = landed.x;
+    yawObj.position.z = landed.z;
+    if (!landed.kept) break;
+  }
+  separateFromDrones();
   yawObj.position.y = PLAYER_EYE + (len > .1 ? Math.sin(G.time*11)*.03 : 0);
 
   // camera shake
@@ -5011,17 +5124,29 @@ function showKicker(clip){
     el.intro.insertBefore(k, el.introText);
   }
   const ep = episodeOf(clip.episode);
+  setObjectiveText();
+  const label = (el.objective && el.objective.textContent) || clipLabel(clip, CHAPTERS);
   k.textContent = (ep && ep.game)
-    ? clipLabel(clip, CHAPTERS)
-    : ('RED SKY ARCHIVE ' + (ep ? ep.n : '') + '   ' + clipLabel(clip, CHAPTERS));
+    ? label
+    : ('RED SKY ARCHIVE ' + (ep ? ep.n : '') + '   ' + label);
+}
+function mediaVolume(){
+  let v = 1;
+  if (window.Waking && Waking.settings){
+    const st = Waking.settings();
+    if (st && typeof st.volume === 'number') v = st.volume;
+  }
+  const n = Number(v);
+  return Math.max(0, Math.min(1, Number.isFinite(n) ? n : 0));
 }
 function cueVideo(clip){
   const ep = episodeOf(clip.episode);
   const v = ensureVideo();
-  const hide = () => { v.style.display = 'none'; };
+  const hide = () => { v.style.display = 'none'; el.intro.classList.remove('maskTop'); };
   if (!ep || !ep.url || !clip.cue || clip.textOnly){ hide(); return; }
   const start = clip.cue[0] || 0;
   const dur = Math.min(20, clip.max || 20, clip.cue[1] - start);
+  const fileAudio = !ep.silent;
   // Stay hidden until the cue window is actually playing. A seek that
   // lands at 0 must not show the wrong part of a longer file.
   v.style.display = 'none';
@@ -5029,8 +5154,20 @@ function cueVideo(clip){
   if (ep.poster && ep.status !== 'pending') v.poster = ep.poster;
   let failed = false;
   let seeks = 0;
+  let wantSound = fileAudio && mediaVolume() > 0.001;
   const mine = () => beatState && beatState.clipId === clip.id;
   const atCue = () => start <= 0.05 || Math.abs(v.currentTime - start) < 0.45;
+  const markAudible = () => {
+    if (!mine() || !claimClipBed(wantSound, v.muted)) return;
+    if (beatState.videoAudio) return;
+    beatState.videoAudio = true;
+    Bed.set('clip', true);
+    // A sounding file is the voice. A silent picture keeps the lines.
+    if (clip.id === 'ep1_wake'){
+      beatState.phase = 'hold';
+      el.introText.style.opacity = 0;
+    }
+  };
   const fail = () => {
     if (failed) return;
     failed = true;
@@ -5038,22 +5175,36 @@ function cueVideo(clip){
     Bed.set('clip', false);
     if (mine()){
       beatState.video = false;
+      beatState.videoAudio = false;
       beatState.missing = true;
     }
   };
   const tryPlay = () => {
     if (failed || !mine()) return;
+    v.volume = mediaVolume();
     const p = v.play();
-    if (p && p.catch) p.catch(() => {});
+    if (p && p.then){
+      p.then(() => { if (mine() && atCue()) markAudible(); }).catch(() => {
+        if (!mine() || failed || !wantSound) return;
+        // The browser blocked sound. Keep the picture, and leave the
+        // game bed up so the cutscene is not silent.
+        wantSound = false;
+        if (beatState) beatState.videoAudio = false;
+        Bed.set('clip', false);
+        v.muted = true;
+        const q = v.play();
+        if (q && q.catch) q.catch(() => {});
+      });
+    } else if (!v.muted) markAudible();
   };
   const seekThenPlay = () => {
     if (failed || !mine()) return;
     if (!atCue()){
-      if (seeks++ > 4){ v.muted = false; tryPlay(); return; }
-      try { v.currentTime = start; } catch (e) { v.muted = false; tryPlay(); }
+      if (seeks++ > 4){ v.muted = !wantSound; tryPlay(); return; }
+      try { v.currentTime = start; } catch (e) { v.muted = !wantSound; tryPlay(); }
       return;
     }
-    v.muted = false;
+    v.muted = !wantSound;
     tryPlay();
   };
   v.onerror = fail;
@@ -5061,15 +5212,11 @@ function cueVideo(clip){
     if (failed || !mine()) return;
     if (!atCue()){ v.style.display = 'none'; return; }
     v.style.display = 'block';
-    v.muted = false;
+    el.intro.classList.add('maskTop');
+    v.muted = !wantSound;
     beatState.missing = false;
     beatState.video = true;
-    Bed.set('clip', true);
-    // The origin clip is the picture. Lines are only the fallback.
-    if (clip.id === 'ep1_wake'){
-      beatState.phase = 'hold';
-      el.introText.style.opacity = 0;
-    }
+    markAudible();
   };
   v.onloadedmetadata = seekThenPlay;
   v.onseeked = seekThenPlay;
@@ -5078,8 +5225,9 @@ function cueVideo(clip){
     if (v.currentTime >= start + dur - 0.05) endClip(false);
   };
   // Mute until the playhead is in the cue, so the file's opening
-  // does not talk over the beat we meant to show.
-  v.muted = start > 0.05;
+  // does not talk over the beat we meant to show. A silent file stays
+  // quiet and does not take the bed.
+  v.muted = !wantSound || start > 0.05;
   v.src = ep.url;
   // play() has to run in the ENTER click. A later metadata callback
   // loses the gesture and the short sits on its poster.
@@ -5099,8 +5247,9 @@ function playClip(clip, opts){
   }
   clipReturn = { then: opts.then, onDone: opts.onDone || null, clip };
   introStartT = performance.now();
-  if (document.pointerLockElement) document.exitPointerLock();
+  dropPointerLock();
   showKicker(clip);
+  if (el.objective) el.objective.style.visibility = 'hidden';
   el.intro.style.display = 'flex';
   el.introText.style.display = '';
   el.introText.style.opacity = 0;
@@ -5143,10 +5292,12 @@ function updateBeat(dt){
     // Give a dropped-in origin file a moment to start before the fallback lines.
     if (s.clipId === 'ep1_wake' && s.video && !s.missing && s.elapsed < 0.7) return;
     if (!s.shown){
-      el.introText.textContent = line.who ? line.text : line.text;
+      el.introText.textContent = line.text;
       el.introText.style.opacity = 1;
       s.shown = true;
-      s.hold = Math.min(6.2, Math.max(2.5, 1.1 + line.text.length * 0.028));
+      const speed = (window.Waking && Waking.textSpeed()) || 1;
+      s.hold = Math.min(14, lineHoldMs(line.text, speed) / 1000);
+      if (!s.videoAudio) Voices.say(line.who, line.text);
     }
     s.t += dt;
     if (s.t > s.hold){
@@ -5184,8 +5335,10 @@ function endClip(skipped){
     v.ontimeupdate = null; v.onended = null; v.onplaying = null; v.onerror = null; v.onseeked = null; v.onloadedmetadata = null;
   }
   el.intro.style.display = 'none';
+  el.intro.classList.remove('maskTop');
   el.intro.style.background = '';
   el.introText.style.opacity = 0;
+  if (el.objective) el.objective.style.visibility = '';
   el.skipBtn.style.opacity = 0;
   const kicker = document.getElementById('introKicker');
   if (kicker) kicker.textContent = '';
@@ -5308,6 +5461,7 @@ function startIntro(){
   el.start.style.display = 'none';
   AudioSys.init();
   AudioSys.resume();
+  Bed.heart = true;
   AudioSys.heartbeatStart();
   MusicSys.start();
   if (window.Waking) Waking.onChapterStart(CH.id);
@@ -5322,6 +5476,7 @@ function startIntro(){
 function finishIntro(skipAll){
   beatState = null;
   clipReturn = null;
+  Bed.heart = false;
   AudioSys.heartbeatStop();
   el.intro.style.display = 'none';
   el.intro.style.background = '';
@@ -5370,12 +5525,12 @@ function finishIntro(skipAll){
       if (b.chapter === CH.id && (b.at === 'open' || (b.at === 'room' && b.room <= progress.furthest))) G.firedClips.add(b.id);
     });
   }
+  if (!positionOk(yawObj.position.x, yawObj.position.z)) rescuePlayable(yawObj.position);
   pitchObj.rotation.x = G.pitch;
   yawObj.rotation.y = G.yaw;
   G.mode = 'play';
   hudVisible(true);
   if (IS_TOUCH){ el.stickZone.style.display='block'; el.lookZone.style.display='block'; }
-  else if (!pointerLocked){ try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(()=>{}); } catch(e){} }
   // Skip used to hand over the rifle because it sat in the first room.
   // On the train, the rifle is out on the gravel. A fresh skip must not take it.
   // Continue still arms you, so a mid-chapter resume is not stuck behind a closed door.
@@ -5390,7 +5545,13 @@ function finishIntro(skipAll){
   if (CH.train && G.planted) tryTrainReturn();
   const trainChoice = CH.train && CB.start && !SFLAGS.leftTrain && !G.finaleStarted
     && (!G._resumed || (G.currentSegment === 0 && yawObj.position.z > 2));
-  if (!G.finaleStarted && ((CB.start && !G._resumed) || trainChoice)) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
+  const storySoon = !G.finaleStarted && ((CB.start && !G._resumed) || trainChoice);
+  // Locking here and dropping it when the train choice opens makes the
+  // browser toast that pointer lock ended. Ask only when play is staying.
+  if (!IS_TOUCH && !storySoon && !pointerLocked){
+    try { const r = renderer.domElement.requestPointerLock(); if (r && r.catch) r.catch(()=>{}); } catch(e){}
+  }
+  if (storySoon) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
 function showSkip(){ el.skipBtn.style.transition = 'none'; el.skipBtn.style.opacity = .85; }
 function skipIntro(){
@@ -5408,6 +5569,7 @@ el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) ski
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Escape' && window.Waking){
+    if (unlockPaused){ unlockPaused = false; e.preventDefault(); return; }
     const m = G.mode;
     if (m === 'play' || m === 'story' || m === 'paused' || m === 'title' || m === 'end'){
       e.preventDefault();
@@ -5489,7 +5651,7 @@ const Story = (() => {
     active = true; beats = list; bi = 0;
     G.mode = 'story';
     resetInputs();
-    if (document.pointerLockElement) document.exitPointerLock();
+    dropPointerLock();
     document.body.classList.add('cine');
     sEl.wrap.style.display = 'flex';
     next();
@@ -5519,7 +5681,7 @@ const Story = (() => {
     sayStartMs = performance.now();
     typeOn = true;
     sEl.text.textContent = '';
-    sayDeadline = sayStartMs + (Math.max(3.4, text.length * .06) / speed) * 1000;
+    sayDeadline = sayStartMs + lineHoldMs(text, speed);
     if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK FINISHES THE LINE';
     if (Cast) Cast.speak(who, text);
     Voices.say(who, text);
@@ -5637,7 +5799,12 @@ const Story = (() => {
         if (sEl.hint) sEl.hint.textContent = 'SPACE OR CLICK TO CONTINUE';
       }
     }
-    if (performance.now() >= sayDeadline) advance();
+    if (performance.now() >= sayDeadline){
+      const synth = window.speechSynthesis;
+      // Do not start the next line while this one is still being said.
+      if (synth && synth.speaking && performance.now() < sayStartMs + 14000) return;
+      advance();
+    }
   }
   return { start, advance, update, finish,
     pickIndex(i){ if (cState && cState.opts[i] && !cState.locked(cState.opts[i])) cState.pick(cState.opts[i]); },
@@ -6266,7 +6433,7 @@ function goChapter(hash){
 function finishHiveSignal(){
   G.mode = 'end';
   Story.finish();
-  if (document.pointerLockElement) document.exitPointerLock();
+  dropPointerLock();
   hudVisible(false);
   el.fade.style.transition = 'opacity .6s';
   el.fade.style.background = '#000';
@@ -7606,7 +7773,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush, setBed: (reason, on) => Bed.set(reason, !!on) };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush, setBed: (reason, on) => Bed.set(reason, !!on), dropPointerLock };
 
 if (window.Waking) Waking.mount({
   getMode: () => G.mode,
@@ -7614,7 +7781,7 @@ if (window.Waking) Waking.mount({
     G.mode = m;
     if (m === 'paused') Voices.pause();
     else if (m === 'play' || m === 'story') Voices.resume();
-    if ((m === 'paused' || m === 'story' || m === 'beatclip') && document.pointerLockElement) document.exitPointerLock();
+    if (m === 'paused' || m === 'story' || m === 'beatclip') dropPointerLock();
     if (m === 'play' || m === 'story') hudVisible(true);
   },
   chapterId: () => CH.id,

@@ -25,9 +25,9 @@ export const ARCHIVE = [
   // Origin is the New Game open. Locked RSA Shorts Marcus clip
   // (wake, run, train look). Do not point this slot back at game_ep1_origin.mp4.
   // If the file fails to load, the two intro lines still hand over the car.
-  { id:'game_ep1_origin', n:'G1', title:'GAME SHORT: WHY THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_origin_v2.mp4', poster:'media/shorts/game/game_ep1_origin_v2.jpg', status:'ready', game:true },
+  { id:'game_ep1_origin', n:'G1', title:'GAME SHORT: WHY THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_origin_v2.mp4', poster:'media/shorts/game/game_ep1_origin_v2.jpg', status:'ready', game:true, silent:true },
   { id:'game_ep1_train', n:'G1b', title:'GAME SHORT: WAKE IN THE TRAIN', chapter:'ep1', url:'media/shorts/game/game_ep1_train.mp4', poster:'media/shorts/game/game_ep1_train.jpg', status:'ready', game:true },
-  { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true },
+  { id:'game_ep1_street', n:'G2', title:'GAME SHORT: THE RUINED STREET', chapter:'ep1', url:'media/shorts/game/game_ep1_street.mp4', poster:'media/shorts/game/game_ep1_street.jpg', status:'ready', game:true, silent:true },
   { id:'game_ep1_depot', n:'G3', title:'GAME SHORT: THE DEPOT LEDGER', chapter:'ep1', url:'media/shorts/game/game_ep1_depot.mp4', poster:'media/shorts/game/game_ep1_depot.jpg', status:'ready', game:true },
   // Long Road level clips. The book row stays rsa5 with no level cue.
   { id:'game_ch2_lone_highway', n:'G4', title:'GAME SHORT: THE DEAD HIGHWAY', chapter:'ch_lone', url:'media/shorts/game/game_ch2_lone_highway.mp4', poster:'media/shorts/game/game_ch2_lone_highway.jpg', status:'ready', game:true },
@@ -36,10 +36,10 @@ export const ARCHIVE = [
   { id:'game_ch2_hive_pods', n:'G7', title:'GAME SHORT: THE POD GALLERY', chapter:'ch_taken', url:'media/shorts/game/game_ch2_hive_pods.mp4', poster:'media/shorts/game/game_ch2_hive_pods.jpg', status:'ready', game:true },
   { id:'game_ch2_ghost_trunk', n:'G8', title:'GAME SHORT: THE TRUNK LINE', chapter:'ch_ghost', url:'media/shorts/game/game_ch2_ghost_trunk.mp4', poster:'media/shorts/game/game_ch2_ghost_trunk.jpg', status:'ready', game:true },
   { id:'game_ch3_counting_hall', n:'G9', title:'GAME SHORT: THE RECORDS HALL', chapter:'ch_counting', url:'media/shorts/game/game_ch3_counting_hall.mp4', poster:'media/shorts/game/game_ch3_counting_hall.jpg', status:'ready', game:true },
-  { id:'game_ch2_convoy_ridge', n:'G10', title:'GAME SHORT: THE RIDGE', chapter:'ch_together', url:'media/shorts/game/game_ch2_convoy_ridge.mp4', poster:'media/shorts/game/game_ch2_convoy_ridge.jpg', status:'ready', game:true },
-  { id:'game_ch4_conduits_river', n:'G11', title:'GAME SHORT: THE DRY RIVERBED', chapter:'ch_conduits', url:'media/shorts/game/game_ch4_conduits_river.mp4', poster:'media/shorts/game/game_ch4_conduits_river.jpg', status:'ready', game:true },
-  { id:'game_ch5_harvest_core', n:'G12', title:'GAME SHORT: THE CORE', chapter:'ch_harvest', url:'media/shorts/game/game_ch5_harvest_core.mp4', poster:'media/shorts/game/game_ch5_harvest_core.jpg', status:'ready', game:true },
-  { id:'game_ch6_steel_pass', n:'G13', title:'GAME SHORT: THE PASS', chapter:'ch_steel', url:'media/shorts/game/game_ch6_steel_pass.mp4', poster:'media/shorts/game/game_ch6_steel_pass.jpg', status:'ready', game:true },
+  { id:'game_ch2_convoy_ridge', n:'G10', title:'GAME SHORT: THE RIDGE', chapter:'ch_together', url:'media/shorts/game/game_ch2_convoy_ridge.mp4', poster:'media/shorts/game/game_ch2_convoy_ridge.jpg', status:'ready', game:true, silent:true },
+  { id:'game_ch4_conduits_river', n:'G11', title:'GAME SHORT: THE DRY RIVERBED', chapter:'ch_conduits', url:'media/shorts/game/game_ch4_conduits_river.mp4', poster:'media/shorts/game/game_ch4_conduits_river.jpg', status:'ready', game:true, silent:true },
+  { id:'game_ch5_harvest_core', n:'G12', title:'GAME SHORT: THE CORE', chapter:'ch_harvest', url:'media/shorts/game/game_ch5_harvest_core.mp4', poster:'media/shorts/game/game_ch5_harvest_core.jpg', status:'ready', game:true, silent:true },
+  { id:'game_ch6_steel_pass', n:'G13', title:'GAME SHORT: THE PASS', chapter:'ch_steel', url:'media/shorts/game/game_ch6_steel_pass.mp4', poster:'media/shorts/game/game_ch6_steel_pass.jpg', status:'ready', game:true, silent:true },
 ];
 
 // at: 'open' plays once when the chapter starts, then gameplay.

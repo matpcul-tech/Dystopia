@@ -1326,7 +1326,8 @@ function finishSignal(pick){
   writeDaily({ day, pick: pick === 'clue' ? 'clue' : 'mark', text });
   persist();
   applyCosmetics();
-  if (document.pointerLockElement) document.exitPointerLock();
+  if (window.__LATM && __LATM.dropPointerLock) __LATM.dropPointerLock();
+  else if (document.pointerLockElement) document.exitPointerLock();
   fillSignalSheet('SIGNAL LOGGED', [
     text,
     cosmeticLine(),
