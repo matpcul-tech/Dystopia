@@ -2,7 +2,7 @@
 // movement, the pointer-lock recenter swallow, and slot continue.
 // Run: node tools/check-feel.mjs
 import { readFileSync } from 'fs';
-import { typedCount, swallowLook, integrateMove, resumePlan } from '../feel.js';
+import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed } from '../feel.js';
 
 const fails = [];
 function check(name, pass, detail){
@@ -72,6 +72,38 @@ const added = [
   'This slot is empty. New Game starts Episode One here.',
 ];
 added.forEach(line => check('no dash in copy: ' + line.slice(0, 28), !dash.test(line)));
+
+const rooms = [
+  { x1:-1.7, x2:1.7, z1:2, z2:16 },
+  { x1:-3, x2:3, z1:-10, z2:2 },
+  { x1:-5, x2:5, z1:-42, z2:-10 },
+  { x1:-4, x2:4, z1:-76, z2:-42 },
+  { x1:-3, x2:3, z1:-112, z2:-76 },
+  { x1:-9, x2:9, z1:-136, z2:-112 },
+];
+const annexes = [{ room:2, side:'R', z1:-38, z2:-30, depth:4 }];
+const inside = (x, z) => inLevel(x, z, rooms, annexes, 0.4);
+check('street lane is inside the level', inside(4.4, -41.5));
+check('hardware door is inside the level', inside(0, -44));
+check('hardware side pocket is outside', !inside(4.9, -42.7));
+check('clinic annex is inside the level', inside(7, -34));
+const slipped = keptStep({ x:4.4, z:-41.5 }, { x:4.9, z:-42.7 }, inside);
+check('a step out beside the hardware door is rejected', slipped.kept === false && slipped.x === 4.4 && slipped.z === -41.5);
+const through = keptStep({ x:0, z:-41.5 }, { x:0, z:-44 }, inside);
+check('a step through the door center is kept', through.kept === true && through.z === -44);
+check('a one meter hitch is sliced', moveSlices(1.04, 0.18) >= 6);
+check('crawler body stays off the camera', bodyGap('crawler') >= 1.2);
+check('a spoken line outlasts the old cutoff', lineHoldMs('x'.repeat(80), 1) >= 80 * 78);
+check('line hold stays bounded', lineHoldMs('x'.repeat(400), 1) <= 14000);
+check('a silent picture does not take the bed', claimClipBed(false, false) === false);
+check('a muted soundtrack does not take the bed', claimClipBed(true, true) === false);
+check('a playing soundtrack takes the bed', claimClipBed(true, false) === true);
+check('movement rejects a landing outside the level', game.includes('keptStep('));
+check('a bad continue is pulled back inside', game.includes('rescuePlayable('));
+check('escape that only unlocks the mouse still pauses', game.includes('unlockPaused'));
+check('death says you went down', game.includes('YOU WENT DOWN'));
+check('speech is not cancelled in the same turn it starts', !/synthNow\.cancel\(\)/.test(game));
+check('the next line waits while speech is still going', game.includes('synth.speaking'));
 
 if (fails.length){
   console.error(fails.join('\n'));
