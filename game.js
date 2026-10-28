@@ -5,6 +5,7 @@ import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
 import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
+import { ngDamageMul, ngHpMul, readDaily, signalChapter, signalLayout, SIGNAL_SCRIPTS, todayKey } from './return-loop.js';
 
 window.THREE = THREE; // humans.js is a classic script that reads global THREE at call time
 
@@ -729,6 +730,11 @@ Object.keys(EXIT_FIGHTS).forEach(id => {
   CHAPTERS[id].radio.ambush = [f.line];
 });
 
+if ((location.hash || '') === '#ch_signal'){
+  const played = readDaily();
+  if (played && played.day === todayKey()) location.hash = '#ep1';
+  else CHAPTERS.ch_signal = signalChapter(signalLayout(todayKey()));
+}
 const CH = CHAPTERS[(location.hash || '').replace('#','')] || CHAPTERS.ep1;
 const RADIO = CH.radio;
 const INTRO_LINES = CH.introLines;
@@ -771,7 +777,8 @@ document.getElementById('endSub').textContent = CH.endSub;
   if (UNLOCKED.length){
     const t = document.createElement('div');
     t.style.cssText = 'margin-top:16px;font-size:10px;letter-spacing:3px;color:#ffb85c;';
-    t.textContent = 'PATHS UNLOCKED: ' + UNLOCKED.length + ' / ' + (Object.keys(CHAPTERS).length - 1);
+    const pathTotal = Object.keys(CHAPTERS).filter(id => id !== 'ep1' && !(CHAPTERS[id] && CHAPTERS[id].signal)).length;
+    t.textContent = 'PATHS UNLOCKED: ' + UNLOCKED.length + ' / ' + pathTotal;
     document.getElementById('startScreen').appendChild(t);
   }
   if (CH.nextHash){
@@ -3588,7 +3595,8 @@ function makeDrone(kind, x, z, segment){
     id: droneSeq++, kind, segment, mesh, eyeMat, anim: built.anim, shadow,
     baseScale: M ? 1 : (K.scale || 1), idleEye: K.idleEye || EYE_GREEN,
     home: new THREE.Vector3(x, K.homeY, z),
-    hp: K.hp, maxHp: K.hp,
+    hp: (window.Waking && Waking.ngLevel) ? Math.max(1, Math.round(K.hp * ngHpMul(Waking.ngLevel(), !!(Waking.storyMode && Waking.storyMode())))) : K.hp,
+    maxHp: (window.Waking && Waking.ngLevel) ? Math.max(1, Math.round(K.hp * ngHpMul(Waking.ngLevel(), !!(Waking.storyMode && Waking.storyMode())))) : K.hp,
     state: 'idle',            // idle > alert > attack
     stateT: 0, losT: Math.random()*.15,
     meleeCd: 0, chargeT: 0, patrolDir: 1,
@@ -4156,6 +4164,7 @@ function damagePlayer(dmg){
   // doorway must not delete the ending before the choice can start.
   if (CH.train && G.planted && !G.finaleStarted && G.ambush !== 'live' && yawObj.position.z > trainCarLine()) return;
   if (window.Waking && Waking.storyMode()) dmg *= 0.55;
+  if (window.Waking && Waking.ngLevel) dmg *= ngDamageMul(Waking.ngLevel(), !!(Waking.storyMode && Waking.storyMode()));
   G.hp -= dmg;
   G.lastDamageT = G.time;
   AudioSys.hurt();
@@ -4369,6 +4378,7 @@ function capturePos(){
 }
 let nextSaveAt = 0;
 function maybeAutosave(force){
+  if (CH.signal) return;
   if (!window.Waking || !Waking.autosave) return;
   const mode = G.mode;
   if (mode !== 'play' && mode !== 'story' && mode !== 'paused' && mode !== 'dead') return;
@@ -4532,6 +4542,10 @@ function updateDoors(dt){
 
 function setObjectiveText(){
   const O = CH.obj;
+  if (CH.signal){
+    el.objective.textContent = G.planted ? O.done : (G.currentSegment >= CORE_SEG ? O.final : (G.currentSegment === 0 ? O.advance : O.segs[0]));
+    return;
+  }
   if (G.ambush === 'live'){
     el.objective.textContent = (CH.boss || !CH.exitFight) ? 'CUT THROUGH THE CORRIDOR' : CH.exitFight.objective;
     return;
@@ -5440,6 +5454,7 @@ if (CH.id !== 'ep1'){
 if (CH.book){
   try { Object.assign(SFLAGS, JSON.parse(localStorage.getItem('latm_book')) || {}); } catch(e){}
 }
+if (window.Waking && Waking.ngLevel && Waking.ngLevel() > 0) SFLAGS.ngPlus = true;
 const SCHOICES = [];
 const EKEY = 'latm_hybrid_endings';
 const sEl = {
@@ -5858,6 +5873,14 @@ const FINALE_BEATS = [
 
 /* ---- Chapter Two beats, one set per path ---- */
 const TK_MID = [
+  { if:'ngPlus', say:['LEDGER', 'YOU HAVE WALKED THIS GALLERY BEFORE, SUBJECT M-1. THE GLASS STILL HOLDS YOUR HEAT.'] },
+  { if:'ngPlus', choice:{ record:'The gallery remembers the first burn', timer:7, options:[
+    { label:'“Open them faster.”', sub:'NG+. The hive is already angry', flags:{ngHeat:true},
+      apply(){ G.dmgMul = (G.dmgMul||1)*1.1; },
+      toast:'NG+. THE SEALS POP EARLY. THE HIVE IS ALREADY ANGRY.' },
+    { label:'[Walk the old scar]', silent:true, sub:'NG+. The quiet lane still works', apply(){ G.spdMul = (G.spdMul||1)*1.05; },
+      toast:'NG+. YOU TAKE THE LANE YOU ALREADY PAID FOR.' },
+  ]}},
   { say:['LEDGER', 'YOU ARE DAMAGING HIVE PROPERTY, SUBJECT M-1.'] },
   { say:[null, 'Rows of pods. Faces under glass, breathing in rhythm. Some of the names from the depot screen were here. Sleeping.'] },
   { choice:{ record:'The pods can open from outside', timer:8, options:[
@@ -5876,6 +5899,14 @@ const TK_FINALE = [
   ]}},
 ];
 const GH_MID = [
+  { if:'ngPlus', say:['LEDGER', 'YOU ANSWERED ONCE, MARCUS. OR YOU REFUSED. I KEPT BOTH.'] },
+  { if:'ngPlus', choice:{ record:'The trunk line has heard you before', timer:7, options:[
+    { label:'“Then you already know the name.”', sub:'NG+. Make it hesitate longer', flags:{ngNamed:true},
+      apply(){ G.detCalm = true; },
+      toast:'NG+. THE COUNTING STUTTERS. IT REMEMBERS THE FIRST ANSWER.' },
+    { label:'[Give it a different silence]', silent:true, sub:'NG+. A new kind of quiet', apply(){ G.regenFast = true; },
+      toast:'NG+. IT WAITS FOR A WORD YOU DO NOT SPEND.' },
+  ]}},
   { say:['LEDGER', 'MARCUS. YOU HEARD ME SAY YOUR NAME. NO ENTRY HAS EVER ANSWERED.'] },
   { choice:{ record:'The ledger is asking for you', timer:7, options:[
     { label:'“My name is Marcus.”', sub:'Answer the machine', flags:{spoke:true},
@@ -5893,6 +5924,13 @@ const GH_FINALE = [
   ]}},
 ];
 const TW_MID = [
+  { if:'ngPlus', say:['REYES', 'This checkpoint again. Last time we picked a way through. They rebuilt it anyway.'] },
+  { if:'ngPlus', choice:{ record:'The convoy checkpoint was rebuilt', timer:7, options:[
+    { label:'“They know our first trick.”', sub:'NG+. Change the angle', apply(){ spawnExtra('crawler', 0, -64, 2); G.dmgMul = (G.dmgMul||1)*1.1; },
+      toast:'NG+. REYES: “THEN WE DO NOT USE THE FIRST TRICK.”' },
+    { label:'[Tell her the wrecks moved]', silent:true, sub:'NG+. A lane that was not there', apply(){ G.regenFast = true; },
+      toast:'NG+. THE WRECKS SHIFTED. REYES TAKES THE NEW GAP.' },
+  ]}},
   { say:['REYES', 'Checkpoint wardens ahead. We can hit them loud, or go through the wrecks. Your call, partner.'] },
   { choice:{ record:'The checkpoint stands between you and the pods', timer:7, options:[
     { label:'Hit them head-on', sub:'Loud and fast', apply(){ G.dmgMul = (G.dmgMul||1)*1.2; spawnExtra('crawler', -2, -56, 2); spawnExtra('crawler', 2, -60, 2); },
@@ -5909,6 +5947,13 @@ const TW_FINALE = [
   ]}},
 ];
 const LN_MID = [
+  { if:'ngPlus', say:['KARA', 'The beacon still pulses. You have walked this highway. The hills remember a fire, or the lack of one.'] },
+  { if:'ngPlus', choice:{ record:'The long road has your footprints', timer:7, options:[
+    { label:'“Light it earlier.”', sub:'NG+. The valley already knows the road', flags:{ngBeacon:true},
+      toast:'NG+. THE PULSE JUMPS. SOMEONE IN THE HILLS ANSWERS SOONER.' },
+    { label:'[Stay off the old gravel]', silent:true, sub:'NG+. A shoulder that was not watched', apply(){ G.spdMul = (G.spdMul||1)*1.06; },
+      toast:'NG+. YOU KEEP TO THE SHOULDER THE LENSES DID NOT SWEEP.' },
+  ]}},
   { say:['KARA', '...repeater confirms a walker on the dead highway. If that\'s a person: the beacon is real. Keep coming.'] },
   { choice:{ record:'The pulse in the hills', timer:7, options:[
     { label:'Push straight for the beacon', sub:'Trust the signal', flags:{beacon:true},
@@ -6119,6 +6164,22 @@ const ST_FINALE = [
     { label:'[Keep counting the towers]', silent:true, sub:'Stay careful', end:'the_count' },
   ]}},
 ];
+function signalBeats(script){
+  const S = SIGNAL_SCRIPTS[script] || SIGNAL_SCRIPTS[0];
+  return {
+    start: [ { say:[null, S.start] } ],
+    finale: [
+      { say:[null, S.finale] },
+      { choice:{ record:S.record, timer:8, options:[
+        { label:S.mark.label, sub:S.mark.sub, flags:{signalPick:'mark'},
+          toast:'THE PULSE STAYS IN THE PACK.' },
+        { label:S.clue.label, sub:S.clue.sub, flags:{signalPick:'clue'},
+          toast:'THE LEDGER ALMOST SAYS A NAME.' },
+      ]}},
+      { run(){ finishHiveSignal(); } },
+    ],
+  };
+}
 const BEATSETS = {
   ep1:        { start:TRAIN_BEATS, door1:SHELTER_BEATS, door2:VOICE_BEATS, finale:FINALE_BEATS },
   ch_taken:   { door1:TK_MID, finale:TK_FINALE },
@@ -6130,6 +6191,7 @@ const BEATSETS = {
   ch_harvest: { door1:HV_MID, plantMid:HV_CORE, finale:HV_FINALE },
   ch_steel:   { start:ST_START, door2:ST_DOOR2, core:ST_CORE, bossMid:BOSS_MID, finale:ST_FINALE },
 };
+if (CH.signal) BEATSETS.ch_signal = signalBeats(CH.signalScript || 0);
 const CB = BEATSETS[CH.id] || {};
 
 /* ---- endings ---- */
@@ -6201,6 +6263,16 @@ function goChapter(hash){
   location.hash = '#' + id;
   location.reload();
 }
+function finishHiveSignal(){
+  G.mode = 'end';
+  Story.finish();
+  if (document.pointerLockElement) document.exitPointerLock();
+  hudVisible(false);
+  el.fade.style.transition = 'opacity .6s';
+  el.fade.style.background = '#000';
+  el.fade.style.opacity = 1;
+  if (window.Waking && Waking.finishSignal) Waking.finishSignal(SFLAGS.signalPick || 'mark');
+}
 function finishEnding(id){
   loadCover();
   const E = ENDING_TEXT[id];
@@ -6220,6 +6292,7 @@ function finishEnding(id){
   try { f = JSON.parse(localStorage.getItem(EKEY)) || []; } catch(e){}
   if (!f.includes(id)){ f.push(id); try { localStorage.setItem(EKEY, JSON.stringify(f)); } catch(e){} }
   sEl.endTracker.textContent = 'ENDINGS RECOVERED: ' + f.length + ' / ' + Object.keys(ENDING_TEXT).length;
+  if ((id === 'game_over' || id === 'the_count') && window.Waking && Waking.armNgOffer) Waking.armNgOffer();
   if (CH.book || E.next === '#ch_conduits'){
     // the Book One arc remembers its choices from chapter to chapter
     const keep = {};
@@ -6643,6 +6716,7 @@ function renderPerks(){
   if (SFLAGS.freed) chips.push('LIBERATOR');
   if (SFLAGS.spoke) chips.push('SPOKE TO IT');
   if (SFLAGS.hatchScar) chips.push('SCAR');
+  if (window.Waking && Waking.ngLevel && Waking.ngLevel() > 0) chips.push(Waking.storyMode && Waking.storyMode() ? 'NG+ STORY' : 'NG+ ACTION');
   box.innerHTML = chips.map(c => '<div class="pchip">' + c + '</div>').join('');
 }
 
@@ -7545,6 +7619,7 @@ if (window.Waking) Waking.mount({
   },
   chapterId: () => CH.id,
   chapters: CHAPTERS,
+  endings: ENDING_TEXT,
   applyQuality,
   setVolume(v){
     AudioSys.setVolume(v);
@@ -7651,6 +7726,11 @@ loop();
 try {
   if (sessionStorage.getItem('latm_newgame') === '1'){
     sessionStorage.removeItem('latm_newgame');
+    sessionStorage.removeItem('latm_resume');
+    sessionStorage.removeItem('latm_autoload');
+    beginFromTitle(false);
+  } else if (CH.signal && sessionStorage.getItem('latm_daily_run') === '1'){
+    sessionStorage.removeItem('latm_daily_run');
     sessionStorage.removeItem('latm_resume');
     sessionStorage.removeItem('latm_autoload');
     beginFromTitle(false);
