@@ -549,7 +549,7 @@ function buildSettings(host){
     row.appendChild(input);
     box.appendChild(row);
   });
-  box.appendChild(el('p', 'fine', 'Story Mode softens hits and shortens the hunter. On a phone, Story Mode nudges a shot that is already close to a target. Mouse and keyboard do not lock on. Action Mode is the desktop fight. Timer off keeps every option on screen until you choose. Portrait cards are placeholders, not finished art.'));
+  box.appendChild(el('p', 'fine', 'Story Mode softens hits and shortens the hunter. On a phone, Story Mode nudges a shot that is already close to a target. Mouse and keyboard do not lock on. Action Mode is the desktop fight. Timer off keeps every option on screen until you choose. Dialogue cards show the name and the line. Stand-in faces stay hidden.'));
   box.appendChild(el('p', 'fine', 'Voices speak radio lines and story lines. Each person keeps one voice. Off leaves the text. Volume at zero stays silent.'));
   box.appendChild(el('p', 'fine', 'Choice counts and chapter events are anonymous. No account. No name is sent.'));
   const close = el('button', 'btn', 'CLOSE');
@@ -739,7 +739,12 @@ function fmtClock(t){
   const r = s % 60;
   return m + ':' + (r < 10 ? '0' : '') + r;
 }
+function trailerBed(on){
+  const api = window.__LATM;
+  if (api && api.setBed) api.setBed('trailer', !!on);
+}
 function releaseTrailer(){
+  trailerBed(false);
   if (!trailerSettled) trailerToken += 1;
   trailerSettled = false;
   const video = activeVideo;
@@ -1025,6 +1030,7 @@ function playTrailer(chapterId){
 
   function startPlay(){
     video.playbackRate = 1;
+    trailerBed(true);
     const pending = video.play();
     if (pending && pending.then) {
       pending.then(() => {
@@ -1056,10 +1062,12 @@ function playTrailer(chapterId){
     if (video.paused) startPlay();
     else {
       video.pause();
+      trailerBed(false);
       play.textContent = 'PLAY';
     }
   });
   close.addEventListener('click', () => {
+    trailerBed(false);
     trailerToken += 1;
     try {
       video.pause();

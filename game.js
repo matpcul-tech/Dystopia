@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
-import { showPortrait, hidePortrait } from './portraits.js';
+import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
 import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 
@@ -972,8 +972,15 @@ const AudioSys = (() => {
     hitConfirm(){ if(!ctx)return; tone('square', 1600, 1600, 0.04, 0.18, now()); },
     droneDie(){ if(!ctx)return; const t=now();
       tone('sawtooth', 300, 40, 0.35, 0.4, t); noise(0.3, 0.3, t, 700, 0.6); },
-    alert(){ if(!ctx)return; const t=now();
-      tone('sawtooth', 220, 660, 0.22, 0.3, t); },
+    alert(){
+      if(!ctx)return;
+      // One siren at a time. A speaking line, a clip, or a trailer owns the bed.
+      if (Bed.holds('voice') || Bed.holds('clip') || Bed.holds('trailer')) return;
+      const t=now();
+      if (AudioSys._alertAt && t - AudioSys._alertAt < 0.9) return;
+      AudioSys._alertAt = t;
+      tone('sawtooth', 220, 660, 0.22, 0.3, t);
+    },
     sentryCharge(){ if(!ctx)return; const t=now();
       tone('sine', 300, 1200, 0.6, 0.22, t); },
     hunterStep(d){ if(!ctx)return; const t=now(), v=.5*Math.max(.12, 1 - (d||0)/30);
@@ -1158,17 +1165,41 @@ const MusicSys = (() => {
       out.gain.setTargetAtTime(0, ctx.currentTime, .6);
       setTimeout(() => { running = false; clearTimeout(timer); }, 2500);
     },
+    applyOut(){
+      if (!out || !ctx) return;
+      const v = muted ? 0 : (MusicSys._vol || 1) * (MusicSys._duck || 1);
+      out.gain.setTargetAtTime(v, ctx.currentTime, .08);
+    },
     toggleMute(){
       muted = !muted;
-      if (out) out.gain.setTargetAtTime(muted ? 0 : (MusicSys._vol || 1), ctx.currentTime, .05);
+      MusicSys.applyOut();
     },
     setVolume(v){
       MusicSys._vol = Math.max(0, Math.min(1, v));
-      if (out && !muted) out.gain.setTargetAtTime(MusicSys._vol, ctx.currentTime, .05);
+      MusicSys.applyOut();
+    },
+    duck(on){
+      MusicSys._duck = on ? 0.08 : 1;
+      MusicSys.applyOut();
     },
     _vol: 1,
+    _duck: 1,
   };
 })();
+
+// One primary bed: a spoken line, a beat clip, or a book trailer.
+// Music ducks. Heartbeat stops. Those do not stack a second voice.
+const Bed = {
+  reasons: new Set(),
+  set(reason, on){
+    if (on) this.reasons.add(reason);
+    else this.reasons.delete(reason);
+    if (MusicSys.duck) MusicSys.duck(this.reasons.size > 0);
+    if (this.reasons.size && AudioSys.heartbeatStop) AudioSys.heartbeatStop();
+    if (on && (reason === 'clip' || reason === 'trailer')) Voices.stop();
+  },
+  holds(reason){ return reason ? this.reasons.has(reason) : this.reasons.size > 0; },
+};
 
 /* ============================================================
    Speaker voices. Text stays on screen. Speech is extra.
@@ -1237,6 +1268,7 @@ const Voices = (() => {
     if (!keepQueue) queued.length = 0;
     const s = synth();
     if (s){ try { s.cancel(); } catch (e) {} }
+    Bed.set('voice', false);
   }
   function flush(){
     if (current) return;
@@ -1249,6 +1281,7 @@ const Voices = (() => {
     const line = spokenLine(text);
     if (!line) return;
     queued.push({ who, line });
+    if (!current) flush();
   }
   function pause(){
     const s = synth();
@@ -1288,14 +1321,22 @@ const Voices = (() => {
       if (current && current.timer) clearTimeout(current.timer);
       if (name) pokeTalking(name, false);
       current = null;
+      Bed.set('voice', false);
       flush();
     };
     u.onend = done;
     u.onerror = done;
+    Bed.set('voice', true);
     setTimeout(() => {
       if (mine !== token || !allowed()) return;
-      try { s.speak(u); } catch (e) {}
-    }, 40);
+      const synthNow = synth();
+      if (!synthNow) return;
+      // Chrome keeps the cancelled line alive unless cancel runs again
+      // just before the next speak. One line, then the queue.
+      try { synthNow.cancel(); } catch (e) {}
+      try { if (synthNow.paused && synthNow.resume) synthNow.resume(); } catch (e) {}
+      try { synthNow.speak(u); } catch (e) {}
+    }, 60);
   }
   if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.addEventListener){
     window.speechSynthesis.addEventListener('voiceschanged', refresh);
@@ -3556,7 +3597,35 @@ function makeDrone(kind, x, z, segment){
   mesh.position.copy(d.home);
   addPotatoOutline(mesh);
   drones.push(d);
+  settleDrone(d);
   return d;
+}
+function spotOpen(x, z, r){
+  if (!inPlayable(x, z) || pointInSolid(x, z)) return false;
+  const pad = Math.max(0.35, r || 0.45);
+  if (pointInSolid(x + pad, z) || pointInSolid(x - pad, z)) return false;
+  if (pointInSolid(x, z + pad) || pointInSolid(x, z - pad)) return false;
+  return true;
+}
+function openSpot(x, z, r){
+  if (spotOpen(x, z, r)) return { x, z };
+  for (let ring = 1; ring <= 10; ring++){
+    const dist = ring * 0.55;
+    for (let a = 0; a < 12; a++){
+      const ang = a * (Math.PI / 6) + ring * 0.4;
+      const nx = x + Math.cos(ang) * dist;
+      const nz = z + Math.sin(ang) * dist;
+      if (spotOpen(nx, nz, r)) return { x: nx, z: nz };
+    }
+  }
+  return { x, z };
+}
+function settleDrone(d){
+  const p = openSpot(d.home.x, d.home.z, 0.45);
+  d.home.x = p.x;
+  d.home.z = p.z;
+  d.mesh.position.x = p.x;
+  d.mesh.position.z = p.z;
 }
 
 const INITIAL_DRONES = CH.drones;
@@ -3721,14 +3790,15 @@ function sampleMoveSeconds(now){
 }
 
 addEventListener('keydown', e => {
+  if (MOVE_AXIS[e.code] && (G.mode === 'play' || G.mode === 'story')) e.preventDefault();
   if (!keys[e.code]) noteMoveDown(e.code, performance.now());
   keys[e.code] = true;
   if (e.code === 'KeyM') MusicSys.toggleMute();
-});
+}, true);
 addEventListener('keyup', e => {
   noteMoveUp(e.code, performance.now());
   keys[e.code] = false;
-});
+}, true);
 
 renderer.domElement.addEventListener('click', () => {
   if (G.mode === 'play' && !IS_TOUCH && !pointerLocked){
@@ -3749,80 +3819,104 @@ addEventListener('mousemove', e => {
 addEventListener('mousedown', e => { if (pointerLocked && e.button === 0) mouseFiring = true; });
 addEventListener('mouseup',   e => { if (e.button === 0) mouseFiring = false; });
 
-// --- touch: left zone stick, right zone look, fire & plant buttons ---
-const stick = { active:false, id:null, ox:0, oy:0, dx:0, dy:0 };
-const look  = { active:false, id:null, lx:0, ly:0 };
+// --- pointer: left zone stick, right zone look, fire and plant ---
+// Pointer capture so an upward drag that leaves the zone, or a mouse
+// release on the nub, still gets pointerup. Touch and mouse share this path.
+const stick = { active:false, pid:null, ox:0, oy:0, dx:0, dy:0 };
+const look  = { active:false, pid:null, lx:0, ly:0 };
 let touchFiring = false, touchPlanting = false;
 
-el.stickZone.addEventListener('touchstart', e => {
+function placeStick(x, y){
+  const dx = x - stick.ox, dy = y - stick.oy;
+  const len = Math.hypot(dx, dy), max = 48;
+  const k = len > max ? max / len : 1;
+  stick.dx = dx * k / max;
+  stick.dy = dy * k / max;
+  el.stickNub.style.transform = `translate(calc(-50% + ${dx * k}px), calc(-50% + ${dy * k}px))`;
+}
+function releaseStick(){
+  stick.active = false; stick.pid = null; stick.dx = 0; stick.dy = 0;
+  el.stickBase.style.display = 'none';
+  el.stickNub.style.transform = 'translate(-50%,-50%)';
+}
+function primaryPointer(e){
+  return e.pointerType !== 'mouse' || e.button === 0;
+}
+el.stickZone.addEventListener('pointerdown', e => {
+  if (stick.active || !primaryPointer(e)) return;
   e.preventDefault();
-  const t = e.changedTouches[0];
-  stick.active = true; stick.id = t.identifier;
-  stick.ox = t.clientX; stick.oy = t.clientY; stick.dx = 0; stick.dy = 0;
+  stick.active = true; stick.pid = e.pointerId;
+  stick.ox = e.clientX; stick.oy = e.clientY; stick.dx = 0; stick.dy = 0;
   el.stickBase.style.display = 'block';
-  el.stickBase.style.left = t.clientX+'px'; el.stickBase.style.top = t.clientY+'px';
-}, {passive:false});
-el.stickZone.addEventListener('touchmove', e => {
+  el.stickBase.style.left = e.clientX + 'px';
+  el.stickBase.style.top = e.clientY + 'px';
+  try { el.stickZone.setPointerCapture(e.pointerId); } catch (err) {}
+});
+el.stickZone.addEventListener('pointermove', e => {
+  if (!stick.active || e.pointerId !== stick.pid) return;
   e.preventDefault();
-  for (const t of e.changedTouches){
-    if (t.identifier !== stick.id) continue;
-    const dx = t.clientX - stick.ox, dy = t.clientY - stick.oy;
-    const len = Math.hypot(dx,dy), max = 48;
-    const k = len > max ? max/len : 1;
-    stick.dx = dx*k/max; stick.dy = dy*k/max;
-    el.stickNub.style.transform = `translate(calc(-50% + ${dx*k}px), calc(-50% + ${dy*k}px))`;
-  }
-}, {passive:false});
-const stickEnd = e => {
-  for (const t of e.changedTouches){
-    if (t.identifier !== stick.id) continue;
-    stick.active = false; stick.dx = 0; stick.dy = 0;
-    el.stickBase.style.display = 'none';
-    el.stickNub.style.transform = 'translate(-50%,-50%)';
-  }
-};
-el.stickZone.addEventListener('touchend', stickEnd);
-el.stickZone.addEventListener('touchcancel', stickEnd);
+  placeStick(e.clientX, e.clientY);
+});
+function stickUp(e){
+  if (!stick.active || e.pointerId !== stick.pid) return;
+  releaseStick();
+}
+el.stickZone.addEventListener('pointerup', stickUp);
+el.stickZone.addEventListener('pointercancel', stickUp);
+el.stickZone.addEventListener('lostpointercapture', stickUp);
+window.addEventListener('pointerup', stickUp);
+window.addEventListener('pointercancel', stickUp);
 
-el.lookZone.addEventListener('touchstart', e => {
+el.lookZone.addEventListener('pointerdown', e => {
+  if (look.active || !primaryPointer(e)) return;
   e.preventDefault();
-  const t = e.changedTouches[0];
-  look.active = true; look.id = t.identifier; look.lx = t.clientX; look.ly = t.clientY;
-}, {passive:false});
-el.lookZone.addEventListener('touchmove', e => {
+  look.active = true; look.pid = e.pointerId; look.lx = e.clientX; look.ly = e.clientY;
+  try { el.lookZone.setPointerCapture(e.pointerId); } catch (err) {}
+});
+el.lookZone.addEventListener('pointermove', e => {
+  if (!look.active || e.pointerId !== look.pid) return;
   e.preventDefault();
-  for (const t of e.changedTouches){
-    if (t.identifier !== look.id) continue;
-    G.yaw   -= (t.clientX - look.lx) * 0.005;
-    G.pitch -= (t.clientY - look.ly) * 0.005;
+  if (G.mode === 'play'){
+    G.yaw   -= (e.clientX - look.lx) * 0.005;
+    G.pitch -= (e.clientY - look.ly) * 0.005;
     G.pitch = Math.max(-1.35, Math.min(1.35, G.pitch));
-    look.lx = t.clientX; look.ly = t.clientY;
   }
-}, {passive:false});
-const lookEnd = e => {
-  for (const t of e.changedTouches){ if (t.identifier === look.id) look.active = false; }
-};
-el.lookZone.addEventListener('touchend', lookEnd);
-el.lookZone.addEventListener('touchcancel', lookEnd);
+  look.lx = e.clientX; look.ly = e.clientY;
+});
+function lookUp(e){
+  if (!look.active || e.pointerId !== look.pid) return;
+  look.active = false; look.pid = null;
+}
+el.lookZone.addEventListener('pointerup', lookUp);
+el.lookZone.addEventListener('pointercancel', lookUp);
+el.lookZone.addEventListener('lostpointercapture', lookUp);
+window.addEventListener('pointerup', lookUp);
+window.addEventListener('pointercancel', lookUp);
 
-el.fireBtn.addEventListener('touchstart', e => { e.preventDefault(); touchFiring = true; }, {passive:false});
-el.fireBtn.addEventListener('touchend',   e => { e.preventDefault(); touchFiring = false; }, {passive:false});
-el.plantBtn.addEventListener('touchstart', e => { e.preventDefault(); touchPlanting = true; }, {passive:false});
-el.plantBtn.addEventListener('touchend',   e => { e.preventDefault(); touchPlanting = false; }, {passive:false});
-el.fireBtn.addEventListener('touchcancel', () => { touchFiring = false; });
-el.plantBtn.addEventListener('touchcancel', () => { touchPlanting = false; });
+function bindHold(node, setDown){
+  node.addEventListener('pointerdown', e => {
+    if (!primaryPointer(e)) return;
+    e.preventDefault();
+    try { node.setPointerCapture(e.pointerId); } catch (err) {}
+    setDown(true);
+  });
+  const up = () => setDown(false);
+  node.addEventListener('pointerup', up);
+  node.addEventListener('pointercancel', up);
+  node.addEventListener('lostpointercapture', up);
+}
+bindHold(el.fireBtn, v => { touchFiring = v; });
+bindHold(el.plantBtn, v => { touchPlanting = v; });
 
 /* stuck-input failsafes: clear everything when no fingers remain,
    on tab-hide/window-blur, and on any hard mode change */
 function resetInputs(){
   releaseMoveKeys(performance.now());
-  stick.active = false; stick.dx = 0; stick.dy = 0;
-  look.active = false;
+  releaseStick();
+  look.active = false; look.pid = null;
   touchFiring = false; touchPlanting = false;
   mouseFiring = false;
   for (const k in keys) keys[k] = false;
-  el.stickBase.style.display = 'none';
-  el.stickNub.style.transform = 'translate(-50%,-50%)';
 }
 const allFingersUp = e => { if (e.touches.length === 0) resetInputs(); };
 addEventListener('touchend', allFingersUp, { passive: true });
@@ -3936,8 +4030,7 @@ function updateRadio(dt){
   if (G.radioT <= 0 && G.radioQueue.length){
     const l = G.radioQueue.shift();
     AudioSys.radioBlip();
-    if (G.mode === 'story') Voices.later(l.who, l.text);
-    else Voices.say(l.who, l.text);
+    Voices.later(l.who, l.text);
     const div = document.createElement('div');
     div.className = 'radioLine';
     div.innerHTML = `<span class="who">[${l.who}]</span> ${l.text}`;
@@ -4094,19 +4187,24 @@ function updateDrones(dt){
     const m = d.mesh.position;
     const distX = m.x - px, distZ = m.z - pz;
     const dist = Math.hypot(distX, distZ);
-    if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || !inPlayable(m.x, m.z)){
-      d.lostT = (d.lostT || 0) + dt;
-      if (d.lostT > 1.2){
-        m.x = d.home.x; m.z = d.home.z; m.y = d.home.y;
-        d.lostT = 0;
-        ejectPoint(m, 0.45);
-      }
-    } else if (pointInSolid(m.x, m.z)){
-      ejectPoint(m, 0.45);
+    if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || pointInSolid(m.x, m.z)){
+      const p = openSpot(d.home.x, d.home.z, 0.45);
+      m.x = p.x; m.z = p.z; m.y = d.home.y;
       d.lostT = 0;
+    } else if (!inPlayable(m.x, m.z)){
+      d.lostT = (d.lostT || 0) + dt;
+      if (d.lostT > 0.6){
+        const p = openSpot(d.home.x, d.home.z, 0.45);
+        m.x = p.x; m.z = p.z; m.y = d.home.y;
+        d.lostT = 0;
+      }
     } else d.lostT = 0;
-    if (dist > 46 && !d.ambush) continue; // far: fully dormant. Exit frames still walk.
-    if (!d.ambush && ++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
+    // Far idle frames can sleep. Anything near the player, or already
+    // alert, always gets a turn. A fixed cap used to starve later drones
+    // so they sat idle in front of you.
+    const mustTick = d.ambush || d.state !== 'idle' || dist < 24;
+    if (!mustTick && dist > 46) continue;
+    if (!mustTick && ++updated > MAX_ACTIVE + 4) continue;
     d.stateT += dt;
     d.shadow.position.y = .03 - m.y;      // pin blob shadow to the floor
     const A = d.anim;
@@ -4144,7 +4242,9 @@ function updateDrones(dt){
     if (d.state === 'idle'){
       // gentle bob / patrol (the sensor head does the visible scanning)
       if (d.kind !== 'crawler'){
-        m.x += d.patrolDir * dt * .5;
+        const nx = m.x + d.patrolDir * dt * .5;
+        if (pointInSolid(nx, m.z) || !inPlayable(nx, m.z)) d.patrolDir *= -1;
+        else m.x = nx;
         if (Math.abs(m.x - d.home.x) > 1.4) d.patrolDir *= -1;
       }
       m.y = d.home.y + Math.sin(G.time*2 + d.id)*0.08;
@@ -4162,7 +4262,10 @@ function updateDrones(dt){
           const s = 3.4 * dt / dist;
           m.x -= distX * s; m.z -= distZ * s;
           collide(m, .45);
-          if (pointInSolid(m.x, m.z)) ejectPoint(m, 0.45);
+          if (pointInSolid(m.x, m.z) || !inPlayable(m.x, m.z)){
+            const p = openSpot(m.x, m.z, 0.45);
+            m.x = p.x; m.z = p.z;
+          }
           m.y = .5 + Math.abs(Math.sin(G.time*10 + d.id))*.12;
         }
         if (d.anim.glb) d.mesh.rotation.set(
@@ -4903,66 +5006,73 @@ function cueVideo(clip){
   const v = ensureVideo();
   const hide = () => { v.style.display = 'none'; };
   if (!ep || !ep.url || !clip.cue || clip.textOnly){ hide(); return; }
-  const dur = Math.min(20, clip.max || 20, clip.cue[1] - clip.cue[0]);
-  // Stay hidden until the file actually plays. A missing origin file must
-  // not cover the fallback lines with a black frame.
+  const start = clip.cue[0] || 0;
+  const dur = Math.min(20, clip.max || 20, clip.cue[1] - start);
+  // Stay hidden until the cue window is actually playing. A seek that
+  // lands at 0 must not show the wrong part of a longer file.
   v.style.display = 'none';
   v.removeAttribute('poster');
   if (ep.poster && ep.status !== 'pending') v.poster = ep.poster;
   let failed = false;
+  let seeks = 0;
+  const mine = () => beatState && beatState.clipId === clip.id;
+  const atCue = () => start <= 0.05 || Math.abs(v.currentTime - start) < 0.45;
   const fail = () => {
     if (failed) return;
     failed = true;
     hide();
-    if (beatState && beatState.clipId === clip.id){
+    Bed.set('clip', false);
+    if (mine()){
       beatState.video = false;
       beatState.missing = true;
     }
   };
+  const tryPlay = () => {
+    if (failed || !mine()) return;
+    const p = v.play();
+    if (p && p.catch) p.catch(() => {});
+  };
+  const seekThenPlay = () => {
+    if (failed || !mine()) return;
+    if (!atCue()){
+      if (seeks++ > 4){ v.muted = false; tryPlay(); return; }
+      try { v.currentTime = start; } catch (e) { v.muted = false; tryPlay(); }
+      return;
+    }
+    v.muted = false;
+    tryPlay();
+  };
   v.onerror = fail;
   v.onplaying = () => {
-    if (failed || !beatState || beatState.clipId !== clip.id) return;
+    if (failed || !mine()) return;
+    if (!atCue()){ v.style.display = 'none'; return; }
     v.style.display = 'block';
+    v.muted = false;
     beatState.missing = false;
     beatState.video = true;
+    Bed.set('clip', true);
     // The origin clip is the picture. Lines are only the fallback.
     if (clip.id === 'ep1_wake'){
       beatState.phase = 'hold';
       el.introText.style.opacity = 0;
     }
   };
+  v.onloadedmetadata = seekThenPlay;
+  v.onseeked = seekThenPlay;
+  v.ontimeupdate = () => {
+    if (!mine() || !atCue()) return;
+    if (v.currentTime >= start + dur - 0.05) endClip(false);
+  };
+  // Mute until the playhead is in the cue, so the file's opening
+  // does not talk over the beat we meant to show.
+  v.muted = start > 0.05;
   v.src = ep.url;
   // play() has to run in the ENTER click. A later metadata callback
   // loses the gesture and the short sits on its poster.
-  // Cues that start later still seek first, then play.
-  const tryPlay = () => {
-    const p = v.play();
-    if (p && p.catch) p.catch(() => {});
-  };
-  const start = clip.cue[0] || 0;
-  if (start > 0.05) {
-    v.onloadedmetadata = () => {
-      if (failed) return;
-      const afterSeek = () => {
-        v.removeEventListener('seeked', afterSeek);
-        tryPlay();
-      };
-      v.addEventListener('seeked', afterSeek);
-      try { v.currentTime = start; } catch (e) { tryPlay(); }
-    };
-  } else {
-    tryPlay();
-    v.onloadedmetadata = () => {
-      if (failed || !v.paused) return;
-      tryPlay();
-    };
-  }
-  v.ontimeupdate = () => {
-    if (v.currentTime >= clip.cue[0] + dur - 0.05) endClip(false);
-  };
+  tryPlay();
   // A missing game short must not hold the level on a black frame.
   setTimeout(() => {
-    if (failed || !beatState || beatState.clipId !== clip.id) return;
+    if (failed || !mine()) return;
     if (v.error || v.networkState === 3) fail();
   }, 1500);
 }
@@ -5051,8 +5161,14 @@ function endClip(skipped){
   if (!ret) return;
   clipReturn = null;
   beatState = null;
+  Bed.set('clip', false);
   const v = document.getElementById('beatVideo');
-  if (v){ try { v.pause(); } catch (e) {} v.style.display = 'none'; v.ontimeupdate = null; v.onended = null; v.onplaying = null; v.onerror = null; }
+  if (v){
+    try { v.pause(); } catch (e) {}
+    v.muted = false;
+    v.style.display = 'none';
+    v.ontimeupdate = null; v.onended = null; v.onplaying = null; v.onerror = null; v.onseeked = null; v.onloadedmetadata = null;
+  }
   el.intro.style.display = 'none';
   el.intro.style.background = '';
   el.introText.style.opacity = 0;
@@ -6223,7 +6339,8 @@ function updateWatchers(dt){
     const w = d.w;
     w.phase += dt * K.speed * alert;
     if (K.move){
-      d.mesh.position.z = w.baseZ + Math.sin(w.phase) * K.move;
+      const nz = w.baseZ + Math.sin(w.phase) * K.move;
+      if (!pointInSolid(d.mesh.position.x, nz) && inPlayable(d.mesh.position.x, nz)) d.mesh.position.z = nz;
       w.facing = Math.cos(w.phase) > 0 ? Math.PI : 0;
     } else {
       w.facing = w.phase;
@@ -6595,6 +6712,16 @@ const Cast = (() => {
   return {
     members,
     speak(who, text){
+      // No real portrait set ships with the build. Cards and the block
+      // bust both read as a fake face, so the line stands on its own.
+      if (!PORTRAIT_ART){
+        hidePortrait();
+        if (active){ active.userData.setTalking(false); active.visible = false; }
+        active = null;
+        alpha = 0;
+        div.style.display = 'none';
+        return;
+      }
       const cards = window.Waking && Waking.portraitMode() === 'cards';
       if (cards){
         if (active){ active.userData.setTalking(false); active.visible = false; }
@@ -7405,7 +7532,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush, setBed: (reason, on) => Bed.set(reason, !!on) };
 
 if (window.Waking) Waking.mount({
   getMode: () => G.mode,
