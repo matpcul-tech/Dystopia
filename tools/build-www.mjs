@@ -81,7 +81,18 @@ if (play) {
     '',
   ].join('\n'));
 
+  // The title screen free chapter link reads like a paid upsell in the
+  // Play copy. Drop the link and its form from www/index.html only.
+  let playHtml = readFileSync(indexPath, 'utf8');
+  playHtml = playHtml
+    .replace(/[ \t]*<button class="loreLink" id="loreLink"[^>]*>[^<]*<\/button>\r?\n?/, '')
+    .replace(/[ \t]*<form id="titleKit"[\s\S]*?<\/form>\r?\n?/, '');
+  writeFileSync(indexPath, playHtml);
+
   const hits = [];
+  if (/FREE FIRST CHAPTER|id="loreLink"|id="titleKit"/.test(playHtml)) {
+    hits.push('free chapter link still in www/index.html');
+  }
   for (const file of walk(www, [])){
     if (!/\.(html|css|js|mjs|json|webmanifest)$/.test(file)) continue;
     let body = readFileSync(file, 'utf8');
