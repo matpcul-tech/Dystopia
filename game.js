@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
-import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta } from './feel.js';
+import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta, holdSlice, cueLineIndex, scheduleHandoff, takeHandoff, stepWave } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 import { ngDamageMul, ngHpMul, readDaily, signalChapter, signalLayout, SIGNAL_SCRIPTS, todayKey } from './return-loop.js';
 
@@ -517,7 +517,8 @@ CHAPTERS.ch_conduits = {
     "David Chen kept the count of the war. Fifty-one years, two months, sixteen days.",
     "Nine billion people, once. Fewer than fifty million now. Processing Center Omega-7, forty kilometers northwest.",
     "They are stealing our minds.",
-    "And Marcus could read their code like a language he had forgotten he knew."],
+    "And Marcus could read their code like a language he had forgotten he knew.",
+    "The dry riverbed ran at the city. Drones hung in the red sky and counted the ground."],
   radio:{
     pickup:[{who:'MARCUS',text:"Six drones in a high orbit. Three in a lower sweep. Two on the perimeter. Exactly the pattern."},
             {who:'KARA',text:"(earlier) Trust it. But don't let it make you careless."}],
@@ -3768,6 +3769,8 @@ const G = {
   currentSegment: 0,
   radioQueue: [], radioT: 0, radioFired: new Set(),
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
+  handoffAt: 0, handoffDone: false, handoffFx: false,
+  waveDebt: 0, waveStall: 0, waveTotal: WAVE_TOTAL,
   ambush: null,          // null, live, ending, ended. Final chapter exit fight.
   alarm: false, waveSpawned: 0, waveT: 0,
   finaleStarted: false,
@@ -4657,19 +4660,28 @@ function startAlarm(){
   AudioSys.alarmStart();
   radio('alarm');
 }
+function pressingDroneCount(){
+  const px = yawObj.position.x, pz = yawObj.position.z;
+  let n = 0;
+  for (const d of drones){
+    if (!d.alive) continue;
+    const dx = d.mesh.position.x - px, dz = d.mesh.position.z - pz;
+    if (dx*dx + dz*dz < 36*36) n++;
+  }
+  return n;
+}
 function updateWave(dt){
   // Once the exit pair is up, the mouth does not keep filling.
   if (!G.alarm || (G.planted && !G.escape) || G.ambush) return;
-  G.waveT -= dt;
-  if (G.waveT <= 0 && G.waveSpawned < (G.waveCap ?? WAVE_TOTAL) && activeDroneCount() < MAX_ACTIVE){
-    G.waveT = 3;
-    const [x,z] = WAVE_SPAWNS[G.waveSpawned % WAVE_SPAWNS.length];
-    const kinds = CH.waveKinds || ['crawler'];
-    const d = makeDrone(kinds[G.waveSpawned % kinds.length], x, z, 9); // segment 9 = wave
+  const due = stepWave(G, dt, pressingDroneCount(), MAX_ACTIVE);
+  if (!due.length) return;
+  const kinds = CH.waveKinds || ['crawler'];
+  for (const n of due){
+    const [x,z] = WAVE_SPAWNS[n % WAVE_SPAWNS.length];
+    const d = makeDrone(kinds[n % kinds.length], x, z, 9); // segment 9 = wave
     d.spawned = true;
     setDroneState(d, 'attack');
     scene.add(d.mesh);
-    G.waveSpawned++;
   }
 }
 
@@ -4687,7 +4699,8 @@ function updateObjective(dt){
     if (holding){
       G.planting = true;
       const prev = G.plantProgress;
-      G.plantProgress = Math.min(1, G.plantProgress + dt/5);
+      const slice = holdSlice(G.frameSec != null ? G.frameSec : dt, 1);
+      G.plantProgress = Math.min(1, G.plantProgress + slice / 5);
       if (Math.floor(prev*10) !== Math.floor(G.plantProgress*10)) AudioSys.plantTick();
       el.plantWrap.style.display = 'block';
       el.plantFill.style.width = (G.plantProgress*100).toFixed(1)+'%';
@@ -4716,15 +4729,27 @@ function plantComplete(){
   setObjectiveText();
   maybeAutosave(true);
   PROPS.onComplete();
-  // brief beat, then extraction
-  setTimeout(()=>{ if (G.mode === 'play'){
-    // The hunter chapter used to open the finale in place. The way out is a
-    // short ambush first. Story beats still play once that corridor is clear.
-    if (CH.boss){ beginExitAmbush(); return; }
-    if (CH.exitFight && CH.exitFight.hold){ beginExitAmbush(); return; }
-    if (CH.noEscape){ if (CB.finale) Story.start(CB.finale); else beginExtraction(); return; }
-    G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
-    maybeAutosave(true);
+  // Deadline, not a one-shot timer. GO DEEPER and the pod-carrier bar
+  // both died here when the callback fired during death, a clip, or a
+  // throttled livestream tab and never ran again.
+  scheduleHandoff(G, CH.boss ? 1.2 : 2.6, performance.now());
+}
+
+function applyHandoff(){
+  // The hunter chapter used to open the finale in place. The way out is a
+  // short ambush first. Story beats still play once that corridor is clear.
+  if (CH.boss){ beginExitAmbush(); return; }
+  if (CH.exitFight && CH.exitFight.hold){ beginExitAmbush(); return; }
+  if (CH.noEscape){ if (CB.finale){ if (!Story.start(CB.finale)) return false; } else beginExtraction(); return true; }
+  G.escape = true;
+  G.waveSpawned = 0;
+  G.waveDebt = 0;
+  G.waveStall = 0;
+  G.waveT = 0;
+  setObjectiveText();
+  maybeAutosave(true);
+  if (!G.handoffFx){
+    G.handoffFx = true;
     if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
     if (CH.id === 'ch_taken' && SFLAGS.freed){
       G.waveCap = Math.ceil((CH.waveTotal||12)/2);
@@ -4742,7 +4767,15 @@ function plantComplete(){
       }
       sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
     }
-  } }, CH.boss ? 1200 : 2600);
+  }
+  return true;
+}
+function runHandoff(){
+  if (!takeHandoff(G, G.mode, performance.now())) return;
+  if (applyHandoff() === false){
+    G.handoffDone = false;
+    G.handoffAt = performance.now();
+  }
 }
 
 function beginExtraction(){
@@ -4781,7 +4814,10 @@ function die(){
   el.redFade.textContent = 'YOU WENT DOWN';
   el.redFade.style.opacity = 1;
   clearTimeout(deathTimer);
-  deathTimer = setTimeout(respawn, 2000);
+  deathTimer = 0;
+  // Wall clock on the state, checked every frame. A discarded timer
+  // used to leave the player on YOU WENT DOWN for the rest of the stream.
+  G.respawnAt = performance.now() + 2000;
 }
 function respawn(){
   const seg = G.checkpoint.segment;
@@ -4791,7 +4827,8 @@ function respawn(){
   if (!exiting){
     if (seg >= 1 && seg <= CORE_SEG) spawnSegment(seg);
     if (seg === CORE_SEG){
-      G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
+      G.waveSpawned = 0; G.waveT = 2; G.waveDebt = 0; G.waveStall = 0;
+      G.plantProgress = 0; G.planting = false;
       // remove wave drones
       for (let i = drones.length-1; i >= 0; i--){
         if (drones[i].segment === 9){ scene.remove(drones[i].mesh); if (drones[i].w) scene.remove(drones[i].w.grp); drones.splice(i,1); }
@@ -4809,9 +4846,8 @@ function respawn(){
   if (Boss && !exiting) Boss.onRespawn();
   if (G.ambush === 'live') spawnAmbushSquad();
   else if (CH.boss && G.planted && !G.ambush) beginExitAmbush();
-  else if (G.ambush === 'ending') setTimeout(() => {
-    if (G.mode === 'play' && G.ambush === 'ending') startExitFinale();
-  }, 450);
+  else if (G.ambush === 'ending') armFinale(450);
+  runHandoff();
 }
 
 /* ============================================================
@@ -5293,30 +5329,52 @@ function playClip(clip, opts){
   }
   const epForClip = episodeOf(clip.episode);
   const video = !!(epForClip && epForClip.url && clip.cue && !clip.textOnly);
-  beatState = { clipId: clip.id, lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video, missing:false };
+  const cueStart = clip.cue ? clip.cue[0] : 0;
+  const cueDur = clip.cue ? Math.max(0.001, clip.cue[1] - cueStart) : 1;
+  beatState = { clipId: clip.id, lines: resolveLines(clip), i:0, t:0, shown:false, max: Math.min(20, clip.max || 16), elapsed:0, phase:'lines', wake, video, missing:false, cueStart, cueDur, spoken:-1 };
   cueVideo(clip);
   if (window.__LATM){
     __LATM.clipLog = __LATM.clipLog || [];
     __LATM.clipLog.push({ id: clip.id, lines: beatState.lines.length, max: beatState.max });
   }
 }
+function showBeatLine(s, line){
+  el.introText.textContent = line.text;
+  el.introText.style.opacity = 1;
+  if (s.spoken === s.i) return;
+  s.spoken = s.i;
+  if (!s.videoAudio) Voices.say(line.who, line.text);
+}
 function updateBeat(dt){
   const s = beatState;
   if (!s) return;
   s.elapsed += dt;
   if (s.elapsed >= s.max){ endClip(false); return; }
+  // A file that is already talking has its own captions. A second line
+  // in the middle of the face does not match what is said.
+  if (s.videoAudio) el.introText.style.opacity = 0;
   if (s.phase === 'lines'){
+    const v = document.getElementById('beatVideo');
+    const synced = s.video && v && s.lines.length && !s.videoAudio && v.readyState >= 2;
+    if (synced){
+      const idx = cueLineIndex(v.currentTime, s.cueStart, s.cueDur, s.lines.length);
+      const line = s.lines[idx];
+      if (line && s.i !== idx){ s.i = idx; s.shown = false; s.spoken = s.spoken; }
+      if (line && !s.shown){ s.i = idx; showBeatLine(s, line); s.shown = true; }
+      else if (line && s.i === idx && s.shown){ /* holding this slice of the shot */ }
+      if (v.currentTime >= s.cueStart + s.cueDur - 0.05) s.phase = 'hold';
+      return;
+    }
     const line = s.lines[s.i];
     if (!line){ s.phase = 'hold'; return; }
     // Give a dropped-in origin file a moment to start before the fallback lines.
     if (s.clipId === 'ep1_wake' && s.video && !s.missing && s.elapsed < 0.7) return;
+    if (s.videoAudio){ s.phase = 'hold'; return; }
     if (!s.shown){
-      el.introText.textContent = line.text;
-      el.introText.style.opacity = 1;
+      showBeatLine(s, line);
       s.shown = true;
       const speed = (window.Waking && Waking.textSpeed()) || 1;
       s.hold = Math.min(14, lineHoldMs(line.text, speed) / 1000);
-      if (!s.videoAudio) Voices.say(line.who, line.text);
     }
     s.t += dt;
     if (s.t > s.hold){
@@ -5408,24 +5466,39 @@ function playFullEpisode(ep){
 }
 function queueStory(beats){
   G.storyQueued = true;
-  setTimeout(() => {
-    G.storyQueued = false;
-    const tryStart = () => {
-      if (G.mode === 'beatclip' || G.mode === 'cinematic' || G.mode === 'galleryclip'){ setTimeout(tryStart, 200); return; }
-      if (G.mode === 'play') Story.start(beats);
-    };
-    tryStart();
-  }, 1400);
+  G.storyQueue = beats;
+  G.storyAt = performance.now() + 1400;
 }
+function tickStoryQueue(){
+  if (!G.storyQueue) return;
+  if (G.mode === 'beatclip' || G.mode === 'cinematic' || G.mode === 'galleryclip') return;
+  if (G.mode !== 'play') return;
+  if (performance.now() < (G.storyAt || 0)) return;
+  const beats = G.storyQueue;
+  G.storyQueue = null;
+  G.storyQueued = false;
+  if (!Story.start(beats)){
+    G.storyQueue = beats;
+    G.storyQueued = true;
+    G.storyAt = performance.now() + 400;
+  }
+}
+let pendingClip = null;
 function considerClip(clip, after){
   const go = () => {
-    if (G.storyQueued || G.mode === 'story'){ setTimeout(go, 200); return; }
-    if (G.mode !== 'play') return;
+    if (G.storyQueued || G.mode === 'story' || G.mode === 'beatclip' || G.mode === 'cinematic' || G.mode === 'galleryclip' || G.mode === 'dead' || G.mode === 'paused'){
+      pendingClip = go;
+      return;
+    }
+    if (G.mode !== 'play'){ pendingClip = go; return; }
+    pendingClip = null;
     if (G.firedClips.has(clip.id)){ after(); return; }
     playClip(clip, { then:'resume', onDone: after });
   };
-  if (G.storyQueued || G.mode === 'story') setTimeout(go, 200);
-  else go();
+  go();
+}
+function tickPendingClip(){
+  if (pendingClip && G.mode === 'play' && !G.storyQueued) pendingClip();
 }
 let resumeOverride = null;
 function peekResume(){
@@ -6800,7 +6873,25 @@ function startExitFinale(){
   if (G.ambush === 'ended') return;
   G.ambush = 'ended';
   G.escape = false;
-  if (CB.finale) Story.start(CB.finale); else beginExtraction();
+  G.finaleAt = 0;
+  if (CB.finale){
+    if (!Story.start(CB.finale)){
+      G.ambush = 'ending';
+      armFinale(400);
+    }
+  } else beginExtraction();
+}
+let finaleAt = 0;
+function armFinale(ms){
+  finaleAt = performance.now() + ms;
+  G.finaleAt = finaleAt;
+}
+function tickFinale(){
+  if (!finaleAt || G.mode !== 'play' || G.ambush !== 'ending') return;
+  if (performance.now() < finaleAt) return;
+  finaleAt = 0;
+  G.finaleAt = 0;
+  startExitFinale();
 }
 function updateExitAmbush(){
   if (G.mode !== 'play' || G.ambush !== 'live') return;
@@ -6811,7 +6902,7 @@ function updateExitAmbush(){
     G.ambush = 'ending';
     G.escape = false;
     sToast('CORRIDOR CLEAR.');
-    setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+    armFinale(700);
     return;
   }
   const f = CH.exitFight;
@@ -6821,7 +6912,7 @@ function updateExitAmbush(){
     G.ambush = 'ending';
     G.escape = false;
     sToast(f.clear);
-    setTimeout(() => { if (G.mode === 'play' && G.ambush === 'ending') startExitFinale(); }, 700);
+    armFinale(700);
     return;
   }
   G.ambush = 'ended';
@@ -7711,7 +7802,7 @@ const Boss = (() => {
       if (holding){
         G.planting = true;
         const prev = H.upload;
-        H.upload = Math.min(1, H.upload + dt/8.5);
+        H.upload = Math.min(1, H.upload + holdSlice(G.frameSec != null ? G.frameSec : dt, 1) / 8.5);
         if (Math.floor(prev*10) !== Math.floor(H.upload*10)) AudioSys.plantTick();
         const lines = [[.2,"It's taking the package. Keep the chair live!"],[.6,"Past their outer layer. Hold it!"],[.95,"Almost there. Almost!"]];
         lines.forEach(([m,t],i) => { if (H.upload >= m && H.marks <= i){ H.marks = i+1; say('THOMAS', t); } });
@@ -7720,7 +7811,7 @@ const Boss = (() => {
       el.plantFill.style.width = (H.upload*100).toFixed(1) + '%';
     } else {
       lbl.textContent = 'VENTING';
-      if (holding){ target.holding = true; target.p = Math.min(1, target.p + dt/1.4); if (target.p >= 1) triggerVent(target); }
+      if (holding){ target.holding = true; target.p = Math.min(1, target.p + holdSlice(G.frameSec != null ? G.frameSec : dt, 1) / 1.4); if (target.p >= 1) triggerVent(target); }
       el.plantFill.style.width = (target.p*100).toFixed(1) + '%';
     }
   }
@@ -7869,7 +7960,7 @@ const Boss = (() => {
 })();
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush, setBed: (reason, on) => Bed.set(reason, !!on), dropPointerLock };
+window.__LATM = { Q, FX, applyQuality, Warm, Cinematic, loadCover, scene, camera, renderer, ROOMS, plantComplete, showEndCard, G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, Boss, getTubes: () => TUBES, sToast, ENDING_TEXT, playClip, ARCHIVE, BEATS, Waking, clipLog: [], hatchFaced: () => hatchFaced, TRAIN_BEATS, STORY_AIM, aimAssistScale, storyAim, beginExitAmbush, updateExitAmbush, setBed: (reason, on) => Bed.set(reason, !!on), dropPointerLock, coreXZ: () => ({ x: CORE_POS.x, z: CORE_POS.z }) };
 
 if (window.Waking) Waking.mount({
   getMode: () => G.mode,
@@ -7916,9 +8007,10 @@ function loop(){
   requestAnimationFrame(loop);
   if (glLost) return;
   const nowT = performance.now();
-  let dt = (nowT - lastT) / 1000;
+  const rawDt = Math.max(0, (nowT - lastT) / 1000);
   lastT = nowT;
-  dt = Math.min(dt, 0.05); // clamp tab-switch spikes. Player move and typing use the clock instead.
+  let dt = Math.min(rawDt, 0.05); // clamp tab-switch spikes. Player move and typing use the clock instead.
+  G.frameSec = rawDt;
   if (window.__LATM && window.__LATM.fixedDt) dt = window.__LATM.fixedDt; // offline capture
   if (window.__LATM && window.__LATM.capture){ // frame-stepped capture
     if (window.__LATM.stepFrames > 0){ dt = 1/24; window.__LATM.stepFrames--; }
@@ -7933,9 +8025,18 @@ function loop(){
   G.time += dt;
 
   if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
-  if (G.mode === 'beatclip' || G.mode === 'galleryclip') updateBeat(dt);
+  if (G.mode === 'beatclip' || G.mode === 'galleryclip') updateBeat(Math.min(rawDt, 0.25));
   if (G.mode === 'play' && CH.train) tryTrainReturn();
+  if (G.mode === 'dead' && G.respawnAt && performance.now() >= G.respawnAt){
+    G.respawnAt = 0;
+    respawn();
+  }
   if (G.mode === 'play'){
+    if (!initialSpawned) spawnAllInitial();
+    runHandoff();
+    tickFinale();
+    tickStoryQueue();
+    tickPendingClip();
     updatePlayer(dt);
     tryFire(dt);
     if (CH.stealth && !G.ambush) updateWatchers(dt);

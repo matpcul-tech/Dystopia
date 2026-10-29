@@ -82,12 +82,15 @@ export const BEATS = [
   // Conduits. The open is the dry riverbed game short, not Forty-Three Left.
   // Eight Hundred Meters is the later rooms. Windows come from that file's cards.
   // The sweep room has no card in the file, so it stays text.
-  { id:'conduits_brief', episode:'game_ch4_conduits_river', chapter:'ch_conduits', at:'open', intro:[1, 2, 3], max:10, cue:[0, 10], labelFrom:'advance' },
+  // The riverbed short is the cracked ground, the city, and the drones.
+  // The bunker census does not belong on that picture.
+  { id:'conduits_brief', episode:'game_ch4_conduits_river', chapter:'ch_conduits', at:'open', intro:[6], max:10, cue:[0, 10], labelFrom:'advance' },
   { id:'conduits_sweep', episode:'rsa7', chapter:'ch_conduits', at:'room', room:1, textOnly:true, radio:[{ key:'seg1_mid', idx:[0] }], max:10, cue:[0, 10], labelFrom:'segs:0' },
-  // 20s to 28s is the open-ground run and the drop. Past 28s the file
-  // is the cable tunnel, which belongs to the data room, not this dash.
+  // 20s to 28s is the open-ground run. 4s to 12s is the wireframe city
+  // and a caption from another sentence. The colored cable tunnel,
+  // which this room is, starts after the drop.
   { id:'conduits_dash', episode:'rsa7', chapter:'ch_conduits', at:'room', room:2, radio:[{ key:'seg2_enter', idx:[0] }], max:8, cue:[20, 28], labelFrom:'segs:1' },
-  { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, radio:[{ key:'seg3_enter', idx:[0] }], max:8, cue:[4, 12], labelFrom:'segs:2' },
+  { id:'conduits_data', episode:'rsa7', chapter:'ch_conduits', at:'room', room:3, radio:[{ key:'seg3_enter', idx:[0] }], max:8, cue:[32, 40], labelFrom:'segs:2' },
 
   // Harvest. The open is a game short. The tower stays The Afternoons.
   // The Angela choice and the core voice stay door stories, not extra clips.

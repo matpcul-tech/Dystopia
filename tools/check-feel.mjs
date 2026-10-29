@@ -2,7 +2,7 @@
 // movement, the pointer-lock recenter swallow, and slot continue.
 // Run: node tools/check-feel.mjs
 import { readFileSync } from 'fs';
-import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta } from '../feel.js';
+import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta, holdSlice, cueLineIndex, scheduleHandoff, takeHandoff, stepWave } from '../feel.js';
 
 const fails = [];
 function check(name, pass, detail){
@@ -127,6 +127,17 @@ check('movement uses lookDelta for the stick and for W', game.includes('lookDelt
 check('death says you went down', game.includes('YOU WENT DOWN'));
 check('speech is not cancelled in the same turn it starts', !/synthNow\.cancel\(\)/.test(game));
 check('the next line waits while speech is still going', game.includes('synth.speaking'));
+check('a hitch still counts a held objective', holdSlice(1.4, 1) === 1);
+check('a normal frame counts the whole hold', holdSlice(0.2, 1) === 0.2);
+check('subtitle follows the picture, not the frame', cueLineIndex(5, 0, 10, 2) === 1 && cueLineIndex(1, 0, 10, 2) === 0);
+const late = { planted:true, escape:false, handoffDone:false, handoffAt:0, time:0 };
+check('handoff can be scheduled once', scheduleHandoff(late, 2.6, 1000) === true && late.handoffAt === 3600);
+check('handoff does not arm while dead', takeHandoff(late, 'dead', 4000) === false && late.handoffDone === false);
+check('handoff arms on the next play frame', takeHandoff(late, 'play', 4000) === true && late.handoffDone === true);
+const wave = { alarm:true, planted:false, escape:false, waveTotal:14, waveCap:null, waveSpawned:12, waveDebt:0, waveStall:0, waveT:0 };
+check('the last two of a full wave are not dropped', stepWave(wave, 0.05, 3, 8)[0] === 12 && stepWave(wave, 3, 3, 8)[0] === 13);
+check('plant handoff is not a one-shot timer', game.includes('scheduleHandoff(') && game.includes('runHandoff('));
+check('data conduit clip is the cable tunnel', game.includes('cue:[32, 40]') || readFileSync(new URL('../cinematics.js', import.meta.url), 'utf8').includes('cue:[32, 40]'));
 
 if (fails.length){
   console.error(fails.join('\n'));

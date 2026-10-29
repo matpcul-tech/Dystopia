@@ -210,3 +210,76 @@ export function escapePress(s, now){
   if (playing && !(s && s.paused)) return { action: 'open', lastAt: t };
   return { action: 'ignore', lastAt: last };
 }
+
+// Seconds of a held button that count this frame. A stalled paint still
+// counts the time the finger was down, up to a cap, so a livestream hitch
+// cannot freeze the objective bar. A backgrounded tab does not finish it.
+export function holdSlice(frameSec, cap){
+  const d = Math.max(0, Number(frameSec) || 0);
+  const c = Math.max(0, Number(cap) || 0);
+  if (!(c > 0)) return 0;
+  return Math.min(d, c);
+}
+
+// Which subtitle belongs at this moment in a cue. The picture is the clock.
+// A slow frame must not leave line 1 up while the shot has moved on.
+export function cueLineIndex(videoT, cueStart, cueDur, count){
+  const n = count | 0;
+  if (n <= 0) return 0;
+  const dur = Math.max(0.001, Number(cueDur) || 0);
+  const u = ((Number(videoT) || 0) - (Number(cueStart) || 0)) / dur;
+  if (u <= 0) return 0;
+  if (u >= 1) return n - 1;
+  return Math.min(n - 1, Math.floor(u * n));
+}
+
+// The leave-the-level beat is a deadline on the game object, not a timer
+// that runs once. Death, pause, a story beat, or a throttled tab must not
+// consume it. The first play frame at or after the deadline takes it.
+export function scheduleHandoff(g, delaySec, nowMs){
+  if (!g || g.handoffDone || g.handoffAt) return false;
+  g.handoffAt = (Number(nowMs) || 0) + Math.max(0, Number(delaySec) || 0) * 1000;
+  return true;
+}
+export function takeHandoff(g, mode, nowMs){
+  if (!g || g.handoffDone || !g.planted || !g.handoffAt) return false;
+  if (mode !== 'play') return false;
+  if ((Number(nowMs) || 0) < g.handoffAt) return false;
+  g.handoffDone = true;
+  return true;
+}
+
+// Owed spawns wait. A full room used to skip the tick, and the last
+// enemies of the wave never appeared. The final pair still drips in
+// once the cap has been wedged.
+export function stepWave(g, dt, pressing, maxActive){
+  const cap = (g.waveCap !== undefined && g.waveCap !== null) ? g.waveCap : (g.waveTotal || 0);
+  const spawned = [];
+  if (!g.alarm || cap <= 0 || (g.planted && !g.escape)) return spawned;
+  const spawnedCount = g.waveSpawned || 0;
+  const debt = g.waveDebt || 0;
+  if (spawnedCount + debt < cap){
+    g.waveT = (g.waveT || 0) - dt;
+    if (g.waveT <= 0){
+      g.waveDebt = debt + 1;
+      g.waveT = 3;
+    }
+  }
+  if ((g.waveDebt || 0) > 0) g.waveStall = (g.waveStall || 0) + dt;
+  else g.waveStall = 0;
+  let guard = 0;
+  let hot = pressing;
+  while ((g.waveDebt || 0) > 0 && guard < 2){
+    const wedged = hot >= maxActive && (g.waveStall || 0) > 6;
+    if (hot >= maxActive && !wedged) break;
+    const overtime = hot >= maxActive;
+    spawned.push(g.waveSpawned || 0);
+    g.waveSpawned = (g.waveSpawned || 0) + 1;
+    g.waveDebt = (g.waveDebt || 0) - 1;
+    guard += 1;
+    hot += 1;
+    if (g.waveDebt <= 0) g.waveStall = 0;
+    if (overtime){ g.waveStall = 0; break; }
+  }
+  return spawned;
+}
