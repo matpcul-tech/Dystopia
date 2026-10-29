@@ -81,6 +81,8 @@ check('two speakers do not share reyes and thomas', many.REYES.voiceURI !== many
 
 const commercial = readFileSync(new URL('../commercial.js', import.meta.url), 'utf8');
 check('voices can be switched off', commercial.includes("['VOICES', 'select', 'voices'") && commercial.includes("voices: 'on'"));
+check('title season pass opens checkout', commercial.includes("season.id = 'seasonPassBtn'") && commercial.includes('openSeasonCheckout()'));
+check('remove ads is not a title button', !commercial.includes('>REMOVE ADS<') && !commercial.includes("'REMOVE ADS'"));
 check('volume zero stops speech', commercial.includes('api.stopVoices'));
 check('settings line has no dash', !dash.test('Voices speak radio lines and story lines. Each person keeps one voice. Off leaves the text. Volume at zero stays silent.'));
 

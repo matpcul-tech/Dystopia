@@ -1612,9 +1612,13 @@ export const Waking = window.Waking = {
       ng.id = 'ngBtn';
       ng.style.display = 'none';
       ng.addEventListener('click', () => openNgSheet());
+      const season = el('button', 'btn amber', 'SEASON PASS  ' + COMMERCE.SEASON_PRICE);
+      season.type = 'button';
+      season.id = 'seasonPassBtn';
+      season.addEventListener('click', () => openSeasonCheckout());
       const nav = el('div', 'slotTools');
       nav.append(codex, daily, ng, chb, arch, setb, restore);
-      bar.appendChild(nav);
+      bar.append(season, nav);
       start.appendChild(bar);
       refreshNgButton();
     }

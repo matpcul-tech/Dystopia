@@ -298,7 +298,7 @@ html[data-portraits="cards"] #castStage{display:none;height:0;}
 .sheet{position:fixed;inset:0;z-index:80;display:none;align-items:flex-start;justify-content:center;
   overflow:auto;background:rgba(7,7,11,.94);pointer-events:auto;
   padding:max(24px, var(--inset-top)) max(16px, var(--inset-right)) max(24px, var(--inset-bottom)) max(16px, var(--inset-left));}
-/* The title screen sits under this sheet. A tint lets BOOK ONE and NEW GAME show through the pay text. */
+/* Pay sheet stays a solid field. The title must not show through the price. */
 #paySheet,#paySheet .sheetBody{background:#07070b;}
 .sheetBody{width:min(560px,100%);text-align:left;}
 .sheetTitle{font-family:"Outfit",sans-serif;font-weight:500;font-size:14px;letter-spacing:.28em;margin:8px 0 12px;}
@@ -310,7 +310,8 @@ html[data-portraits="cards"] #castStage{display:none;height:0;}
 .epBlock{margin:14px 0 18px;padding-top:8px;border-top:1px solid rgba(244,236,223,.16);}
 .epHead{font-size:12px;letter-spacing:.14em;margin-bottom:6px;}
 .beatRow{display:block;text-align:left;max-width:100%;}
-.titleTools{display:flex;flex-direction:column;align-items:center;width:min(640px,100%);margin-top:8px;}
+.titleTools{display:flex;flex-direction:column;align-items:center;width:min(640px,100%);margin-top:8px;padding-bottom:8px;}
+#seasonPassBtn{min-height:44px;max-width:min(420px,100%);}
 .slotRow,.slotTools{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:8px;}
 .slotBtn.on{border-color:var(--brass);color:var(--brass-hot);}
 #backupCode{width:100%;margin:8px 0;background:#100e0c;color:var(--cream);border:1px solid var(--line);
@@ -361,6 +362,10 @@ body.live #pauseBtn{display:block;}
 #endBtns{margin-top:16px;}
 #book1Btn{background:var(--brass);color:#1a140e;border-color:var(--brass-hot);font-weight:500;}
 #book1Btn:hover{background:var(--brass-hot);color:#1a140e;}
+/* Start at the top when the hub is taller than the screen, and center it
+   when there is room. A centered flex column was clipping the tools. */
+#startScreen{justify-content:flex-start;}
+#startScreen::before,#startScreen::after{content:"";flex:1 0 0px;width:100%;min-height:0;}
 #startScreen,#endCard{touch-action:pan-y;
   padding-top:max(18px, var(--inset-top));
   padding-bottom:max(24px, var(--inset-bottom));
