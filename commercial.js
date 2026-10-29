@@ -10,14 +10,19 @@
 // After a real grant, the id is stored in this browser so the same URL
 // does not grant twice here.
 // The pass is stored for every save slot in this browser, plus a
-// separate key that survives a slot switch. ?preview=1 unlocks this
-// tab without writing the pass.
+// separate key that survives a slot switch. Owner preview is a
+// separate tab ticket. ?preview=1 grants nothing. A long code is
+// posted to SEASON_VERIFY_URL and this tab unlocks only when the
+// JSON says { preview: true } with a ticket. The ticket stays in
+// sessionStorage and is checked again on refresh. It never writes
+// the Season Pass record. An empty URL or a missing worker secret
+// fails closed.
 // A missing trailer file shows an error and does not count a view.
 // There is no Stripe secret in this file. SEASON_VERIFY_URL is the
 // deployed worker. See cloud/SEASON_PASS_WORKER.md.
 
 import { resumePlan } from './feel.js';
-import { PASS_KEY, USED_KEY, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId } from './season-pass.js';
+import { PASS_KEY, USED_KEY, askPreviewVerify, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId, previewCodeShape, previewTicketShape } from './season-pass.js';
 import {
   CODEX, COSMETICS,
   applySignalReward, campaignCleared, ngPlusSlot, readDaily, slotTag, todayKey, writeDaily,
@@ -211,8 +216,10 @@ function readPassRecord(){
 function hasDevicePass(){
   return !!readPassRecord();
 }
+const PREVIEW_TICKET_KEY = 'latm_preview_ticket';
+let previewReady = false;
 function hasPass(){
-  try { if (sessionStorage.getItem('latm_preview') === '1') return true; } catch (e) {}
+  if (previewReady) return true;
   if (hasDevicePass()) return true;
   return !!(memory && memory.slots && memory.slots.some(s => s && s.pass));
 }
@@ -270,12 +277,84 @@ function clearFreeNoAds(){
   });
 }
 function previewOn(){
-  try { return sessionStorage.getItem('latm_preview') === '1'; } catch (e) { return false; }
+  return previewReady === true;
+}
+function readPreviewTicket(){
+  try { return sessionStorage.getItem(PREVIEW_TICKET_KEY) || ''; } catch (e) { return ''; }
+}
+function writePreviewTicket(ticket){
+  try { sessionStorage.setItem(PREVIEW_TICKET_KEY, ticket); } catch (e) {}
+}
+function clearPreviewTicket(){
+  try { sessionStorage.removeItem(PREVIEW_TICKET_KEY); } catch (e) {}
+}
+function clearLegacyPreview(){
+  try { sessionStorage.removeItem('latm_preview'); } catch (e) {}
+}
+function markPreviewSettled(){
+  try { if (typeof window !== 'undefined') window.__previewSettled = true; } catch (e) {}
+}
+function notePreview(){
+  if (!previewReady || typeof document === 'undefined') return;
+  const hint = document.getElementById('startHint');
+  if (!hint) return;
+  if (hint.textContent.indexOf('REVIEW UNLOCK IS ON') >= 0) return;
+  hint.textContent = (hint.textContent ? hint.textContent + '  ' : '') + 'REVIEW UNLOCK IS ON.';
+}
+function previewFailureText(result){
+  if (result && result.reason === 'unconfigured') return 'Review unlock is not set up yet.';
+  return 'Review unlock was not granted.';
+}
+// Drop ?preview= from the address before any network call, so the
+// code does not stay in the bar. The return value is the raw param.
+// Null means the param was absent. "1" is returned and later ignored.
+function takePreviewParam(){
+  if (typeof location === 'undefined') return null;
+  let params;
+  try { params = new URLSearchParams(location.search); } catch (e) { return null; }
+  if (!params.has('preview')) return null;
+  const value = params.get('preview');
+  params.delete('preview');
+  const q = params.toString();
+  const next = location.pathname + (q ? '?' + q : '') + (location.hash || '');
+  try { history.replaceState(history.state, '', next); } catch (e) {}
+  return value;
+}
+// Ask the purchase worker. Unlock this tab only on { preview: true }
+// plus a ticket. Never writes the Season Pass record.
+async function claimPreview(fromUrl){
+  clearLegacyPreview();
+  try {
+    const code = previewCodeShape(fromUrl) ? fromUrl : '';
+    const stored = (!code && previewTicketShape(readPreviewTicket())) ? readPreviewTicket() : '';
+    if (!code && !stored) {
+      if (readPreviewTicket()) clearPreviewTicket();
+      previewReady = false;
+      markPreviewSettled();
+      return;
+    }
+    const body = code ? { preview_code: code } : { preview_ticket: stored };
+    const result = await askPreviewVerify(COMMERCE.SEASON_VERIFY_URL, body);
+    if (result.preview === true && previewTicketShape(result.ticket)) {
+      writePreviewTicket(result.ticket);
+      previewReady = true;
+      notePreview();
+      markPreviewSettled();
+      return;
+    }
+    previewReady = false;
+    clearPreviewTicket();
+    showSeasonNote(previewFailureText(result));
+    markPreviewSettled();
+  } catch (e) {
+    previewReady = false;
+    clearPreviewTicket();
+    markPreviewSettled();
+  }
 }
 // Permanent Season Pass: every paid chapter and no trailers.
 // Called only after the purchase check returns { pass: true }.
-// Trailers and the pay button do not call this.
-// ?preview=1 unlocks the tab through hasPass() without this function.
+// Trailers, the pay button, and owner preview do not call this.
 function grantSeason(sessionId){
   const rec = { v: 1, pass: true, at: Date.now(), session: sessionId || '' };
   try { localStorage.setItem(PASS_KEY, JSON.stringify(rec)); } catch (e) {}
@@ -294,15 +373,14 @@ function grantSeason(sessionId){
 }
 
 export function bootSaves(){
+  const previewParam = takePreviewParam();
+  clearLegacyPreview();
   if (typeof localStorage === 'undefined') {
     memory = migrate();
     settleTrailerSession();
     claimSeasonReturn();
+    claimPreview(previewParam);
     return;
-  }
-  const params = new URLSearchParams(location.search);
-  if (params.get('preview') === '1') {
-    try { sessionStorage.setItem('latm_preview', '1'); } catch (e) {}
   }
   memory = loadFile() || migrate();
   memory.slots.forEach(ensureReturnSlot);
@@ -322,6 +400,7 @@ export function bootSaves(){
   if (typeof document !== 'undefined') applySettings();
   settleTrailerSession();
   claimSeasonReturn();
+  claimPreview(previewParam);
 }
 
 // Strip the return query either way, so a refresh is not a second try.
@@ -1677,10 +1756,7 @@ export const Waking = window.Waking = {
       Waking.autosave(pos);
       if (mode === 'play') Waking.noteDrop(pos.segment);
     });
-    if (previewOn()) {
-      const hint = document.getElementById('startHint');
-      if (hint) hint.textContent = (hint.textContent || '') + '  REVIEW UNLOCK IS ON.';
-    }
+    notePreview();
   },
 };
 

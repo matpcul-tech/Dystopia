@@ -49,8 +49,27 @@ async function shot(page, name){
   report.shots.push(file);
 }
 
-async function boot(path, w, h){
+async function boot(path, w, h, store){
   const page = await browser.newPage();
+  if (store) {
+    await page.evaluateOnNewDocument((mode) => {
+      try {
+        if (mode === 'pass') {
+          localStorage.setItem('latm_season_pass_v1', JSON.stringify({ v: 1, pass: true, at: 1, session: '' }));
+        }
+        if (mode === 'lock') {
+          localStorage.removeItem('latm_season_pass_v1');
+          const raw = localStorage.getItem('latm_save_v1');
+          if (!raw) return;
+          const file = JSON.parse(raw);
+          if (!file || !Array.isArray(file.slots)) return;
+          file.slots.forEach(s => { if (s) { s.pass = false; s.noAds = false; } });
+          file.season = { v: 1, pass: false };
+          localStorage.setItem('latm_save_v1', JSON.stringify(file));
+        }
+      } catch (e) {}
+    }, store);
+  }
   await page.setViewport({ width: w, height: h, deviceScaleFactor: 1 });
   const bag = watch(page);
   await page.goto(BASE + path, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -174,7 +193,7 @@ try {
   await shot(phone.page, 'phone-choice');
   if (phone.bag.errors.length) report.console.push(...phone.bag.errors.map(e => 'phone ' + e));
 
-  const conduits = await boot('?preview=1&q=low#ch_conduits', 1280, 720);
+  const conduits = await boot('?q=low#ch_conduits', 1280, 720, 'pass');
   await conduits.page.click('#startBtn');
   await conduits.page.waitForFunction(() => window.__LATM.clipLog && window.__LATM.clipLog.length, { timeout: 15000 });
   const clip = await conduits.page.evaluate(() => {
@@ -195,7 +214,7 @@ try {
   await shot(conduits.page, 'conduits-play');
   if (conduits.bag.errors.length) report.console.push(...conduits.bag.errors.map(e => 'conduits ' + e));
 
-  const lone = await boot('?preview=1&q=low#ch_lone', 1280, 720);
+  const lone = await boot('?q=low#ch_lone', 1280, 720, 'pass');
   await lone.page.click('#startBtn');
   await lone.page.waitForFunction(() => window.__LATM.clipLog && window.__LATM.clipLog.length, { timeout: 15000 });
   const road = await lone.page.evaluate(() => {
@@ -207,7 +226,7 @@ try {
   await shot(lone.page, 'lone-highway-open');
   if (lone.bag.errors.length) report.console.push(...lone.bag.errors.map(e => 'lone ' + e));
 
-  const pay = await boot('?q=low#ch_counting', 1280, 720);
+  const pay = await boot('?q=low#ch_counting', 1280, 720, 'lock');
   await pay.page.click('#startBtn');
   await pay.page.waitForFunction(() => {
     const s = document.getElementById('paySheet');

@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, statSync, mkdirSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { askSeasonVerify, judgeRestore, judgeReturn, judgeSession, plausibleSessionId } from '../season-pass.js';
+import { askPreviewVerify, askSeasonVerify, judgeRestore, judgeReturn, judgeSession, plausibleSessionId, previewCodeShape, previewTicketShape } from '../season-pass.js';
 import worker from '../cloud/season-pass-worker.js';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -16,6 +16,8 @@ const PAID_BROWSER = 'cs_live_browserpaidreturn1';
 const RESTORE_ID = 'cs_live_restorepurchase1';
 const SLOT_ID = 'cs_test_slotswitchslot01';
 const LOCAL_REPLAY = 'cs_test_localreplay0001';
+const PREVIEW_CODE = 'owner-preview-code-0123456789';
+const PREVIEW_TICKET = 'a'.repeat(32);
 const LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
 const VERIFY_URL = 'https://waking-season-pass.matpcul.workers.dev';
 const LINE = 'Watch 3 trailers to play this chapter now, or get every chapter with Season Pass.';
@@ -44,6 +46,15 @@ const commercialSource = readFileSync(join(root, 'commercial.js'), 'utf8');
 check('verify url is the live worker', commercialSource.includes("SEASON_VERIFY_URL: '" + VERIFY_URL + "'"));
 check('client has no shape grant', !/action === 'grant'/.test(commercialSource));
 check('static site has no stripe secret', !/sk_(live|test)_/.test(commercialSource) && !/STRIPE_SECRET/.test(commercialSource));
+check('old preview flag is not a client grant', !/getItem\('latm_preview'\)/.test(commercialSource) && !/setItem\('latm_preview'/.test(commercialSource));
+const previewStart = commercialSource.indexOf('async function claimPreview');
+const previewEnd = commercialSource.indexOf('function grantSeason');
+const previewFn = commercialSource.slice(previewStart, previewEnd);
+check('preview claim does not write the pass', previewStart > 0 && previewEnd > previewStart && !previewFn.includes('PASS_KEY') && !previewFn.includes('localStorage') && !previewFn.includes('grantSeason') && !previewFn.includes('latm_season_pass'));
+check('bare preview shape is rejected', previewCodeShape('1') === false && previewCodeShape('') === false && previewCodeShape(PREVIEW_CODE) === true);
+const workerSource = readFileSync(join(root, 'cloud/season-pass-worker.js'), 'utf8');
+check('worker keeps the preview shape', workerSource.includes('/^[A-Za-z0-9_-]{20,128}$/'));
+check('worker does not bake a preview code', !/PREVIEW_CODE\s*=\s*['"]/.test(workerSource));
 
 let fetches = 0;
 const closed = await askSeasonVerify('', { session_id: FAKE }, async () => {
@@ -96,6 +107,40 @@ const mailed = await askSeasonVerify('https://verify.test/season', { email: 'rea
 });
 check('email verify success is pass true', mailed.pass === true);
 
+let previewFetches = 0;
+const previewClosed = await askPreviewVerify('', { preview_code: PREVIEW_CODE }, async () => {
+  previewFetches += 1;
+  return { ok: true, status: 200, json: async () => ({ preview: true, ticket: PREVIEW_TICKET }) };
+});
+check('empty preview url fails closed', previewClosed.preview === false && previewClosed.reason === 'unconfigured' && previewFetches === 0);
+
+const previewOffline = await askPreviewVerify('https://verify.test/season', { preview_code: PREVIEW_CODE }, async () => {
+  throw new Error('offline');
+});
+check('preview network error fails closed', previewOffline.preview === false && previewOffline.reason === 'network');
+
+const previewString = await askPreviewVerify('https://verify.test/season', { preview_code: PREVIEW_CODE }, async () => {
+  return { ok: true, status: 200, json: async () => ({ preview: 'true', ticket: PREVIEW_TICKET }) };
+});
+check('string preview is not a grant', previewString.preview === false && previewString.reason === 'denied');
+
+const previewPassOnly = await askPreviewVerify('https://verify.test/season', { preview_code: PREVIEW_CODE }, async () => {
+  return { ok: true, status: 200, json: async () => ({ pass: true, ticket: PREVIEW_TICKET }) };
+});
+check('pass true is not a preview grant', previewPassOnly.preview === false && previewPassOnly.preview !== true);
+
+const previewShort = await askPreviewVerify('https://verify.test/season', { preview_code: PREVIEW_CODE }, async () => {
+  return { ok: true, status: 200, json: async () => ({ preview: true, ticket: 'short' }) };
+});
+check('short preview ticket is not a grant', previewShort.preview === false);
+
+const previewOk = await askPreviewVerify('https://verify.test/season', { preview_code: PREVIEW_CODE }, async (url, opts) => {
+  const body = JSON.parse(opts.body);
+  check('preview posts only the code', opts.method === 'POST' && body.preview_code === PREVIEW_CODE && !body.session_id && !body.email, opts.body);
+  return { ok: true, status: 200, json: async () => ({ preview: true, ticket: PREVIEW_TICKET }) };
+});
+check('preview success keeps the ticket', previewOk.preview === true && previewOk.ticket === PREVIEW_TICKET);
+
 const kv = new Map();
 const env = {
   STRIPE_SECRET_KEY: 'sk_test_not_a_real_key',
@@ -147,6 +192,45 @@ const strangerMail = await callWorker({ email: 'nope@example.com' });
 check('worker does not invent an email pass', strangerMail.status === 404 && (await strangerMail.json()).pass === false);
 const emptyBody = await callWorker({});
 check('worker rejects an empty body', emptyBody.status === 400);
+
+const beforePreviewKeys = [...kv.keys()];
+let stripeDuringPreview = 0;
+globalThis.fetch = (url) => {
+  stripeDuringPreview += 1;
+  return stripeFetch(url);
+};
+const previewMissing = await callWorker({ preview_code: PREVIEW_CODE });
+const previewMissingBody = await previewMissing.json();
+check('preview without secret fails closed', previewMissing.status === 503 && previewMissingBody.preview === false && previewMissingBody.pass !== true, JSON.stringify(previewMissingBody));
+check('preview without secret does not call stripe', stripeDuringPreview === 0);
+env.PREVIEW_CODE = PREVIEW_CODE;
+const previewBare = await callWorker({ preview_code: '1' });
+check('worker rejects bare preview 1', previewBare.status === 400 && (await previewBare.json()).preview !== true);
+const previewWrong = await callWorker({ preview_code: 'wrong-code-but-long-enough' });
+check('worker rejects a wrong preview code', previewWrong.status === 401 && (await previewWrong.json()).preview === false && stripeDuringPreview === 0);
+const previewHit = await callWorker({ preview_code: PREVIEW_CODE });
+const previewHitBody = await previewHit.json();
+check('worker grants a preview ticket', previewHit.status === 200 && previewHitBody.preview === true && previewTicketShape(previewHitBody.ticket) && previewHitBody.pass !== true, JSON.stringify({ preview: previewHitBody.preview, pass: previewHitBody.pass, ticket: previewHitBody.ticket ? 'set' : '' }));
+check('preview grant does not call stripe', stripeDuringPreview === 0);
+const previewKeys = [...kv.keys()].filter(key => key.startsWith('preview:') && beforePreviewKeys.indexOf(key) < 0);
+check('preview ticket is not a pass record', previewKeys.length === 1 && previewKeys[0].indexOf('used:') < 0 && previewKeys[0].indexOf('email:') < 0 && previewKeys[0].indexOf('preview:') === 0, 'count ' + previewKeys.length);
+const previewAgain = await callWorker({ preview_ticket: previewHitBody.ticket });
+const previewAgainBody = await previewAgain.json();
+check('preview ticket renews without a pass', previewAgain.status === 200 && previewAgainBody.preview === true && previewAgainBody.ticket === previewHitBody.ticket && previewAgainBody.pass !== true);
+env.PREVIEW_CODE = 'rotated-owner-code-0123456789ab';
+const previewOld = await callWorker({ preview_ticket: previewHitBody.ticket });
+check('rotated secret kills the old ticket', previewOld.status === 401 && (await previewOld.json()).preview !== true);
+const previewFresh = await callWorker({ preview_code: env.PREVIEW_CODE });
+const previewFreshBody = await previewFresh.json();
+check('rotated secret still grants a new ticket', previewFresh.status === 200 && previewFreshBody.preview === true && previewFreshBody.pass !== true);
+const freshKeys = [...kv.keys()].filter(key => key.startsWith('preview:') && previewKeys.indexOf(key) < 0);
+check('rotated secret stores a new ticket', freshKeys.length === 1 && freshKeys[0].indexOf('preview:') === 0, 'count ' + freshKeys.length);
+kv.set(freshKeys[0], String(Date.now() - 1000));
+const previewStale = await callWorker({ preview_ticket: previewFreshBody.ticket });
+check('expired preview ticket does not unlock', previewStale.status === 401 && (await previewStale.json()).preview === false);
+const mixed = await callWorker({ preview_code: PREVIEW_CODE, session_id: LIVE });
+check('mixed preview body still follows the season path', mixed.status === 409 && (await mixed.json()).pass === false);
+env.PREVIEW_CODE = PREVIEW_CODE;
 globalThis.fetch = realFetch;
 
 const chromePath = ['/usr/local/bin/google-chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(p => existsSync(p));
@@ -317,6 +401,9 @@ async function open(context, path){
       return text && text !== 'Checking the purchase.';
     }, { timeout: 8000 });
   }
+  if (/[?&]preview=/.test(path)) {
+    await page.waitForFunction(() => window.__previewSettled === true, { timeout: 8000 });
+  }
   return { page, errors, requests };
 }
 function locks(page){
@@ -330,6 +417,10 @@ function locks(page){
     passKey: localStorage.getItem('latm_season_pass_v1'),
     used: localStorage.getItem('latm_season_sessions_v1'),
     file: JSON.parse(localStorage.getItem('latm_save_v1') || '{}'),
+    previewFlag: sessionStorage.getItem('latm_preview'),
+    previewTicket: sessionStorage.getItem('latm_preview_ticket'),
+    localPreview: localStorage.getItem('latm_preview_ticket'),
+    hint: (document.getElementById('startHint') || {}).textContent || '',
   }));
 }
 function postedSession(id){
@@ -539,7 +630,74 @@ check('free remove-ads flag is cleared', trapState.counting === true && (trapSta
 const previewCtx = await browser.createBrowserContext();
 const preview = await open(previewCtx, '/harness.html?preview=1&season_pass=1');
 const previewState = await locks(preview.page);
-check('preview plus bare flag does not store a pass', previewState.counting === false && !previewState.passKey);
+check('bare preview=1 does not unlock', previewState.counting === true && previewState.ep1 === false && previewState.lone === true && previewState.steel === true, JSON.stringify({ counting: previewState.counting, ep1: previewState.ep1 }));
+check('bare preview=1 does not store a pass', !previewState.passKey && !(previewState.file.slots || []).some(s => s.pass) && previewState.localPreview == null);
+check('bare preview=1 does not set the old flag', previewState.previewFlag !== '1' && !previewState.previewTicket);
+check('bare preview=1 strips the query', !/preview|season_pass/.test(previewState.url), previewState.url);
+check('bare preview=1 does not call the worker', preview.requests.every(u => u.indexOf('/season-verify') < 0));
+
+const bareVerifyCtx = await browser.createBrowserContext();
+const bareVerify = await open(bareVerifyCtx, '/harness-verify.html?preview=1');
+const bareVerifyState = await locks(bareVerify.page);
+check('bare preview=1 stays locked when the worker is live', bareVerifyState.counting === true && !bareVerifyState.passKey && bareVerifyState.previewFlag !== '1' && !bareVerifyState.previewTicket);
+check('bare preview=1 does not ask the live worker', bareVerify.requests.every(u => u.indexOf('/season-verify') < 0));
+check('bare preview=1 leaves the review hint off', !/REVIEW UNLOCK/.test(bareVerifyState.hint), bareVerifyState.hint);
+
+const closedCtx = await browser.createBrowserContext();
+const closedPreview = await open(closedCtx, '/harness.html?preview=' + PREVIEW_CODE);
+const closedState = await locks(closedPreview.page);
+check('preview code fails closed without a worker url', closedState.counting === true && !closedState.passKey && !closedState.previewTicket, closedState.note);
+check('preview code without a worker url says it is not set up', /not set up yet/.test(closedState.note), closedState.note);
+check('preview code without a worker url does not call out', closedPreview.requests.every(u => u.indexOf('/season-verify') < 0));
+
+const savedPreviewCode = env.PREVIEW_CODE;
+delete env.PREVIEW_CODE;
+const unsetCtx = await browser.createBrowserContext();
+const unset = await open(unsetCtx, '/harness-verify.html?preview=' + PREVIEW_CODE);
+const unsetState = await locks(unset.page);
+check('preview code fails closed until the secret is set', unsetState.counting === true && !unsetState.passKey && !unsetState.previewTicket, unsetState.note);
+check('unset secret says the unlock is not set up', /not set up yet/.test(unsetState.note), unsetState.note);
+env.PREVIEW_CODE = savedPreviewCode;
+
+const wrongCtx = await browser.createBrowserContext();
+const wrong = await open(wrongCtx, '/harness-verify.html?preview=wrong-code-but-long-enough');
+const wrongState = await locks(wrong.page);
+check('wrong preview code does not unlock', wrongState.counting === true && wrongState.steel === true && !wrongState.passKey && !wrongState.previewTicket, wrongState.note);
+check('wrong preview code says it was not granted', /was not granted/.test(wrongState.note), wrongState.note);
+check('wrong preview code strips the query', !/preview/.test(wrongState.url), wrongState.url);
+
+const ownerCtx = await browser.createBrowserContext();
+const owner = await open(ownerCtx, '/harness-verify.html?preview=' + PREVIEW_CODE);
+const ownerState = await locks(owner.page);
+check('owner code unlocks this tab', ownerState.counting === false && ownerState.steel === false && ownerState.lone === false && ownerState.ep1 === false, JSON.stringify({ counting: ownerState.counting, steel: ownerState.steel, lone: ownerState.lone }));
+check('owner code does not write the pass', !ownerState.passKey && !(ownerState.file.slots || []).some(s => s && s.pass) && ownerState.file.season && ownerState.file.season.pass !== true && ownerState.localPreview == null);
+check('owner code stores only a tab ticket', previewTicketShape(ownerState.previewTicket) && ownerState.previewFlag !== '1');
+check('owner code strips the query', !/preview/.test(ownerState.url), ownerState.url);
+check('owner code shows the review hint', /REVIEW UNLOCK IS ON/.test(ownerState.hint), ownerState.hint);
+check('owner code had no page error', owner.errors.length === 0, owner.errors.join(' | '));
+
+await owner.page.goto(origin + '/harness-verify.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+await owner.page.waitForFunction(() => window.__ready === true && window.__previewSettled === true, { timeout: 8000 });
+const ownerKept = await locks(owner.page);
+check('ticket keeps this tab unlocked', ownerKept.counting === false && ownerKept.lone === false && !ownerKept.passKey && previewTicketShape(ownerKept.previewTicket));
+
+const forgedCtx = await browser.createBrowserContext();
+const forgedPage = await forgedCtx.newPage();
+await forgedPage.goto(origin + '/blank.html');
+await forgedPage.evaluate((ticket) => sessionStorage.setItem('latm_preview_ticket', ticket), PREVIEW_TICKET);
+await forgedPage.goto(origin + '/harness-verify.html', { waitUntil: 'domcontentloaded', timeout: 30000 });
+await forgedPage.waitForFunction(() => window.__ready === true && window.__previewSettled === true, { timeout: 8000 });
+const forgedState = await locks(forgedPage);
+check('forged preview ticket does not unlock', forgedState.counting === true && !forgedState.passKey && !forgedState.previewTicket, forgedState.note);
+
+const legacyFlagCtx = await browser.createBrowserContext();
+const legacyFlagBlank = await legacyFlagCtx.newPage();
+await legacyFlagBlank.goto(origin + '/blank.html');
+await legacyFlagBlank.evaluate(() => sessionStorage.setItem('latm_preview', '1'));
+await legacyFlagBlank.goto(origin + '/harness-verify.html?preview=1', { waitUntil: 'domcontentloaded', timeout: 30000 });
+await legacyFlagBlank.waitForFunction(() => window.__ready === true && window.__previewSettled === true, { timeout: 8000 });
+const legacyFlagState = await locks(legacyFlagBlank);
+check('old preview flag does not unlock', legacyFlagState.counting === true && !legacyFlagState.passKey && legacyFlagState.previewFlag !== '1');
 
 mkdirSync('/opt/cursor/artifacts', { recursive: true });
 const shotCtx = await browser.createBrowserContext();

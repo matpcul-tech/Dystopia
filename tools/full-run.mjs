@@ -81,8 +81,11 @@ await cdp('Emulation.setDeviceMetricsOverride', {
 }, sessionId);
 await cdp('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 }, sessionId);
 await cdp('Emulation.setCPUThrottlingRate', { rate: 4 }, sessionId);
+// Headless playthrough only. Seeds a local pass so paid chapters can
+// start. This is not the public preview URL, and it is not shipped
+// as a way to unlock the site.
 await cdp('Page.addScriptToEvaluateOnNewDocument', {
-  source: "try{sessionStorage.setItem('latm_preview','1')}catch(e){}",
+  source: "try{localStorage.setItem('latm_season_pass_v1', JSON.stringify({v:1,pass:true,at:1,session:''}))}catch(e){}",
 }, sessionId);
 
 async function evalPage(expression){

@@ -1,7 +1,9 @@
-// Cloudflare worker. Not deployed until the steps in
-// cloud/SEASON_PASS_WORKER.md are run. The game calls it only when
-// COMMERCE.SEASON_VERIFY_URL in commercial.js is that live URL.
-// Until then the page fails closed and does not grant from a cs_ id.
+// Cloudflare worker. Season Pass checks are deployed at
+// waking-season-pass.matpcul.workers.dev. Owner preview is in this
+// file and stays off until PREVIEW_CODE is set and this file is
+// deployed again. See cloud/SEASON_PASS_WORKER.md.
+// The game calls it only when COMMERCE.SEASON_VERIFY_URL is that
+// live URL. A missing secret fails closed and does not grant.
 //
 // Secret: wrangler secret STRIPE_SECRET_KEY. Never put that key in the
 // repo or in the Pages bundle.
@@ -13,9 +15,85 @@
 // cannot grant a second browser.
 // POST { email } restores a pass already recorded for that receipt
 // email. It does not grant a session that was never paid.
+//
+// POST { preview_code } checks env.PREVIEW_CODE. The code is not in
+// this file. A match returns { preview: true, ticket } for 12 hours
+// and stores the ticket under a preview: key. It does not write
+// used: or email: and it does not return { pass: true }.
+// POST { preview_ticket } renews that same tab until the ticket
+// expires. A missing PREVIEW_CODE fails closed. ?preview=1 is too
+// short and is rejected. Keep the shape in step with PREVIEW_SHAPE
+// in season-pass.js.
 
 const PAYMENT_LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
 const SESSION_RE = /^cs_(live|test)_[A-Za-z0-9]{14,}$/;
+const PREVIEW_RE = /^[A-Za-z0-9_-]{20,128}$/;
+const PREVIEW_TTL_MS = 12 * 60 * 60 * 1000;
+
+function previewRequest(body){
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const hasPreview = Object.prototype.hasOwnProperty.call(body, 'preview_code')
+    || Object.prototype.hasOwnProperty.call(body, 'preview_ticket');
+  if (!hasPreview) return false;
+  if (body.session_id || body.email) return false;
+  return true;
+}
+
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return new Uint8Array(buf);
+}
+
+async function sameSecret(given, secret){
+  const a = await sha256('preview-code\n' + given);
+  const b = await sha256('preview-code\n' + secret);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function secretMark(secret){
+  const raw = await sha256('preview-mark\n' + secret);
+  let hex = '';
+  for (let i = 0; i < 8; i++) hex += raw[i].toString(16).padStart(2, '0');
+  return hex;
+}
+
+function newTicket(){
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+async function handlePreview(request, env, body){
+  const secret = env && typeof env.PREVIEW_CODE === 'string' ? env.PREVIEW_CODE : '';
+  if (!secret || !PREVIEW_RE.test(secret) || !env.SEASON) {
+    return send(request, { preview: false, reason: 'unconfigured' }, 503);
+  }
+  const mark = await secretMark(secret);
+  const ticket = String(body.preview_ticket || '');
+  if (ticket) {
+    if (!PREVIEW_RE.test(ticket)) return send(request, { preview: false }, 400);
+    const key = 'preview:' + mark + ':' + ticket;
+    const raw = await env.SEASON.get(key);
+    const exp = Number(raw);
+    if (!raw || !Number.isFinite(exp) || exp <= Date.now()) {
+      if (raw && typeof env.SEASON.delete === 'function') await env.SEASON.delete(key);
+      return send(request, { preview: false }, 401);
+    }
+    return send(request, { preview: true, ticket }, 200);
+  }
+  const code = String(body.preview_code || '');
+  if (!PREVIEW_RE.test(code)) return send(request, { preview: false }, 400);
+  const match = await sameSecret(code, secret);
+  if (!match) return send(request, { preview: false }, 401);
+  const minted = newTicket();
+  const exp = Date.now() + PREVIEW_TTL_MS;
+  await env.SEASON.put('preview:' + mark + ':' + minted, String(exp));
+  return send(request, { preview: true, ticket: minted }, 200);
+}
 
 function corsHeaders(request){
   const origin = request.headers.get('origin') || '';
@@ -40,6 +118,7 @@ export default {
     if (!env || !env.STRIPE_SECRET_KEY || !env.SEASON) return send(request, { pass: false, error: 'unconfigured' }, 503);
     let body;
     try { body = await request.json(); } catch (e) { return send(request, { pass: false }, 400); }
+    if (previewRequest(body)) return handlePreview(request, env, body);
 
     const email = String(body.email || '').trim().toLowerCase();
     if (email) {
