@@ -167,6 +167,23 @@ export function claimClipBed(fileHasAudio, muted){
   return !!fileHasAudio && !muted;
 }
 
+// Camera-relative step. Negative mvz is forward: keyboard W, and the
+// virtual stick pushed up (screen y goes down). Positive mvx is strafe right.
+// The same basis is used after a turn, so the stick does not mirror.
+export function lookDelta(yaw, mvx, mvz){
+  const y = Number(yaw) || 0;
+  const xIn = Number(mvx) || 0;
+  const zIn = Number(mvz) || 0;
+  const fwdX = -Math.sin(y);
+  const fwdZ = -Math.cos(y);
+  const rightX = Math.cos(y);
+  const rightZ = -Math.sin(y);
+  return {
+    x: rightX * xIn + fwdX * (-zIn),
+    z: rightZ * xIn + fwdZ * (-zIn),
+  };
+}
+
 // One Escape press can show up as an unlock, a keydown, and a keyup.
 // The first event opens pause. Later pieces of that same press must not
 // close it. A later press, after the window, resumes.

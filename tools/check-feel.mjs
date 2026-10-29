@@ -2,7 +2,7 @@
 // movement, the pointer-lock recenter swallow, and slot continue.
 // Run: node tools/check-feel.mjs
 import { readFileSync } from 'fs';
-import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress } from '../feel.js';
+import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta } from '../feel.js';
 
 const fails = [];
 function check(name, pass, detail){
@@ -113,6 +113,17 @@ const missed = escapePress({ kind:'up', mode:'play', paused:false, lastAt:0, sup
 check('keyup alone still opens pause when keydown was swallowed', missed.action === 'open');
 const quiet = escapePress({ kind:'unlock', mode:'play', paused:false, lastAt:0, suppressUntil:2500 }, 2000);
 check('an unlock the game asked for does not pause', quiet.action === 'ignore');
+const stickUp = lookDelta(0, 0, -1);
+const keyW = lookDelta(0, 0, -1);
+check('stick up walks forward at the start', stickUp.z < -0.9 && Math.abs(stickUp.x) < 1e-6, JSON.stringify(stickUp));
+check('W uses the same forward as stick up', keyW.x === stickUp.x && keyW.z === stickUp.z);
+check('stick down walks back', lookDelta(0, 0, 1).z > 0.9);
+check('stick right strafes right', lookDelta(0, 1, 0).x > 0.9 && Math.abs(lookDelta(0, 1, 0).z) < 1e-6);
+const turnedUp = lookDelta(Math.PI, 0, -1);
+check('stick up still follows the look after turning around', turnedUp.z > 0.9 && Math.abs(turnedUp.x) < 1e-6, JSON.stringify(turnedUp));
+const turnedRight = lookDelta(Math.PI, 1, 0);
+check('stick right is not mirrored after turning around', turnedRight.x < -0.9 && Math.abs(turnedRight.z) < 1e-6, JSON.stringify(turnedRight));
+check('the step is lookDelta, not world z', game.includes('lookDelta('));
 check('death says you went down', game.includes('YOU WENT DOWN'));
 check('speech is not cancelled in the same turn it starts', !/synthNow\.cancel\(\)/.test(game));
 check('the next line waits while speech is still going', game.includes('synth.speaking'));
