@@ -1,5 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
+import { armEscape, scheduleEscape, stepWave, pickSim, missingHomes } from './endfight.js';
 
 window.THREE = THREE; // people.js is a classic script that reads global THREE at call time
 
@@ -1924,13 +1925,69 @@ function spawnSegment(seg){
     d.spawned = true; scene.add(d.mesh);
   });
 }
-modelsReady.then(() => { [1,2,3,4].forEach(spawnSegment); });
+
+// Scripted enemies, including every chapter's final pair, spawn now.
+// Waiting on the GLB loader meant a stalled download (easy when a phone
+// is already encoding a livestream) left the level empty. Combat doors
+// treat an empty segment as cleared, so you could reach the objective
+// with the end fight never having been created.
+function spawnAllSegments(){
+  for (let seg = 1; seg <= 4; seg++) spawnSegment(seg);
+}
+function upgradeIdleSegments(){
+  // Swap in GLBs once they arrive. Do not rebuild a segment the player
+  // has already touched, or one they are standing next to.
+  const playing = G.mode === 'play' || G.mode === 'story' || G.mode === 'dead';
+  const px = yawObj.position.x, pz = yawObj.position.z;
+  for (let seg = 1; seg <= 4; seg++){
+    if (!drones.some(d => d.segment === seg)){ spawnSegment(seg); continue; }
+    let skip = false;
+    for (const d of drones){
+      if (d.segment !== seg) continue;
+      if (!d.alive || d.state !== 'idle' || d.hp < d.maxHp){ skip = true; break; }
+      if (!playing) continue;
+      const dx = d.mesh.position.x - px, dz = d.mesh.position.z - pz;
+      if (dx*dx + dz*dz < 30*30){ skip = true; break; }
+    }
+    if (!skip) spawnSegment(seg);
+  }
+}
+function ensureSegment(seg){
+  const rows = [];
+  for (const row of INITIAL_DRONES){
+    if (row[3] !== seg) continue;
+    rows.push({ kind: row[0], x: row[1], z: row[2] });
+  }
+  if (!rows.length) return;
+  const keys = [];
+  for (const d of drones){
+    if (d.segment !== seg) continue;
+    keys.push(d.home.x + ',' + d.home.z);
+  }
+  for (const m of missingHomes(rows, keys)){
+    const d = makeDrone(m.kind, m.x, m.z, seg);
+    d.spawned = true;
+    scene.add(d.mesh);
+  }
+}
+spawnAllSegments();
+modelsReady.then(() => upgradeIdleSegments());
 
 function segmentCleared(seg){
   return !drones.some(d => d.segment === seg && d.alive);
 }
-function activeDroneCount(){
-  return drones.filter(d => d.alive).length;
+function pressingDroneCount(){
+  // Only drones close enough to be in the fight block a new spawn.
+  // Bodies left dormant at the other end of the map must not eat the
+  // slot the end-room wave is waiting on.
+  const px = yawObj.position.x, pz = yawObj.position.z;
+  let n = 0;
+  for (const d of drones){
+    if (!d.alive) continue;
+    const dx = d.mesh.position.x - px, dz = d.mesh.position.z - pz;
+    if (dx*dx + dz*dz < 36*36) n++;
+  }
+  return n;
 }
 
 // core-wave spawn points (room corners)
@@ -1964,7 +2021,9 @@ const G = {
   currentSegment: 0,
   radioQueue: [], radioT: 0, radioFired: new Set(),
   plantProgress: 0, planting: false, planted: false, detect: 0, escape: false,
-  alarm: false, waveSpawned: 0, waveT: 0,
+  escapeArm: 0,
+  alarm: false, waveSpawned: 0, waveT: 0, waveDebt: 0, waveStall: 0,
+  waveTotal: WAVE_TOTAL, simCursor: 0,
   time: 0, shakeT: 0,
 };
 const PLAYER_R = 0.4, PLAYER_EYE = 1.7;
@@ -2255,8 +2314,19 @@ function damagePlayer(dmg){
    ============================================================ */
 function updateDrones(dt){
   const px = yawObj.position.x, pz = yawObj.position.z;
-  let updated = 0;
-  for (const d of drones){
+  const simList = [];
+  for (let i = 0; i < drones.length; i++){
+    const d = drones[i];
+    if (!d.alive) continue;
+    const dist = Math.hypot(d.mesh.position.x - px, d.mesh.position.z - pz);
+    d._dist = dist;
+    if (dist > 46) continue; // far: fully dormant
+    simList.push({ i, dist, endRoom: d.segment === 4 });
+  }
+  const pick = pickSim(simList, MAX_ACTIVE + 4, G.simCursor || 0);
+  G.simCursor = pick.nextCursor;
+  for (let i = 0; i < drones.length; i++){
+    const d = drones[i];
     if (!d.alive){
       if (d.deathT > 0){
         d.deathT -= dt;
@@ -2268,11 +2338,10 @@ function updateDrones(dt){
       }
       continue;
     }
+    if (d._dist > 46 || !pick.chosen.has(i)) continue;
     const m = d.mesh.position;
     const distX = m.x - px, distZ = m.z - pz;
-    const dist = Math.hypot(distX, distZ);
-    if (dist > 46) continue;              // far: fully dormant
-    if (++updated > MAX_ACTIVE + 4) continue; // hard update cap safety
+    const dist = d._dist;
     d.stateT += dt;
     d.shadow.position.y = .03 - m.y;      // pin blob shadow to the floor
     const A = d.anim;
@@ -2452,10 +2521,16 @@ function updateDoors(dt){
       applyLoot(L.type);
     }
   }
-  // escape phase: reaching the entrance ends the chapter
+  // escape phase: reaching the entrance ends the chapter.
+  // If the finale refuses to start, put the latch back and try again.
+  // Clearing it first was a one-shot: a refused start left the player
+  // standing on the threshold with no way to finish.
   if (G.escape && yawObj.position.z > ROOMS[0].z1 + 1.5){
-    G.escape = false;
-    if (CB.finale) Story.start(CB.finale); else beginExtraction();
+    if (CB.finale){
+      G.escape = false;
+      Story.start(CB.finale);
+      if (G.mode === 'play') G.escape = true;
+    } else beginExtraction();
   }
   // chapter-defined chatter zones
   CH.zones.forEach(zn => { if (z < zn.z) radio(zn.key); });
@@ -2482,17 +2557,15 @@ function startAlarm(){
   radio('alarm');
 }
 function updateWave(dt){
-  if (!G.alarm || (G.planted && !G.escape)) return;
-  G.waveT -= dt;
-  if (G.waveT <= 0 && G.waveSpawned < (G.waveCap ?? WAVE_TOTAL) && activeDroneCount() < MAX_ACTIVE){
-    G.waveT = 3;
-    const [x,z] = WAVE_SPAWNS[G.waveSpawned % WAVE_SPAWNS.length];
-    const kinds = CH.waveKinds || ['crawler'];
-    const d = makeDrone(kinds[G.waveSpawned % kinds.length], x, z, 9); // segment 9 = wave
+  const due = stepWave(G, dt, pressingDroneCount(), MAX_ACTIVE);
+  if (!due.length) return;
+  const kinds = CH.waveKinds || ['crawler'];
+  for (const n of due){
+    const [x,z] = WAVE_SPAWNS[n % WAVE_SPAWNS.length];
+    const d = makeDrone(kinds[n % kinds.length], x, z, 9); // segment 9 = wave
     d.spawned = true;
     setDroneState(d, 'attack');
     scene.add(d.mesh);
-    G.waveSpawned++;
   }
 }
 
@@ -2536,23 +2609,31 @@ function plantComplete(){
   radio('planted');
   setObjectiveText();
   PROPS.onComplete();
-  // brief beat, then extraction
-  setTimeout(()=>{ if (G.mode === 'play'){
-    G.escape = true; G.waveSpawned = 0; G.waveT = 1.5; setObjectiveText();
-    if (CH.id === 'ep1' && SFLAGS.trusted){ spawnCompanion(); sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.'); }
-    if (CH.id === 'ch_taken' && SFLAGS.freed){
-      G.waveCap = Math.ceil((CH.waveTotal||12)/2);
-      // sleepers strung out along the whole escape route, so the player
-      // keeps passing them on the way to daylight
-      for (let i = 0; i < 10; i++){
-        const c = makeCivvy({ jacket:[0x3a3a32,0x4a3a30,0x33402f,0x46464b,0x54443a,0x3c3348][i%6],
-          hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6] });
-        c.position.set((i%2 ? 1 : -1) * (1.5 + (i%4)), 0, -100 + i*6);
-        scene.add(c); FLEE.push(c);
-      }
-      sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
+  // The leave objective is already on screen. Arming the exit and its
+  // pursuit wave on the game clock means a death, a story beat, or a
+  // backgrounded livestream tab cannot swallow the handoff.
+  scheduleEscape(G, 2.6);
+}
+
+function tryArmEscape(){
+  if (!armEscape(G, G.mode)) return;
+  if (CH.id === 'ep1' && SFLAGS.trusted){
+    spawnCompanion();
+    sToast('REYES CAME BACK OVER THE BRIDGE FOR YOU.');
+  }
+  if (CH.id === 'ch_taken' && SFLAGS.freed){
+    G.waveCap = Math.ceil((CH.waveTotal||12)/2);
+    // sleepers strung out along the whole escape route, so the player
+    // keeps passing them on the way to daylight
+    for (let i = 0; i < 10; i++){
+      const c = makeCivvy({ jacket:[0x3a3a32,0x4a3a30,0x33402f,0x46464b,0x54443a,0x3c3348][i%6],
+        hair:[0x241d16,0x0f0d0a,0x4a4038,0x2a1d12,0x1a1a1c,0x33261a][i%6] });
+      c.position.set((i%2 ? 1 : -1) * (1.5 + (i%4)), 0, -100 + i*6);
+      scene.add(c); FLEE.push(c);
     }
-  } }, 2600);
+    sToast('THE SLEEPERS ARE RUNNING. THE HIVE DIVIDES ITS ATTENTION.');
+  }
+  setObjectiveText();
 }
 
 function beginExtraction(){
@@ -2590,7 +2671,8 @@ function respawn(){
   // reset the segment being attempted (and the core wave if applicable)
   if (seg >= 1 && seg <= 4) spawnSegment(seg);
   if (seg === 4){
-    G.waveSpawned = 0; G.waveT = 2; G.plantProgress = 0; G.planting = false;
+    G.waveSpawned = 0; G.waveT = 2; G.waveDebt = 0; G.waveStall = 0;
+    G.plantProgress = 0; G.planting = false;
     // remove wave drones
     for (let i = drones.length-1; i >= 0; i--){
       if (drones[i].segment === 9){ scene.remove(drones[i].mesh); if (drones[i].w) scene.remove(drones[i].w.grp); drones.splice(i,1); }
@@ -2602,6 +2684,8 @@ function respawn(){
   G.hp = 100; G.lastDamageT = G.time; G.detect = 0;
   el.redFade.style.opacity = 0;
   G.mode = 'play';
+  if (seg >= 1 && seg <= 4) ensureSegment(seg);
+  tryArmEscape();
 }
 
 /* ============================================================
@@ -3501,7 +3585,7 @@ requestAnimationFrame(()=>{ el.fade.style.opacity = 0; });
 G.mode = 'title';
 
 // debug hook (console-only; not used by game logic)
-window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast };
+window.__LATM = { G, drones, yawObj, finishIntro, pickupRifle, damageDrone, MusicSys, postFX, Story, SFLAGS, SCHOICES, FINALE_BEATS, SHELTER_BEATS, VOICE_BEATS, finishEnding, CB, BEATSETS, getComp: () => COMP, Cast, tryArmEscape, ensureSegment };
 
 /* ============================================================
    Main loop
@@ -3530,6 +3614,8 @@ function loop(){
   if (G.mode === 'cinematic'){ Cinematic.update(dt); return; } // renders its own scene
   if (G.mode === 'intro') updateIntro(dt);
   if (G.mode === 'play'){
+    tryArmEscape();
+    for (let seg = 1; seg <= 4; seg++) ensureSegment(seg);
     updatePlayer(dt);
     tryFire(dt);
     if (CH.stealth) updateWatchers(dt);
