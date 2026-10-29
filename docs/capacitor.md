@@ -45,16 +45,18 @@ The HUD already uses `viewport-fit=cover`. System bars stay visible, with light 
 
 ## What you still have to do
 
-Nothing in this repo is signed, and no store listing is created.
+Nothing in this repo is signed, and no store listing is created. The Play closed-test steps, the upload key, and the data safety notes are in `store/PLAY_CLOSED_TEST.md`. The upload keystore is not committed.
 
 **Apple ($99 a year).** Join the Apple Developer Program. iOS signing needs a Mac with Xcode, plus a distribution certificate and a provisioning profile. This project can be generated on Linux. It cannot be compiled or uploaded from Linux. Open the Xcode workspace, select your team, and archive.
 
 **Google ($25 once).** Join Play Console. Create an upload keystore in Android Studio and keep it outside the repo. A personal Play account created after 13 November 2023 has to run a closed test with at least 12 testers for 14 days before production.
 
-Debug builds use the automatic debug keystore. Release builds do not.
+Debug builds use the automatic debug keystore. A release build signs only when `android/keystore.properties` is present. That file is gitignored.
 
 ## Not in this shell
 
-Season Pass, AdMob, rewarded ads, RevenueCat, and Steam are not part of this project. The notes in `mobile/` describe that later work. They do not unlock chapters and they do not play an ad.
+AdMob, rewarded ads, RevenueCat, and Steam are not part of this project. The notes in `mobile/` describe that later work. They do not charge a card and they do not play an ad.
+
+The website Season Pass stays the $2.99 Stripe link. A Play closed-test bundle is a different copy: `PLAY_BUILD=1 npm run build:www` unlocks every chapter and strips payment URLs before `cap sync`. The committed `play-build.js` stays false, so GitHub Pages does not change. See `store/PLAY_CLOSED_TEST.md`.
 
 `npm run check:offline` rebuilds `www` if needed, rejects a CDN script or font, and loads the bundle in headless Chrome with every other host blocked. A pass means the title screen, Three.js r160, and the local fonts came from this machine. It does not test an iPhone or Android WebView. Speech synthesis and WebGL on those WebViews still need a device pass. The game already calls `speechSynthesis` when it exists, and it already falls back when WebGL is weak.

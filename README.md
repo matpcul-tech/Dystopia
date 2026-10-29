@@ -116,7 +116,7 @@ Playable in the browser from Episode One through Chapter Six, with Story and Act
 
 ## Roadmap
 
-- Keep the Pages site on `main` as the live build.
+- Keep the Pages site on `main` as the live build. The $2.99 Stripe Season Pass stays there. The Play closed test is a separate bundle: `store/PLAY_CLOSED_TEST.md`.
 - Set `PREVIEW_CODE` and redeploy the worker when you want the owner unlock. Until then it stays off on purpose.
 - Connect phone-store billing only when a real SDK is wired. Do not treat `mobile/purchases.js` as a charge.
 - Steam waits on a depot, the content survey, and a build. Notes are in `steam/README.md` and `store/steam/CONTENT_SURVEY.md`.

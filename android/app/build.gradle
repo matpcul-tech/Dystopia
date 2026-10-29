@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.matthewculwell.thewaking"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -8,7 +14,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,11 +22,58 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            release {
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
+    }
+}
+
+// Release refuses a bundle that still has a payment link, or a copy
+// where the closed-test flag was left off. cap sync must follow
+// PLAY_BUILD=1 npm run build:www.
+task checkPlayAssets {
+    doLast {
+        def publicDir = file('src/main/assets/public')
+        if (!publicDir.isDirectory()) {
+            throw new GradleException('Missing src/main/assets/public. Run PLAY_BUILD=1 npm run build:www and npx cap sync android before a release build.')
+        }
+        def playFlag = new File(publicDir, 'play-build.js')
+        if (!playFlag.isFile() || !playFlag.getText('UTF-8').contains('export const PLAY_BUILD = true')) {
+            throw new GradleException('play-build.js is not the closed-test Play build.')
+        }
+        def banned = ['buy.stripe.com', 'stripe.com', 'buy on web', 'buy on the web', 'paypal.com']
+        publicDir.eachFileRecurse { f ->
+            if (!f.isFile()) return
+            def name = f.name.toLowerCase()
+            if (!(name.endsWith('.js') || name.endsWith('.html') || name.endsWith('.css') || name.endsWith('.json') || name.endsWith('.mjs') || name.endsWith('.webmanifest'))) return
+            def text = f.getText('UTF-8').toLowerCase()
+            banned.each { needle ->
+                if (text.contains(needle)) {
+                    throw new GradleException('Play release contains "' + needle + '" in ' + f)
+                }
+            }
+        }
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'bundleRelease' || task.name == 'assembleRelease') {
+        task.dependsOn checkPlayAssets
     }
 }
 
