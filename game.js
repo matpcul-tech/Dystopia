@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
-import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed } from './feel.js';
+import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 import { ngDamageMul, ngHpMul, readDaily, signalChapter, signalLayout, SIGNAL_SCRIPTS, todayKey } from './return-loop.js';
 
@@ -3786,12 +3786,27 @@ yawObj.position.set(0, PLAYER_EYE, 0);
 const keys = {};
 let mouseFiring = false, pointerLocked = false;
 let lockAt = 0;
-let ignoreUnlock = 0;
-let unlockPaused = false;
+let escLastAt = 0;
+let escDownSeen = false;
+let suppressUnlockUntil = 0;
 function dropPointerLock(){
   if (!document.pointerLockElement) return;
-  ignoreUnlock++;
-  try { document.exitPointerLock(); } catch (e) { ignoreUnlock = Math.max(0, ignoreUnlock - 1); }
+  // The unlock event that follows is ours. Do not treat it as the player asking to pause.
+  suppressUnlockUntil = performance.now() + 500;
+  try { document.exitPointerLock(); } catch (e) {}
+}
+function applyEscape(kind){
+  if (!window.Waking) return false;
+  const res = escapePress({
+    kind: kind,
+    mode: G.mode,
+    paused: !!Waking.isPaused(),
+    lastAt: escLastAt,
+    suppressUntil: suppressUnlockUntil,
+  }, performance.now());
+  escLastAt = res.lastAt;
+  if (res.action === 'open' || res.action === 'resume' || res.action === 'toggle') Waking.togglePause();
+  return res.action !== 'ignore';
 }
 const MOVE_AXIS = {
   KeyW:[0,-1], ArrowUp:[0,-1], KeyS:[0,1], ArrowDown:[0,1],
@@ -3843,6 +3858,13 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => {
   noteMoveUp(e.code, performance.now());
   keys[e.code] = false;
+  // Chrome often skips keydown for the Escape that leaves pointer lock, and sends keyup.
+  if (e.code === 'Escape'){
+    const seen = escDownSeen;
+    escDownSeen = false;
+    // Keydown is missing when Escape only leaves pointer lock. Keyup still arrives.
+    if (!seen) applyEscape('up');
+  }
 }, true);
 
 renderer.domElement.addEventListener('click', () => {
@@ -3851,16 +3873,14 @@ renderer.domElement.addEventListener('click', () => {
   }
 });
 document.addEventListener('pointerlockchange', () => {
+  const was = pointerLocked;
   pointerLocked = document.pointerLockElement === renderer.domElement;
-  if (pointerLocked){ lockAt = performance.now(); return; }
-  // Escape exits pointer lock and the page never sees the key.
-  // That used to leave PAUSE dead while the canvas still had the cursor.
-  if (ignoreUnlock > 0){ ignoreUnlock--; return; }
-  if ((G.mode === 'play' || G.mode === 'story') && window.Waking && !Waking.isPaused()){
-    unlockPaused = true;
-    Waking.togglePause();
-    setTimeout(() => { unlockPaused = false; }, 250);
+  if (pointerLocked){
+    if (!was) lockAt = performance.now();
+    return;
   }
+  // Unlocked. If this press also sends a key, escapePress keeps it to one open.
+  if (was) applyEscape('unlock');
 });
 addEventListener('mousemove', e => {
   if (!pointerLocked || G.mode !== 'play') return;
@@ -4911,13 +4931,14 @@ function updatePlayer(dt){
   _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
   _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const spd = MOVE_SPEED * (G.spdMul || 1);
-  const moveX = mv.x * spd;
-  const moveZ = -mv.z * spd;
-  const slices = moveSlices(Math.hypot(moveX, moveZ), 0.18);
+  // mv is camera-relative. W is forward along the look, not world +z.
+  const wishX = mv.x * spd;
+  const wishZ = -mv.z * spd;
+  const slices = moveSlices(Math.hypot(wishX, wishZ), 0.18);
   for (let si = 0; si < slices; si++){
     const bx = yawObj.position.x, bz = yawObj.position.z;
-    yawObj.position.x += moveX / slices;
-    yawObj.position.z += moveZ / slices;
+    yawObj.position.x += (_right.x * wishX + _fwd.x * wishZ) / slices;
+    yawObj.position.z += (_right.z * wishX + _fwd.z * wishZ) / slices;
     collide(yawObj.position, PLAYER_R);
     if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
     const landed = keptStep(
@@ -5569,11 +5590,11 @@ el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) ski
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Escape' && window.Waking){
-    if (unlockPaused){ unlockPaused = false; e.preventDefault(); return; }
     const m = G.mode;
     if (m === 'play' || m === 'story' || m === 'paused' || m === 'title' || m === 'end'){
       e.preventDefault();
-      Waking.togglePause();
+      escDownSeen = true;
+      applyEscape('down');
       return;
     }
   }
