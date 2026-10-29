@@ -73,6 +73,12 @@ canvas{display:block;position:fixed;inset:0;z-index:0;}
 
 #stickZone,#lookZone{position:absolute;top:0;bottom:0;pointer-events:auto;display:none;
   z-index:5;touch-action:none;}
+/* A clip uses the same skip as every other beat. The zones stay on screen
+   after the train, but they must not take the tap that skips the picture. */
+body.clipOn #stickZone,
+body.clipOn #lookZone,
+body.clipOn #fireBtn,
+body.clipOn #plantBtn{pointer-events:none;}
 #stickZone{left:0;width:45%;}
 #lookZone{right:0;width:55%;}
 #stickBase{position:absolute;width:110px;height:110px;border:1px solid rgba(244,236,223,.35);
@@ -278,8 +284,10 @@ body.postfx #vig{display:none;}
 #intro.maskTop #introKicker{position:absolute;top:max(18px, var(--inset-top));left:50%;
   transform:translateX(-50%);margin:0;z-index:2;background:rgba(7,7,11,.92);
   color:var(--cream);padding:9px 18px 8px;white-space:nowrap;max-width:86vw;}
-#beatVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:0;display:none;}
-#introText,#introKicker,#skipBtn{position:relative;z-index:1;}
+#beatVideo{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:0;display:none;
+  pointer-events:none;}
+#introText,#introKicker{position:relative;z-index:1;}
+#skipBtn{position:absolute;z-index:3;pointer-events:auto;}
 
 html[data-text="sm"] #sText{font-size:18px;}
 html[data-text="lg"] #sText{font-size:32px;}

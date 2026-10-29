@@ -77,7 +77,41 @@ export function assignVoices(voices){
   return map;
 }
 
-// Drop a leading stage note such as "(earlier)" so it is not spoken.
+// Names stay names when a line is shouted in capitals.
+const SPOKEN_NAMES = {
+  marcus: 'Marcus',
+  reyes: 'Reyes',
+  kara: 'Kara',
+  thomas: 'Thomas',
+  elena: 'Elena',
+  vera: 'Vera',
+  david: 'David',
+  angela: 'Angela',
+  omega: 'Omega',
+};
+
+const DIGIT_WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+
+// Speech engines spell an all-caps word ("WHO" becomes W H O).
+// The card keeps the written line. This is only the spoken copy.
+function speakToken(token){
+  if (token.length === 1){
+    if (token === 'I') return 'I';
+    if (token === 'A') return 'a';
+    return token;
+  }
+  const lower = token.toLowerCase();
+  return SPOKEN_NAMES[lower] || lower;
+}
+
 export function spokenLine(text){
-  return String(text || '').replace(/^\([^)]*\)\s*/, '').replace(/\s+/g, ' ').trim();
+  let s = String(text || '').replace(/^\([^)]*\)\s*/, '').replace(/\s+/g, ' ').trim();
+  if (!s) return '';
+  // M-1 is a subject code, not the letter M and a minus.
+  s = s.replace(/\b([A-Za-z])-(\d)\b/g, (_, letter, digit) => {
+    return letter.toUpperCase() + ' ' + DIGIT_WORD[Number(digit)];
+  });
+  s = s.replace(/\b[A-Z]+(?:['-][A-Z]+)*\b/g, speakToken);
+  s = s.replace(/(^|[.?!]\s+)([a-z])/g, (_, lead, ch) => lead + ch.toUpperCase());
+  return s;
 }
