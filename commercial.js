@@ -20,9 +20,13 @@
 // A missing trailer file shows an error and does not count a view.
 // There is no Stripe secret in this file. SEASON_VERIFY_URL is the
 // deployed worker. See cloud/SEASON_PASS_WORKER.md.
+// Play closed test: play-build.js is false in this file. The www
+// copy can set it true and drop the payment URL. That path is not
+// a URL parameter. The Remove Ads control stays hidden either way.
 
 import { resumePlan } from './feel.js';
 import { PASS_KEY, USED_KEY, askPreviewVerify, askSeasonVerify, judgeRestore, judgeReturn, plausibleSessionId, previewCodeShape, previewTicketShape } from './season-pass.js';
+import { PLAY_BUILD } from './play-build.js';
 import {
   CODEX, COSMETICS,
   applySignalReward, campaignCleared, ngPlusSlot, readDaily, slotTag, todayKey, writeDaily,
@@ -219,6 +223,7 @@ function hasDevicePass(){
 const PREVIEW_TICKET_KEY = 'latm_preview_ticket';
 let previewReady = false;
 function hasPass(){
+  if (PLAY_BUILD) return true;
   if (previewReady) return true;
   if (hasDevicePass()) return true;
   return !!(memory && memory.slots && memory.slots.some(s => s && s.pass));
@@ -276,6 +281,20 @@ function clearFreeNoAds(){
     if (s && s.noAds) s.noAds = false;
   });
 }
+// Play closed test only. The committed flag is false, so Pages does
+// not take this path. It does not write a purchase record, and it
+// does not turn on the hidden Remove Ads flag.
+function grantPlayTest(){
+  if (!PLAY_BUILD || !memory) return;
+  memory.slots.forEach(s => {
+    if (!s) return;
+    s.pass = true;
+    if (!s.unlocked) s.unlocked = [];
+    CH2_IDS.concat(PAID).forEach(id => {
+      if (s.unlocked.indexOf(id) < 0) s.unlocked.push(id);
+    });
+  });
+}
 function previewOn(){
   return previewReady === true;
 }
@@ -323,6 +342,11 @@ function takePreviewParam(){
 // Ask the purchase worker. Unlock this tab only on { preview: true }
 // plus a ticket. Never writes the Season Pass record.
 async function claimPreview(fromUrl){
+  if (PLAY_BUILD) {
+    previewReady = false;
+    markPreviewSettled();
+    return;
+  }
   clearLegacyPreview();
   try {
     const code = previewCodeShape(fromUrl) ? fromUrl : '';
@@ -377,6 +401,7 @@ export function bootSaves(){
   clearLegacyPreview();
   if (typeof localStorage === 'undefined') {
     memory = migrate();
+    grantPlayTest();
     settleTrailerSession();
     claimSeasonReturn();
     claimPreview(previewParam);
@@ -395,6 +420,7 @@ export function bootSaves(){
   if (!Array.isArray(memory.usedSessions)) memory.usedSessions = readUsed();
   promotePass();
   clearFreeNoAds();
+  grantPlayTest();
   writeLegacy(slot());
   persist();
   if (typeof document !== 'undefined') applySettings();
@@ -406,6 +432,7 @@ export function bootSaves(){
 // Strip the return query either way, so a refresh is not a second try.
 // Grant only after the worker says { pass: true }.
 async function claimSeasonReturn(){
+  if (PLAY_BUILD) return;
   if (typeof location === 'undefined') return;
   let params;
   try { params = new URLSearchParams(location.search); } catch (e) { return; }
@@ -480,6 +507,7 @@ async function applyRestore(raw){
   return seasonFailureNote(result, 'restore');
 }
 function openSeasonCheckout(){
+  if (PLAY_BUILD) return;
   const note = document.getElementById('payNote');
   if (note) note.textContent = 'Opening Stripe checkout in this tab. When you return, Season Pass is stored in this browser for every save slot after the purchase check confirms it.';
   location.assign(COMMERCE.SEASON_URL);
@@ -883,6 +911,20 @@ function openPaywall(id){
   const body = document.getElementById('payBody');
   if (!body) return;
   body.innerHTML = '';
+  if (PLAY_BUILD) {
+    body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
+    body.appendChild(el('p', 'deckLine', 'This closed test includes every chapter.'));
+    const go = el('button', 'btn amber', 'ENTER CHAPTER');
+    go.type = 'button';
+    go.addEventListener('click', () => enterChapter(id));
+    body.appendChild(go);
+    const close = el('button', 'btn', 'CLOSE');
+    close.type = 'button';
+    close.addEventListener('click', hideSheets);
+    body.appendChild(close);
+    show('paySheet');
+    return;
+  }
   if (visitAllows(id) && !previewOn()) {
     body.appendChild(el('h3', 'sheetTitle', payTitle(id)));
     body.appendChild(el('p', 'deckLine', 'This chapter is open for this visit.'));
@@ -939,6 +981,7 @@ function openPaywall(id){
 }
 
 function openRestore(){
+  if (PLAY_BUILD) return;
   const body = document.getElementById('payBody');
   if (!body) return;
   body.innerHTML = '';
@@ -1211,7 +1254,9 @@ function buildChapters(host){
   host.innerHTML = '';
   const box = el('div', 'sheetBody');
   box.appendChild(el('h3', 'sheetTitle', 'CHAPTERS'));
-  box.appendChild(el('p', 'fine', 'Episode One is free. One Chapter Two path stays free with the ending you earned. Season Pass opens the rest for good. Three book trailers open one locked chapter for this visit only.'));
+  box.appendChild(el('p', 'fine', PLAY_BUILD
+    ? 'This closed test includes the Season Pass. Every chapter is open.'
+    : 'Episode One is free. One Chapter Two path stays free with the ending you earned. Season Pass opens the rest for good. Three book trailers open one locked chapter for this visit only.'));
   const chapters = (api && api.chapters) || {};
   Object.keys(chapters).forEach(id => {
     const c = chapters[id];
@@ -1701,7 +1746,8 @@ export const Waking = window.Waking = {
       ng.style.display = 'none';
       ng.addEventListener('click', () => openNgSheet());
       const nav = el('div', 'slotTools');
-      nav.append(codex, daily, ng, chb, arch, setb, restore);
+      if (PLAY_BUILD) nav.append(codex, daily, ng, chb, arch, setb);
+      else nav.append(codex, daily, ng, chb, arch, setb, restore);
       bar.appendChild(nav);
       start.appendChild(bar);
       refreshNgButton();

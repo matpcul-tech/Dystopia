@@ -5,6 +5,7 @@
   "description": "DYSTOPIA: The Waking web game and Capacitor shells for iOS and Android.",
   "scripts": {
     "build:www": "node tools/build-www.mjs",
+    "build:www:play": "PLAY_BUILD=1 node tools/build-www.mjs",
     "check:offline": "node tools/check-offline.mjs",
     "check:full": "node tools/full-run.mjs",
     "check:return": "node tools/check-return.mjs",
