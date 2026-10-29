@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { ARCHIVE, BEATS, openBeat, roomBeat, episodeOf, clipLabel } from './cinematics.js';
 import { Waking } from './commercial.js';
 import { showPortrait, hidePortrait, PORTRAIT_ART } from './portraits.js';
-import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress } from './feel.js';
+import { typedCount, swallowLook, integrateMove, riflePickup, trainFinale, segmentsToClear, resumeProgress, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress, lookDelta } from './feel.js';
 import { voiceProfile, assignVoices, spokenLine } from './voices.js';
 import { ngDamageMul, ngHpMul, readDaily, signalChapter, signalLayout, SIGNAL_SCRIPTS, todayKey } from './return-loop.js';
 
@@ -4817,7 +4817,6 @@ function respawn(){
 /* ============================================================
    Player movement
    ============================================================ */
-const _fwd = new THREE.Vector3(), _right = new THREE.Vector3();
 // Story Mode shot magnetism.
 // Before: every input, including mouse look, hard-locked onto a live
 // machine inside 0.50 rad (about 28.6 deg) from 1.4 m to 28 m.
@@ -4928,17 +4927,16 @@ function updatePlayer(dt){
 
   if (!positionOk(yawObj.position.x, yawObj.position.z)) rescuePlayable(yawObj.position);
 
-  _fwd.set(-Math.sin(G.yaw), 0, -Math.cos(G.yaw));
-  _right.set(Math.cos(G.yaw), 0, -Math.sin(G.yaw));
   const spd = MOVE_SPEED * (G.spdMul || 1);
-  // mv is camera-relative. W is forward along the look, not world +z.
-  const wishX = mv.x * spd;
-  const wishZ = -mv.z * spd;
-  const slices = moveSlices(Math.hypot(wishX, wishZ), 0.18);
+  // Stick up (screen y down, negative dy) and W are both a negative mv.z.
+  // lookDelta sends that forward along the look. World x/z made stick-down
+  // walk forward until you turned, then mirrored strafe.
+  const step = lookDelta(G.yaw, mv.x * spd, mv.z * spd);
+  const slices = moveSlices(Math.hypot(step.x, step.z), 0.18);
   for (let si = 0; si < slices; si++){
     const bx = yawObj.position.x, bz = yawObj.position.z;
-    yawObj.position.x += (_right.x * wishX + _fwd.x * wishZ) / slices;
-    yawObj.position.z += (_right.z * wishX + _fwd.z * wishZ) / slices;
+    yawObj.position.x += step.x / slices;
+    yawObj.position.z += step.z / slices;
     collide(yawObj.position, PLAYER_R);
     if (pointInSolid(yawObj.position.x, yawObj.position.z)) ejectPoint(yawObj.position, PLAYER_R);
     const landed = keptStep(

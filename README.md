@@ -1,10 +1,29 @@
 # DYSTOPIA, Episode One: The Waking
 
+Play it: [https://matpcul-tech.github.io/Dystopia/](https://matpcul-tech.github.io/Dystopia/)
+
 A free playable 3D episode set in the world of **Life After The Machines**
-by Matthew Culwell, a hybrid of first-person action and Telltale-style
-story choices, on the same engine as
-[LATM: Hive Infiltration](https://github.com/matpcul-tech/Dystopiabook1).
+by Matthew Culwell. You fight in first person and choose like a story.
 Every path funnels to Book One.
+
+## Play it
+
+**Story Mode** softens hits and shortens the hunter. On a phone, a shot that is already close to a target gets a small nudge. Mouse and keyboard do not lock onto enemies. **Action Mode** is the harder fight. The title screen shows which one you are in. Settings can switch it.
+
+**What is free.** Episode One is free. The ending you earn keeps one Chapter Two path free. Three book trailers can open one locked chapter for this visit only. Reload the page and those trailers are required again. That visit is not the Season Pass.
+
+**Season Pass** is $6.99 and opens the paid chapters for good, on every save slot in this browser. Checkout is Stripe. The game grants the pass only after the purchase check at `waking-season-pass.matpcul.workers.dev` confirms the checkout: the email on the receipt, or the return link. A link flag by itself does not unlock anything. There is no Stripe secret in the game.
+
+**Controls.**
+
+- Keyboard and mouse: WASD moves. W is forward along the look, S is back. Mouse looks (click the picture to lock). Click or Space fires. E uses. Escape opens pause in one press, and releases the mouse if it was locked. Space advances a line. 1, 2, and 3 pick a choice.
+- Touch: the left virtual stick moves. Up is forward along the look, down is back, left and right strafe with the look and do not mirror after you turn. The right side of the screen looks. FIRE shoots. Tap advances a line and picks a choice.
+
+**Coming back.** The title screen has three loops on the same save slots. **Ending Codex** lists the endings you have reached. A locked card is a silhouette and a clue, not the name. **Daily Hive Signal** is a short free room for the calendar day. The reward is a cosmetic mark or a codex clue. It does not open a paid chapter and it does not overwrite the campaign checkpoint. **New Game+** appears after a Chapter Six clear (Game Over or The Count). Book flags, paths, and endings stay on the slot. Action Mode hits harder. Story Mode takes a smaller bump. Four Chapter Two paths each gain one new mid-chapter beat.
+
+Dialogue cards show the speaker's name and the line. Stand-in faces stay hidden until real portrait art ships.
+
+Recent live fixes, on `main`: [#31](https://github.com/matpcul-tech/Dystopia/pull/31) pulled a player who had stepped outside the hardware district back into the room, brought audio back on silent cutscenes, and stopped a spoken line from being cancelled in the same turn it starts. [#32](https://github.com/matpcul-tech/Dystopia/pull/32) opens pause on the same Escape that releases the mouse, and walks W forward along the look. This tree keeps the virtual stick on that same forward: up matches W, and a turn does not mirror strafe.
 
 ## What it is
 
@@ -244,10 +263,11 @@ stern, grim, worried, warm). While a line shows, the speaker talks: jaw
 syllables with natural pauses, head nods and tilts, brow lifts. At rest
 everyone breathes and shifts weight.
 
-**Speaker portrait.** The current speaker is lit as a bust (key, fill and a
-rim light in the chapter's machine colour) behind the dialogue. It is drawn
-by the main renderer into a small offscreen target only while someone is
-speaking. There is no second WebGL context and no cost when nobody talks.
+**Speaker portrait.** The bust code is in the build, but `PORTRAIT_ART` is
+off. Dialogue cards show the name and the line only. Stand-in faces stay
+hidden until real portrait art ships. When that flag is on, the bust is
+drawn by the main renderer into a small offscreen target only while someone
+is speaking, with no second WebGL context.
 
 **Suspension tubes.** Every tube holds a suspended sleeper in a thin gray
 garment, eyes closed, drifting slowly with floating hair, wired to the cap
@@ -277,14 +297,13 @@ the repo but are no longer loaded.)
 
 ## Play
 
-No build step. GitHub Pages serves this folder from `main`. Three.js r160
-and the title fonts are vendored under `vendor/`, so a chapter loads with
-no CDN.
+No build step. GitHub Pages serves this folder from `main` at
+[https://matpcul-tech.github.io/Dystopia/](https://matpcul-tech.github.io/Dystopia/).
+Three.js r160 and the title fonts are vendored under `vendor/`, so a
+chapter loads with no CDN.
 
-- **Desktop:** WASD move · mouse look (click to lock) · click/Space fire
-  · E interacts · during story beats: Space advances, 1 to 3 picks.
-- **Mobile:** left stick to move · right side drag to look · FIRE button
-  · tap to advance story, tap choices.
+- **Desktop:** WASD moves. W is forward along the look. Mouse looks after you click to lock. Click or Space fires. E uses. Escape opens pause once. During story beats, Space advances and 1 to 3 picks.
+- **Touch:** left stick moves. Up is forward along the look, down is back, left and right follow the look. Right-side drag looks. FIRE shoots. Tap advances a line and picks a choice.
 
 ## iOS and Android
 

@@ -167,6 +167,24 @@ export function claimClipBed(fileHasAudio, muted){
   return !!fileHasAudio && !muted;
 }
 
+// One step for the keyboard and the virtual stick.
+// Negative mvz is forward: W, and the stick pushed up (screen y decreases).
+// Positive mvx is strafe right. After a turn, up still follows the look
+// and right is not mirrored. Do not add this vector in world x/z.
+export function lookDelta(yaw, mvx, mvz){
+  const y = Number(yaw) || 0;
+  const xIn = Number(mvx) || 0;
+  const zIn = Number(mvz) || 0;
+  const fwdX = -Math.sin(y);
+  const fwdZ = -Math.cos(y);
+  const rightX = Math.cos(y);
+  const rightZ = -Math.sin(y);
+  return {
+    x: rightX * xIn + fwdX * (-zIn),
+    z: rightZ * xIn + fwdZ * (-zIn),
+  };
+}
+
 // One Escape press can show up as an unlock, a keydown, and a keyup.
 // The first event opens pause. Later pieces of that same press must not
 // close it. A later press, after the window, resumes.
