@@ -59,6 +59,49 @@ export function judgeRestore(raw, usedList, hasPass){
   return { action: 'reject', id: '', email: '' };
 }
 
+// Owner preview is not a Season Pass. The shape is a long unguessable
+// code or the tab ticket the worker returns. ?preview=1 does not match.
+const PREVIEW_SHAPE = /^[A-Za-z0-9_-]{20,128}$/;
+
+export function previewCodeShape(code){
+  return typeof code === 'string' && PREVIEW_SHAPE.test(code);
+}
+
+export function previewTicketShape(ticket){
+  return typeof ticket === 'string' && PREVIEW_SHAPE.test(ticket);
+}
+
+// Posts { preview_code } or { preview_ticket }. preview is true only
+// for HTTP ok JSON { preview: true, ticket }. { pass: true } is not a
+// preview grant. Empty URL, network failure, and 4xx/5xx fail closed.
+export async function askPreviewVerify(verifyUrl, body, fetchImpl){
+  const url = typeof verifyUrl === 'string' ? verifyUrl.trim() : '';
+  if (!url) return { preview: false, ticket: '', status: 0, reason: 'unconfigured' };
+  const fetchFn = fetchImpl || globalThis.fetch;
+  if (typeof fetchFn !== 'function') return { preview: false, ticket: '', status: 0, reason: 'network' };
+  let res;
+  try {
+    res = await fetchFn(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+  } catch (e) {
+    return { preview: false, ticket: '', status: 0, reason: 'network' };
+  }
+  if (!res) return { preview: false, ticket: '', status: 0, reason: 'network' };
+  let data = null;
+  try { data = await res.json(); } catch (e) { data = null; }
+  const status = Number(res.status) || 0;
+  const ticket = data && typeof data.ticket === 'string' ? data.ticket : '';
+  if (res.ok && data && data.preview === true && previewTicketShape(ticket)) {
+    return { preview: true, ticket, status, reason: '' };
+  }
+  if (status === 503) return { preview: false, ticket: '', status, reason: 'unconfigured' };
+  if (!res.ok) return { preview: false, ticket: '', status, reason: 'http' };
+  return { preview: false, ticket: '', status, reason: 'denied' };
+}
+
 // Posts { session_id } or { email }. pass is true only for HTTP ok
 // JSON { pass: true }. Empty URL, network failure, and 4xx/5xx do not grant.
 export async function askSeasonVerify(verifyUrl, body, fetchImpl){
