@@ -57,6 +57,12 @@ check('reyes is higher than kara', SPEAKER_VOICES.REYES.pitch > SPEAKER_VOICES.K
 check('narration has a voice', voiceProfile(null).pitch === SPEAKER_VOICES.NARRATOR.pitch);
 check('an unknown name stays stable', voiceProfile('DAVID').pitch === voiceProfile('david').pitch);
 check('stage notes are not spoken', spokenLine('(earlier) Trust it. But don\'t let it make you careless.') === 'Trust it. But don\'t let it make you careless.');
+check('ledger who is a word', spokenLine('IF YOU CUT ME, WHO WILL COUNT THEM? SOMEONE MUST COUNT THEM.') === 'If you cut me, who will count them? Someone must count them.');
+check('subject code is spoken as M one', spokenLine('SUBJECT M-1. UNREGISTERED. REMAIN WHERE YOU ARE.') === 'Subject M one. Unregistered. Remain where you are.');
+check('a shouted name stays a name', spokenLine('WHY DID YOU TAKE THE NAMES, MARCUS? NAMES ARE HEAVY.') === 'Why did you take the names, Marcus? Names are heavy.');
+check('a written name is left alone', spokenLine('Marcus, the ledger is counting.') === 'Marcus, the ledger is counting.');
+check('reyes pronouns are not rewritten', spokenLine('He stopped deciding.') === 'He stopped deciding.');
+check('on screen the ledger line stays in capitals', game.includes('IF YOU CUT ME, WHO WILL COUNT THEM? SOMEONE MUST COUNT THEM.'));
 
 const one = assignVoices([{ name: 'Alex', lang: 'en-US', voiceURI: 'alex' }]);
 check('one voice still covers every speaker', Object.keys(SPEAKER_VOICES).every(k => one[k].voiceURI === 'alex'));

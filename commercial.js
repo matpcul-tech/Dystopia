@@ -969,6 +969,10 @@ function playTrailer(chapterId){
   video.defaultPlaybackRate = 1;
   video.tabIndex = -1;
   video.setAttribute('aria-label', trailer.title);
+  // Stay black until playback has a real frame. A poster or a decoded
+  // keyframe used to flash the old Borrowed Heartbeat cover.
+  video.removeAttribute('poster');
+  video.style.visibility = 'hidden';
   try { video.volume = Math.max(0, Math.min(1, Number(memory.settings.volume) || 0)); } catch (e) {}
   frame.appendChild(video);
   body.appendChild(frame);
@@ -1036,6 +1040,10 @@ function playTrailer(chapterId){
   video.addEventListener('seeking', clampSeek);
   video.addEventListener('seeked', clampSeek);
   video.addEventListener('loadedmetadata', paint);
+  video.addEventListener('playing', () => {
+    if (!alive()) return;
+    video.style.visibility = '';
+  });
   video.addEventListener('ratechange', () => {
     if (video.playbackRate !== 1) video.playbackRate = 1;
   });
@@ -1085,7 +1093,8 @@ function playTrailer(chapterId){
     if (!alive()) return;
     if (play.dataset.mode === 'retry' || video.error) {
       watched = 0;
-      video.style.visibility = '';
+      video.style.visibility = 'hidden';
+      video.removeAttribute('poster');
       play.dataset.mode = '';
       play.textContent = 'PLAY';
       const note = document.getElementById('trailerErr');

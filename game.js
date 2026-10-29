@@ -5358,7 +5358,7 @@ function endClip(skipped){
   el.intro.style.background = '';
   el.introText.style.opacity = 0;
   if (el.objective) el.objective.style.visibility = '';
-  el.skipBtn.style.opacity = 0;
+  clearSkip();
   const kicker = document.getElementById('introKicker');
   if (kicker) kicker.textContent = '';
   if (ret.then === 'play') finishIntro(!!skipped);
@@ -5502,7 +5502,7 @@ function finishIntro(skipAll){
   el.introText.style.display = '';
   el.introText.style.transition = '';
   el.introText.style.opacity = 0;
-  el.skipBtn.style.opacity = 0;
+  clearSkip();
   el.fade.style.transition = skipAll ? 'none' : 'opacity .6s';
   el.fade.style.background = '#000';
   el.fade.style.opacity = 0;
@@ -5572,7 +5572,17 @@ function finishIntro(skipAll){
   }
   if (storySoon) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
-function showSkip(){ el.skipBtn.style.transition = 'none'; el.skipBtn.style.opacity = .85; }
+function showSkip(){
+  el.skipBtn.style.transition = 'none';
+  el.skipBtn.style.opacity = .85;
+  // Touch look and move zones sit above the intro. While they take hits,
+  // chapter 1's street clip (and any later room clip) cannot be skipped.
+  document.body.classList.add('clipOn');
+}
+function clearSkip(){
+  el.skipBtn.style.opacity = 0;
+  document.body.classList.remove('clipOn');
+}
 function skipIntro(){
   const mode = G.mode;
   if (mode !== 'cinematic' && mode !== 'beatclip' && mode !== 'galleryclip') return false;
@@ -5585,6 +5595,16 @@ function skipIntro(){
 el.skipBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); skipIntro(); });
 el.skipBtn.addEventListener('click', e => { e.stopPropagation(); skipIntro(); });
 el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) skipIntro(); });
+// Capture so a playing video or a touch zone cannot eat the tap.
+// The same skip the later clips already use: tap, click, Space, or Enter.
+addEventListener('pointerdown', e => {
+  const mode = G.mode;
+  if (mode !== 'cinematic' && mode !== 'beatclip' && mode !== 'galleryclip') return;
+  if (skipIntro()){
+    e.preventDefault();
+    e.stopPropagation();
+  }
+}, true);
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Escape' && window.Waking){
