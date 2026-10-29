@@ -5572,39 +5572,96 @@ function finishIntro(skipAll){
   }
   if (storySoon) setTimeout(()=>{ if (G.mode==='play') Story.start(CB.start); }, 700);
 }
+// Street and depot clips keep the move zone, the look zone, and FIRE on screen.
+// Those sit above #overlays, so a tap on the centered SKIP hits them and the clip
+// keeps playing. Park them, and keep SKIP on the page itself, above that stack.
+let clipHudSaved = null;
+function parkClipHud(){
+  if (clipHudSaved) return;
+  const nodes = [el.stickZone, el.lookZone, el.fireBtn, el.plantBtn];
+  clipHudSaved = nodes.map(n => n.style.display);
+  nodes.forEach(n => { n.style.display = 'none'; });
+}
+function restoreClipHud(){
+  if (!clipHudSaved) return;
+  const nodes = [el.stickZone, el.lookZone, el.fireBtn, el.plantBtn];
+  nodes.forEach((n, i) => { n.style.display = clipHudSaved[i]; });
+  clipHudSaved = null;
+}
+function placeSkip(){
+  if (el.skipBtn.parentElement !== document.body) document.body.appendChild(el.skipBtn);
+  const s = el.skipBtn.style;
+  s.position = 'fixed';
+  s.zIndex = '1000';
+  s.left = '50%';
+  s.top = '46%';
+  s.right = 'auto';
+  s.bottom = 'auto';
+  s.transform = 'translate(-50%, -50%)';
+  s.pointerEvents = 'auto';
+  s.margin = '0';
+}
+function unplaceSkip(){
+  const s = el.skipBtn.style;
+  s.position = '';
+  s.zIndex = '';
+  s.left = '';
+  s.top = '';
+  s.right = '';
+  s.bottom = '';
+  s.transform = '';
+  s.pointerEvents = '';
+  s.margin = '';
+  if (el.intro && el.skipBtn.parentElement !== el.intro) el.intro.appendChild(el.skipBtn);
+}
 function showSkip(){
   el.skipBtn.style.transition = 'none';
   el.skipBtn.style.opacity = .85;
-  // Touch look and move zones sit above the intro. While they take hits,
-  // chapter 1's street clip (and any later room clip) cannot be skipped.
   document.body.classList.add('clipOn');
+  parkClipHud();
+  placeSkip();
 }
 function clearSkip(){
   el.skipBtn.style.opacity = 0;
   document.body.classList.remove('clipOn');
+  unplaceSkip();
+  restoreClipHud();
 }
-function skipIntro(){
+function inClip(){
   const mode = G.mode;
-  if (mode !== 'cinematic' && mode !== 'beatclip' && mode !== 'galleryclip') return false;
-  if (performance.now() - introStartT < 180) return false;
+  return mode === 'cinematic' || mode === 'beatclip' || mode === 'galleryclip';
+}
+function skipIntro(force){
+  if (!inClip()) return false;
+  // Ignore the click that just opened the chapter. A press on SKIP itself always counts.
+  if (!force && performance.now() - introStartT < 180) return false;
   el.introText.style.transition = 'none';
-  if (mode === 'cinematic') Cinematic.skip();
+  if (G.mode === 'cinematic') Cinematic.skip();
   endClip(true);
   return true;
 }
-el.skipBtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); skipIntro(); });
-el.skipBtn.addEventListener('click', e => { e.stopPropagation(); skipIntro(); });
-el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) skipIntro(); });
-// Capture so a playing video or a touch zone cannot eat the tap.
-// The same skip the later clips already use: tap, click, Space, or Enter.
-addEventListener('pointerdown', e => {
-  const mode = G.mode;
-  if (mode !== 'cinematic' && mode !== 'beatclip' && mode !== 'galleryclip') return;
-  if (skipIntro()){
+function onSkipButton(e){
+  e.preventDefault();
+  e.stopPropagation();
+  skipIntro(true);
+}
+el.skipBtn.addEventListener('pointerdown', onSkipButton);
+el.skipBtn.addEventListener('click', onSkipButton);
+el.skipBtn.addEventListener('touchstart', onSkipButton, {passive:false});
+el.intro.addEventListener('pointerdown', e => { if (e.target !== el.skipBtn) skipIntro(false); });
+// touchstart as well as pointerdown. A playing phone video can swallow pointerdown
+// while the touch still reaches the window.
+function onClipPress(e){
+  if (!inClip()) return;
+  const btn = e.target && e.target.closest && e.target.closest('#skipBtn');
+  if (skipIntro(!!btn)){
     e.preventDefault();
     e.stopPropagation();
   }
-}, true);
+}
+addEventListener('touchstart', onClipPress, {capture:true, passive:false});
+addEventListener('pointerdown', onClipPress, true);
+addEventListener('click', onClipPress, true);
 addEventListener('keydown', e => {
   if (e.repeat) return;
   if (e.code === 'Escape' && window.Waking){
