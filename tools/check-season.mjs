@@ -18,7 +18,11 @@ const SLOT_ID = 'cs_test_slotswitchslot01';
 const LOCAL_REPLAY = 'cs_test_localreplay0001';
 const PREVIEW_CODE = 'owner-preview-code-0123456789';
 const PREVIEW_TICKET = 'a'.repeat(32);
-const LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
+const OLD_LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
+const NEW_LINK = 'plink_1UVspDRc0DOFqzuBbtCuM3MO';
+const LINK = OLD_LINK;
+const NEW_PRICE_ID = 'cs_live_newlinkseasonpas';
+const SEASON_BUY_URL = 'https://buy.stripe.com/cNi00l9cQ0XNgND8pM3wQ01';
 const VERIFY_URL = 'https://waking-season-pass.matpcul.workers.dev';
 const LINE = 'Watch 3 trailers to play this chapter now, or get every chapter with Season Pass.';
 let failed = 0;
@@ -44,6 +48,8 @@ check('shape check never returns grant', [LIVE, FAKE, 'cs_test_abcdefghijklmnopq
 
 const commercialSource = readFileSync(join(root, 'commercial.js'), 'utf8');
 check('verify url is the live worker', commercialSource.includes("SEASON_VERIFY_URL: '" + VERIFY_URL + "'"));
+check('buy button uses the current payment link', commercialSource.includes("SEASON_URL: '" + SEASON_BUY_URL + "'"));
+check('season price is 2.99', commercialSource.includes("SEASON_PRICE: '$2.99'"));
 check('client has no shape grant', !/action === 'grant'/.test(commercialSource));
 check('static site has no stripe secret', !/sk_(live|test)_/.test(commercialSource) && !/STRIPE_SECRET/.test(commercialSource));
 check('old preview flag is not a client grant', !/getItem\('latm_preview'\)/.test(commercialSource) && !/setItem\('latm_preview'/.test(commercialSource));
@@ -55,6 +61,9 @@ check('bare preview shape is rejected', previewCodeShape('1') === false && previ
 const workerSource = readFileSync(join(root, 'cloud/season-pass-worker.js'), 'utf8');
 check('worker keeps the preview shape', workerSource.includes('/^[A-Za-z0-9_-]{20,128}$/'));
 check('worker does not bake a preview code', !/PREVIEW_CODE\s*=\s*['"]/.test(workerSource));
+check('worker lists both season links', workerSource.includes(OLD_LINK) && workerSource.includes(NEW_LINK));
+const purchasesSource = readFileSync(join(root, 'mobile/purchases.js'), 'utf8');
+check('mobile season price is 2.99', purchasesSource.includes("season: { id: 'season_pass_book_one', price: '$2.99' }"));
 
 let fetches = 0;
 const closed = await askSeasonVerify('', { session_id: FAKE }, async () => {
@@ -153,9 +162,10 @@ const realFetch = globalThis.fetch;
 const PAID_IDS = new Set([LIVE, PAID_BROWSER, RESTORE_ID, SLOT_ID, LOCAL_REPLAY]);
 function stripeFetch(url){
   const id = String(url).split('/').pop();
-  if (PAID_IDS.has(id)) {
+  if (id === NEW_PRICE_ID || PAID_IDS.has(id)) {
     const email = id === LIVE ? 'Reader@Example.com' : 'Paid@Browser.test';
-    return Promise.resolve({ ok: true, json: async () => ({ payment_status: 'paid', status: 'complete', payment_link: LINK, customer_details: { email } }) });
+    const payment_link = id === NEW_PRICE_ID ? NEW_LINK : LINK;
+    return Promise.resolve({ ok: true, json: async () => ({ payment_status: 'paid', status: 'complete', payment_link, customer_details: { email } }) });
   }
   if (id === 'cs_live_unpaidunpaidunp') {
     return Promise.resolve({ ok: true, json: async () => ({ payment_status: 'unpaid', status: 'open', payment_link: LINK }) });
@@ -177,13 +187,16 @@ function callWorker(body){
 
 const paid = await callWorker({ session_id: LIVE });
 const paidBody = await paid.json();
-check('worker grants a paid link session', paid.status === 200 && paidBody.pass === true, JSON.stringify(paidBody));
+check('worker grants the earlier payment link', paid.status === 200 && paidBody.pass === true, JSON.stringify(paidBody));
+const current = await callWorker({ session_id: NEW_PRICE_ID });
+const currentBody = await current.json();
+check('worker grants the current payment link', current.status === 200 && currentBody.pass === true, JSON.stringify(currentBody));
 const again = await callWorker({ session_id: LIVE });
 check('worker burns the id', again.status === 409 && (await again.json()).pass === false);
 const unpaid = await callWorker({ session_id: 'cs_live_unpaidunpaidunp' });
 check('worker rejects unpaid', unpaid.status === 402 && (await unpaid.json()).pass === false);
 const other = await callWorker({ session_id: 'cs_live_otherlinkotherli' });
-check('worker rejects a different payment link', other.status === 402);
+check('worker rejects a foreign payment link', other.status === 402 && (await other.json()).pass === false);
 const fakeWorker = await callWorker({ session_id: FAKE });
 check('worker rejects a lookalike id', fakeWorker.status === 402 && (await fakeWorker.json()).pass === false);
 const mail = await callWorker({ email: 'reader@example.com' });
@@ -479,8 +492,8 @@ const sheet = await fake.page.evaluate((line) => {
     bodyBackground: bs.backgroundColor,
     text,
     count: text.split(line).length - 1,
-    remove: text.includes('REMOVE ADS') || text.includes('$2.99'),
-    season: text.includes('SEASON PASS'),
+    remove: text.includes('REMOVE ADS'),
+    season: text.includes('SEASON PASS') && text.includes('$2.99') && text.split('$2.99').length - 1 === 1,
     trailers: text.includes('WATCH BOOK TRAILERS'),
   };
 }, LINE);
@@ -718,12 +731,13 @@ const live = await shot.evaluate((line) => {
   return {
     background: getComputedStyle(node).backgroundColor,
     line: text.includes(line),
-    remove: text.includes('REMOVE ADS') || text.includes('$2.99'),
+    remove: text.includes('REMOVE ADS'),
+    price: text.includes('$2.99') && text.split('$2.99').length - 1 === 1,
     locked: window.Waking.isLocked('ch_counting'),
     mode: window.__LATM.G.mode,
   };
 }, LINE);
-check('title pay sheet is opaque and locked', live.background === 'rgb(7, 7, 11)' && live.line && !live.remove && live.locked === true && live.mode === 'title', JSON.stringify(live));
+check('title pay sheet is opaque and locked', live.background === 'rgb(7, 7, 11)' && live.line && !live.remove && live.price && live.locked === true && live.mode === 'title', JSON.stringify(live));
 check('game page had no crash', shotErrors.filter(e => !/speechSynthesis|NotAllowedError/.test(e)).length === 0, shotErrors.join(' | ').slice(0, 400));
 await shot.screenshot({ path: '/opt/cursor/artifacts/pay-sheet.png' });
 await shot.evaluate(() => {

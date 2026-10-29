@@ -17,6 +17,7 @@ const files = [
   'cinematics.js',
   'commercial.js',
   'season-pass.js',
+  'return-loop.js',
   'portraits.js',
   'feel.js',
   'voices.js',

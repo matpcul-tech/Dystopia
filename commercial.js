@@ -36,11 +36,11 @@ const PAID = ['ch_counting', 'ch_conduits', 'ch_harvest', 'ch_steel'];
 export const COMMERCE = {
   STATS_URL: '',
   ANALYTICS_URL: '',
-  SEASON_URL: 'https://buy.stripe.com/bJe14pfBe0XNfJz0Xk3wQ00',
+  SEASON_URL: 'https://buy.stripe.com/cNi00l9cQ0XNgND8pM3wQ01',
   // Live Season Pass verify worker. See cloud/SEASON_PASS_WORKER.md.
   // Empty fails closed: a cs_ session id never grants Season Pass.
   SEASON_VERIFY_URL: 'https://waking-season-pass.matpcul.workers.dev',
-  SEASON_PRICE: '$6.99',
+  SEASON_PRICE: '$2.99',
   // Price kept for a future real charge. The button stays hidden until then.
   REMOVE_ADS_PRICE: '$2.99',
   STEAM_PRICE: '$7.99',
