@@ -41,7 +41,7 @@ Three save slots live in this browser (`latm_save_v1`).
 
 **Three book trailers.** Watching all three opens the locked chapter you asked for, for this visit only. Reload the page and the trailers are required again. That visit is not the Season Pass. The files are local (`ads/dystopia.mp4`, `ads/borrowed-heartbeat.mp4`, `ads/ailt.mp4`). A link after a trailer is not a charge. A missing file shows an error and does not count a view.
 
-**Season Pass, $6.99.** The button opens a Stripe Payment Link in this same tab. The game grants the pass only after `https://waking-season-pass.matpcul.workers.dev` answers `{ "pass": true }` for the return link or, on Restore, for the email on the Stripe receipt. A flag in the address does not unlock anything. The pass is stored in this browser as `latm_season_pass_v1` and on every save slot. There is no Stripe secret in the game. Steps for the worker are in `cloud/SEASON_PASS_WORKER.md`.
+**Season Pass, $2.99.** The button opens a Stripe Payment Link in this same tab. The game grants the pass only after `https://waking-season-pass.matpcul.workers.dev` answers `{ "pass": true }` for the return link or, on Restore, for the email on the Stripe receipt. A flag in the address does not unlock anything. The pass is stored in this browser as `latm_season_pass_v1` and on every save slot. There is no Stripe secret in the game. Steps for the worker are in `cloud/SEASON_PASS_WORKER.md`.
 
 **Owner preview.** `?preview=1` does nothing. A long code, checked by that same worker, can unlock the tab you opened for 12 hours. It never writes `latm_season_pass_v1`. Until you set the worker secret, the page fails closed. Setup and the stream steps are below.
 

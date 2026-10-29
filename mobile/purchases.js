@@ -1,7 +1,7 @@
 // RevenueCat is not connected. This module must not unlock chapters.
 
 export const PRODUCTS = {
-  season: { id: 'season_pass_book_one', price: '$6.99' },
+  season: { id: 'season_pass_book_one', price: '$2.99' },
   removeAds: { id: 'remove_ads', price: '$2.99' },
 };
 

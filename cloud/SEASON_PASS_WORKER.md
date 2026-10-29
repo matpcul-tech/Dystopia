@@ -1,6 +1,6 @@
 # Season Pass worker
 
-`cloud/season-pass-worker.js` checks a Stripe Checkout Session and answers `{ "pass": true }` only when that session is paid, complete, and from the Season Pass Payment Link. The static site never holds a Stripe secret.
+`cloud/season-pass-worker.js` checks a Stripe Checkout Session and answers `{ "pass": true }` only when that session is paid, complete, and from a Season Pass Payment Link. The current link (`plink_1UVspDRc0DOFqzuBbtCuM3MO`) and the earlier link (`plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7`) both count, so a purchase on either one can still verify. The static site never holds a Stripe secret.
 
 `COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is `https://waking-season-pass.matpcul.workers.dev`. An empty value fails closed: a `cs_` session id does not grant Season Pass.
 
@@ -27,6 +27,9 @@ The binding name must be `SEASON`. The worker reads `env.SEASON` and `env.STRIPE
    `npx wrangler secret put STRIPE_SECRET_KEY`
 5. Deploy from `cloud/`:
    `npx wrangler deploy`
+
+When the Payment Link changes, run that deploy before or with the Pages publish. The buy button follows `COMMERCE.SEASON_URL` as soon as Pages serves it. A checkout from a new link is rejected until this worker is deployed with that link id.
+
 6. `COMMERCE.SEASON_VERIFY_URL` in `commercial.js` is the live worker, with no trailing slash:
    `https://waking-season-pass.matpcul.workers.dev`
 7. Publish the static site again so GitHub Pages picks up that constant.

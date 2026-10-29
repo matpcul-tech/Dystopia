@@ -10,9 +10,10 @@
 // KV binding: SEASON
 //
 // POST { session_id } retrieves the Checkout Session. It grants only
-// when the session is paid, complete, and created by the live Season
-// Pass Payment Link. The id is stored once, so a shared return URL
-// cannot grant a second browser.
+// when the session is paid, complete, and created by a Season Pass
+// Payment Link. The current link and the earlier link both count, so
+// a purchase on either one can still verify. The id is stored once,
+// so a shared return URL cannot grant a second browser.
 // POST { email } restores a pass already recorded for that receipt
 // email. It does not grant a session that was never paid.
 //
@@ -25,7 +26,10 @@
 // short and is rejected. Keep the shape in step with PREVIEW_SHAPE
 // in season-pass.js.
 
-const PAYMENT_LINK = 'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7';
+const PAYMENT_LINKS = [
+  'plink_1UV4C7Rc0DOFqzuBoEDJ5Aa7',
+  'plink_1UVspDRc0DOFqzuBbtCuM3MO',
+];
 const SESSION_RE = /^cs_(live|test)_[A-Za-z0-9]{14,}$/;
 const PREVIEW_RE = /^[A-Za-z0-9_-]{20,128}$/;
 const PREVIEW_TTL_MS = 12 * 60 * 60 * 1000;
@@ -136,7 +140,7 @@ export default {
     });
     if (!res.ok) return send(request, { pass: false }, 402);
     const session = await res.json();
-    const paid = session.payment_status === 'paid' && session.status === 'complete' && session.payment_link === PAYMENT_LINK;
+    const paid = session.payment_status === 'paid' && session.status === 'complete' && PAYMENT_LINKS.indexOf(session.payment_link) !== -1;
     if (!paid) return send(request, { pass: false }, 402);
     await env.SEASON.put('used:' + id, String(Date.now()));
     const receipt = session.customer_details && session.customer_details.email;
