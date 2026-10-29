@@ -2,7 +2,7 @@
 // movement, the pointer-lock recenter swallow, and slot continue.
 // Run: node tools/check-feel.mjs
 import { readFileSync } from 'fs';
-import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed } from '../feel.js';
+import { typedCount, swallowLook, integrateMove, resumePlan, inLevel, keptStep, moveSlices, bodyGap, lineHoldMs, claimClipBed, escapePress } from '../feel.js';
 
 const fails = [];
 function check(name, pass, detail){
@@ -100,7 +100,19 @@ check('a muted soundtrack does not take the bed', claimClipBed(true, true) === f
 check('a playing soundtrack takes the bed', claimClipBed(true, false) === true);
 check('movement rejects a landing outside the level', game.includes('keptStep('));
 check('a bad continue is pulled back inside', game.includes('rescuePlayable('));
-check('escape that only unlocks the mouse still pauses', game.includes('unlockPaused'));
+check('escape that only unlocks the mouse still pauses', game.includes('applyEscape('));
+const opened = escapePress({ kind:'unlock', mode:'play', paused:false, lastAt:0, suppressUntil:0 }, 1000);
+check('unlock opens pause', opened.action === 'open');
+const sameDown = escapePress({ kind:'down', mode:'paused', paused:true, lastAt:opened.lastAt, suppressUntil:0 }, 1030);
+check('keydown from the same press does not close pause', sameDown.action === 'ignore');
+const sameUp = escapePress({ kind:'up', mode:'paused', paused:true, lastAt:opened.lastAt, suppressUntil:0 }, 1200);
+check('keyup from the same press does not close pause', sameUp.action === 'ignore');
+const resume = escapePress({ kind:'down', mode:'paused', paused:true, lastAt:opened.lastAt, suppressUntil:0 }, 1600);
+check('a later escape resumes', resume.action === 'resume');
+const missed = escapePress({ kind:'up', mode:'play', paused:false, lastAt:0, suppressUntil:0 }, 2000);
+check('keyup alone still opens pause when keydown was swallowed', missed.action === 'open');
+const quiet = escapePress({ kind:'unlock', mode:'play', paused:false, lastAt:0, suppressUntil:2500 }, 2000);
+check('an unlock the game asked for does not pause', quiet.action === 'ignore');
 check('death says you went down', game.includes('YOU WENT DOWN'));
 check('speech is not cancelled in the same turn it starts', !/synthNow\.cancel\(\)/.test(game));
 check('the next line waits while speech is still going', game.includes('synth.speaking'));

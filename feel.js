@@ -166,3 +166,29 @@ export function lineHoldMs(text, speed){
 export function claimClipBed(fileHasAudio, muted){
   return !!fileHasAudio && !muted;
 }
+
+// One Escape press can show up as an unlock, a keydown, and a keyup.
+// The first event opens pause. Later pieces of that same press must not
+// close it. A later press, after the window, resumes.
+// kind is 'down', 'up', or 'unlock'.
+export function escapePress(s, now){
+  const t = Number(now) || 0;
+  const last = Number(s && s.lastAt) || 0;
+  const mode = (s && s.mode) || '';
+  const within = t - last < 400;
+  const playing = mode === 'play' || mode === 'story';
+  if (s && s.kind === 'up'){
+    if (within || s.paused || !playing) return { action: 'ignore', lastAt: last };
+    return { action: 'open', lastAt: t };
+  }
+  if (s && s.kind === 'unlock'){
+    if (t < (Number(s.suppressUntil) || 0)) return { action: 'ignore', lastAt: last };
+    if (within || s.paused || !playing) return { action: 'ignore', lastAt: last };
+    return { action: 'open', lastAt: t };
+  }
+  if (within) return { action: 'ignore', lastAt: last };
+  if (mode === 'paused') return { action: 'resume', lastAt: t };
+  if (mode === 'title' || mode === 'end') return { action: 'toggle', lastAt: t };
+  if (playing && !(s && s.paused)) return { action: 'open', lastAt: t };
+  return { action: 'ignore', lastAt: last };
+}
